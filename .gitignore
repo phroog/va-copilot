@@ -1,0 +1,17 @@
+# Build output
+.next/
+
+# Dependencies
+node_modules/
+
+# Environment variables (enthält geheime Schlüssel)
+.env.local
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

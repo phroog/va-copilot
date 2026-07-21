@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+
+@layer base {
+  body {
+    @apply font-sans;
+  }
+}
+
+@layer utilities {
+  .squishy {
+    @apply transition-transform duration-200 ease-in-out;
+  }
+  .squishy:hover {
+    @apply scale-[1.02];
+  }
+  .squishy-lg:hover {
+    @apply scale-[1.03];
+  }
+  .blob {
+    @apply absolute rounded-full opacity-30 blur-3xl animate-blob;
+  }
+  .text-shadow-soft {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  .animate-shake {
+    animation: shake 0.5s ease-in-out infinite;
+  }
+  .animate-heart-burst {
+    animation: heartBurst 1.2s ease-out forwards;
+  }
+  .animate-victory {
+    animation: victoryDance 0.8s ease-in-out;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+@keyframes victoryDance {
+  0%, 100% { transform: rotate(0) scale(1); }
+  25% { transform: rotate(-8deg) scale(1.1); }
+  50% { transform: rotate(8deg) scale(1.15); }
+  75% { transform: rotate(-5deg) scale(1.05); }
+}
+
+@keyframes heartBurst {
+  0% { opacity: 1; transform: scale(0.5) translateY(0); }
+  50% { opacity: 1; transform: scale(1.3) translateY(-10px); }
+  100% { opacity: 0; transform: scale(1.8) translateY(-25px); }
+}
