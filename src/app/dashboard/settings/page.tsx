@@ -222,7 +222,7 @@ export default function SettingsPage() {
             <ol className="list-decimal list-inside space-y-1">
               <li>Copy the email address above</li>
               <li>Go to your platform&apos;s notification settings</li>
-              <li>Set email forwarding to your VA Copilot inbox address</li>
+              <li>Set email forwarding to your Sari inbox address</li>
               <li>Messages will appear automatically in your inbox!</li>
             </ol>
           </div>

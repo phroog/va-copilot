@@ -45,7 +45,7 @@
   "extractionFailed": "Failed to extract job details from the image. Please try a clearer screenshot.",
   "inboxDescription": "All your platform messages in one place",
   "inboxEmpty": "Your inbox is empty",
-  "inboxEmptyHint": "Forward your platform notification emails to your VA Copilot email address to see them here.",
+  "inboxEmptyHint": "Forward your platform notification emails to your Sari inbox address to see them here.",
   "inboxTestInsert": "Insert Test Message",
   "inboxEmailTitle": "Unified Inbox Email",
   "inboxEmailDescription": "Forward your platform notifications here",
@@ -171,7 +171,7 @@
   "academyHeroHighlight": "Virtual Assistant",
   "academyHeroSub": "Master the art of virtual assistance with a structured curriculum, video masterclasses, and community support. No hidden fees. Ever.",
   "startFreeAcademy": "Start Free Academy",
-  "tryVACopilot": "Try VA Copilot",
+  "trySariTool": "Try Sari",
   "academyLogin": "Academy Login",
   "academyLoginDesc": "Sign in to continue your learning journey.",
   "academySignup": "Create Account",
@@ -181,9 +181,9 @@
   "academyCurriculum": "What You'll Learn",
   "academyCTA": "Ready to Start Your VA Journey?",
   "academyCTADesc": "Join thousands of aspiring VAs learning for free.",
-  "academyToolBanner": "Ready to apply your skills? Try VA Copilot — free trial!",
+  "academyToolBanner": "Ready to apply your skills? Try Sari — free trial!",
   "academyBanner": "📚 Improve your skills",
-  "academyBannerDesc": "Visit the VA Copilot Academy and master virtual assistance for free.",
+  "academyBannerDesc": "Visit the Sari Academy and master virtual assistance for free.",
   "academyResourcesHint": "Download cheat sheets and templates for each level.",
   "academyExistingTool": "Already have an account?",
   "allMasterclasses": "All Masterclasses",
@@ -214,9 +214,9 @@
   "signup": "Sign Up",
   "downloadCheatsheets": "Download resources",
   "noVaultItems": "No items in your vault. Add your first password!",
-  "username": "Username",
-  "password": "Password",
-  "clientPortal": "Client Portal",
-  "clientPortalDesc": "Generate a unique link to share with your client so they can view progress and invoices.",
-  "generateLink": "Generate Portal Link"
+  "language": {
+    "en": "🇺🇸 English",
+    "vi": "🇻🇳 Tiếng Việt",
+    "ph": "🇵🇭 Filipino"
+  }
 }

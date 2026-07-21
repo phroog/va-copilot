@@ -21,10 +21,14 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { title, url, username, encrypted_password, notes } = await request.json();
+  let body: { title?: string; url?: string; username?: string; encrypted_password?: string; notes?: string };
+  try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+
+  const { title, url, username, encrypted_password, notes } = body;
   if (!title || !encrypted_password) {
     return NextResponse.json({ error: "title and encrypted_password required" }, { status: 400 });
   }
+  if (title.length > 255) return NextResponse.json({ error: "title too long" }, { status: 400 });
 
   const { data, error } = await supabase
     .from("vault_items")

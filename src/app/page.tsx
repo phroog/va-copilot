@@ -33,7 +33,7 @@ export default function Home() {
           <div className="max-w-3xl mx-auto">
             <div className="flex items-center justify-center gap-2 p-2 rounded-2xl bg-white/60 dark:bg-dark-card/60 border border-kawaii-lavender/30 dark:border-dark-surface shadow-sm">
               <Link href="/" className="flex-1 text-center px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white shadow-md squishy">
-                🛠️ VA Copilot
+                🍠 Sari
               </Link>
               <div className="w-px h-6 bg-kawaii-lavender/30" />
               <Link href="/academy" className="flex-1 text-center px-4 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-kawaii-lavender/20 squishy">
@@ -68,7 +68,7 @@ export default function Home() {
                 <Button variant="primary" size="lg">🎓 Start Free Academy</Button>
               </Link>
               <a href="#tool-features">
-                <Button variant="outline" size="lg">🛠️ Try VA Copilot →</Button>
+                <Button variant="outline" size="lg">🍠 Try Sari →</Button>
               </a>
             </div>
           </div>

@@ -4,7 +4,7 @@ import { LocaleProvider } from "@/lib/i18n/context";
 import { ThemeProvider } from "@/lib/theme/theme-provider";
 
 export const metadata: Metadata = {
-  title: "VA Copilot",
+  title: "Sari",
   description: "Your all-in-one freelancing companion",
 };
 

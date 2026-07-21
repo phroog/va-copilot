@@ -45,13 +45,13 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
       <div className="max-w-3xl mx-auto px-4 py-12 space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="text-4xl mb-2">🚀</div>
+          <div className="text-4xl mb-2">🍠</div>
           <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">Client Portal</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Powered by VA Copilot</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Powered by Sari 🍠</p>
         </div>
 
         {/* Job Info */}
-        <Card className="bg-gradient-to-r from-kawaii-lavender/20 to-kawaii-pink/10 dark:from-kawaii-purple/10 dark:to-kawaii-pink/5">
+        <Card className="bg-gradient-to-r from-sari-lavender/20 to-sari-coral/10 dark:from-sari-ube/10 dark:to-sari-coral/5">
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-3">
               <span className="text-2xl">💼</span>
@@ -80,14 +80,14 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
             ) : (
               <div className="space-y-3">
                 {data.timeEntries.map((entry) => (
-                  <div key={entry.id} className="flex items-center justify-between p-3 rounded-2xl bg-kawaii-lavender/15 dark:bg-dark-surface/50">
+                  <div key={entry.id} className="flex items-center justify-between p-3 rounded-2xl bg-sari-lavender/15 dark:bg-dark-surface/50">
                     <div>
                       <p className="text-sm font-semibold">{entry.description || "Work session"}</p>
                       <p className="text-xs text-slate-400">{new Date(entry.start_time).toLocaleDateString()}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold">{formatDuration(entry.start_time, entry.end_time)}</p>
-                      <p className="text-xs text-kawaii-purple dark:text-kawaii-lavender">${entry.hourly_rate}/hr</p>
+                      <p className="text-xs text-sari-ube dark:text-sari-lavender">${entry.hourly_rate}/hr</p>
                     </div>
                   </div>
                 ))}
@@ -110,7 +110,7 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
                   const sub = (inv.invoice_items ?? []).reduce((s, i) => s + Number(i.total || 0), 0);
                   const total = sub + sub * (Number(inv.tax_rate) / 100);
                   return (
-                    <div key={inv.id} className="flex items-center justify-between p-3 rounded-2xl bg-kawaii-lavender/15 dark:bg-dark-surface/50">
+                    <div key={inv.id} className="flex items-center justify-between p-3 rounded-2xl bg-sari-lavender/15 dark:bg-dark-surface/50">
                       <div>
                         <p className="text-sm font-semibold">{inv.invoice_number}</p>
                         <p className="text-xs text-slate-400">{inv.issue_date}</p>
@@ -118,7 +118,7 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
                       <div className="text-right">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
                           inv.status === "paid" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" :
-                          inv.status === "sent" ? "bg-kawaii-lavender/30 text-kawaii-purple" :
+                          inv.status === "sent" ? "bg-sari-lavender/30 text-sari-ube" :
                           "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
                         }`}>
                           {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
@@ -133,7 +133,7 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-slate-400">— Powered by <Link href="/" className="text-kawaii-purple underline">VA Copilot</Link> —</p>
+        <p className="text-center text-xs text-slate-400">— Powered by <Link href="/" className="text-sari-ube underline">Sari 🍠</Link> —</p>
       </div>
     </div>
   );

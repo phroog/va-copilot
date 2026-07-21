@@ -1,29 +1,32 @@
 "use client";
 
 import { useLocale } from "@/lib/i18n/context";
-import { Button } from "@/components/ui/button";
 
 const locales = [
-  { code: "en" as const, labelKey: "language.en" },
-  { code: "vi" as const, labelKey: "language.vi" },
-  { code: "ph" as const, labelKey: "language.ph" },
+  { code: "en" as const, flag: "🇺🇸", label: "English" },
+  { code: "vi" as const, flag: "🇻🇳", label: "Tiếng Việt" },
+  { code: "ph" as const, flag: "🇵🇭", label: "Filipino" },
 ];
 
 export function LanguageSwitcher() {
-  const { t, locale, setLocale } = useLocale();
+  const { locale, setLocale } = useLocale();
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-0.5 bg-white/60 dark:bg-dark-card/60 rounded-full p-0.5 border border-sari-lavender/20 dark:border-dark-surface">
       {locales.map((l) => (
-        <Button
+        <button
           key={l.code}
-          variant={locale === l.code ? "default" : "ghost"}
-          size="sm"
           onClick={() => setLocale(l.code)}
-          className="text-xs px-2 py-1 h-auto"
+          className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all squishy ${
+            locale === l.code
+              ? "bg-gradient-to-r from-sari-ube to-sari-coral text-white shadow-sm"
+              : "text-slate-500 dark:text-slate-400 hover:text-sari-ube"
+          }`}
+          title={l.label}
         >
-          {t(l.labelKey)}
-        </Button>
+          <span className="text-sm">{l.flag}</span>
+          <span className="hidden sm:inline">{l.label}</span>
+        </button>
       ))}
     </div>
   );

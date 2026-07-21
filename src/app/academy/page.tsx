@@ -16,7 +16,7 @@ const benefits = [
 const levels = [
   { emoji: "🌱", name: "Beginner", desc: "Start your VA journey. Learn the basics of finding clients, setting up services, and building your profile." },
   { emoji: "📈", name: "Intermediate", desc: "Sharpen your skills with proposals, client communication, and time management." },
-  { emoji: "⚡", name: "Advanced", desc: "Master advanced tools, social media management, and VA Copilot integration." },
+  { emoji: "⚡", name: "Advanced", desc: "Master advanced tools, social media management, and Sari integration." },
   { emoji: "🚀", name: "Expert", desc: "Scale your business, build your brand, and automate your workflow." },
   { emoji: "💼", name: "Business", desc: "Hire a team, create passive income, and build a full VA agency." },
 ];
@@ -46,7 +46,7 @@ export default function AcademyLanding() {
               <Button variant="primary" size="lg">🎓 {t("startFreeAcademy")}</Button>
             </Link>
             <Link href="/">
-              <Button variant="outline" size="lg">🛠️ {t("tryVACopilot")}</Button>
+              <Button variant="outline" size="lg">🍠 {t("trySariTool")}</Button>
             </Link>
           </div>
         </div>
@@ -57,7 +57,7 @@ export default function AcademyLanding() {
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center justify-center gap-2 p-2 rounded-2xl bg-white/60 dark:bg-dark-card/60 border border-kawaii-lavender/30 dark:border-dark-surface">
             <Link href="/" className="flex-1 text-center px-4 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-kawaii-lavender/20 squishy">
-              🛠️ VA Copilot
+              🍠 Sari
             </Link>
             <div className="w-px h-6 bg-kawaii-lavender/30" />
             <Link href="/academy" className="flex-1 text-center px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white shadow-md squishy">

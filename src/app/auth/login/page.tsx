@@ -48,7 +48,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <Link href="/" className="text-3xl mb-2 block">🚀</Link>
           <CardTitle className="text-2xl">Welcome Back!</CardTitle>
-          <CardDescription>Log in to your VA Copilot account</CardDescription>
+          <CardDescription>Log in to your Sari account</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">

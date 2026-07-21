@@ -69,7 +69,7 @@ export default function AcademyDashboard() {
         </div>
         <div className="flex gap-2">
           <Link href="/dashboard">
-            <Button variant="outline" size="sm">🛠️ VA Copilot</Button>
+            <Button variant="outline" size="sm">🍠 Sari</Button>
           </Link>
         </div>
       </div>
@@ -79,7 +79,7 @@ export default function AcademyDashboard() {
         <CardContent className="p-4 flex items-center justify-between">
           <p className="text-sm text-slate-600 dark:text-slate-300">🛠️ {t("academyToolBanner")}</p>
           <Link href="/dashboard">
-            <Button variant="primary" size="sm">{t("tryVACopilot")} 🚀</Button>
+            <Button variant="primary" size="sm">{t("trySariTool")} 🚀</Button>
           </Link>
         </CardContent>
       </Card>

@@ -40,7 +40,7 @@ export default function ClientPage() {
           <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
               <span className="text-2xl">🚀</span>
-              <span className="text-xl font-extrabold bg-gradient-to-r from-kawaii-purple to-kawaii-pink bg-clip-text text-transparent">VA Copilot</span>
+              <span className="text-xl font-extrabold bg-gradient-to-r from-sari-ube to-sari-coral bg-clip-text text-transparent">Sari</span>
             </Link>
             <Link href="/">
               <Button variant="ghost" size="sm">← Back</Button>
@@ -137,7 +137,7 @@ export default function ClientPage() {
         </section>
 
         <footer className="text-center pb-8 text-xs text-slate-400">
-          <Link href="/" className="text-kawaii-purple underline">← Back to VA Copilot</Link>
+          <Link href="/" className="text-sari-ube underline">← Back to Sari</Link>
         </footer>
       </div>
     </div>

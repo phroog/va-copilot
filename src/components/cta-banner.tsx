@@ -9,7 +9,7 @@ export default function CTABanner() {
           Ready to Land Your Next Gig? 🚀
         </h2>
         <p className="mt-4 text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
-          Join thousands of freelancers who are winning more clients with VA Copilot.
+          Join thousands of freelancers who are winning more clients with Sari.
         </p>
         <div className="mt-8">
           <Link href="/auth/signup">

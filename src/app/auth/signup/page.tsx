@@ -47,7 +47,7 @@ export default function SignupPage() {
       <Card className="w-full max-w-md relative z-10">
         <CardHeader className="text-center">
           <Link href="/" className="text-3xl mb-2 block">🚀</Link>
-          <CardTitle className="text-2xl">Join VA Copilot!</CardTitle>
+          <CardTitle className="text-2xl">Join Sari! 🍠</CardTitle>
           <CardDescription>Create your free account</CardDescription>
         </CardHeader>
         <CardContent>

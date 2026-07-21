@@ -9,7 +9,8 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { useLocale } from "@/lib/i18n/context";
 import { useState, useEffect, useCallback } from "react";
 import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Inbox, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight } from "lucide-react";
-import VirtualPet from "@/components/virtual-pet";
+import dynamic from "next/dynamic";
+const VirtualPet = dynamic(() => import("@/components/virtual-pet"), { ssr: false });
 import { ToastProvider } from "@/components/toast";
 import { FocusTimerProvider } from "@/components/focus-timer-provider";
 import Soundscapes from "@/components/soundscapes";
@@ -25,6 +26,7 @@ const sidebarGroups = [
       { href: "/dashboard/pipeline", labelKey: "pipeline", icon: GitBranch },
       { href: "/dashboard/vault", labelKey: "vault", icon: Shield },
       { href: "/academy/dashboard", labelKey: "academy", icon: BookOpen },
+      { href: "/academy", labelKey: "academyLanding", icon: BookOpen },
     ],
   },
   {
@@ -111,10 +113,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex flex-col h-full">
           <div className="p-5 border-b border-kawaii-lavender/30 dark:border-dark-surface">
             <div className="flex items-center justify-between">
-              <Link href="/dashboard" className="flex items-center gap-2">
-                <span className="text-2xl">🚀</span>
-                <span className="text-xl font-extrabold bg-gradient-to-r from-kawaii-purple to-kawaii-pink bg-clip-text text-transparent">
-                  VA Copilot
+              <Link href={userEmail ? "/dashboard" : "/"} className="flex items-center gap-2">
+                <span className="text-2xl">🍠</span>
+                <span className="text-xl font-extrabold bg-gradient-to-r from-sari-ube to-sari-coral bg-clip-text text-transparent">
+                  Sari
                 </span>
               </Link>
               <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400">

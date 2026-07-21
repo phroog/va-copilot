@@ -56,7 +56,7 @@ export default function AcademyLogin() {
           </p>
           <p className="text-center text-xs text-slate-400">
             {t("academyExistingTool")}{" "}
-            <Link href="/auth/login" className="text-kawaii-purple dark:text-kawaii-lavender underline">VA Copilot {t("login")}</Link>
+            <Link href="/auth/login" className="text-sari-ube dark:text-sari-lavender underline">Sari {t("login")}</Link>
           </p>
         </CardContent>
       </Card>

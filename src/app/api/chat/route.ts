@@ -22,9 +22,15 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { message } = await request.json();
+  let body: { message?: string };
+  try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+
+  const { message } = body;
   if (!message || !message.trim()) {
     return NextResponse.json({ error: "Message is required" }, { status: 400 });
+  }
+  if (message.length > 2000) {
+    return NextResponse.json({ error: "Message too long" }, { status: 400 });
   }
 
   // Get username from profile or email
