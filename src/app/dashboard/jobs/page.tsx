@@ -18,7 +18,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-type Tab = "url" | "manual" | "screenshot";
+type Tab = "manual" | "screenshot";
 
 interface Job {
   id: string;
@@ -59,14 +59,7 @@ export default function JobsPage() {
   const [polishing, setPolishing] = useState(false);
   const [pitchDialogOpen, setPitchDialogOpen] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<Tab>("url");
-
-  // URL import state
-  const [importUrl, setImportUrl] = useState("");
-  const [importing, setImporting] = useState(false);
-  const [importError, setImportError] = useState("");
-  const [importedJob, setImportedJob] = useState<ImportedJob | null>(null);
-  const [savingImport, setSavingImport] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>("manual");
 
   // Manual form state
   const [manualTitle, setManualTitle] = useState("");
@@ -98,54 +91,6 @@ export default function JobsPage() {
     } catch {
     } finally {
       setLoading(false);
-    }
-  };
-
-  // --- URL tab ---
-
-  const handleImport = async () => {
-    if (!importUrl.trim()) return;
-    setImporting(true);
-    setImportError("");
-    setImportedJob(null);
-    try {
-      const res = await fetch("/api/import-job", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: importUrl.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setImportError(data.error ?? "Import failed");
-      } else {
-        setImportedJob(data);
-      }
-    } catch {
-      setImportError("Network error. Please try again.");
-    } finally {
-      setImporting(false);
-    }
-  };
-
-  const handleSaveImported = async () => {
-    if (!importedJob) return;
-    setSavingImport(true);
-    try {
-      const res = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(importedJob),
-      });
-      const data = await res.json();
-      if (data.job) {
-        setJobs((prev) => [data.job, ...prev]);
-        setImportedJob(null);
-        setImportUrl("");
-        showToast(t("jobSavedSuccess"));
-      }
-    } catch {
-    } finally {
-      setSavingImport(false);
     }
   };
 
@@ -339,7 +284,6 @@ export default function JobsPage() {
   );
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: "url", label: t("importFromUrl"), icon: "🔗" },
     { key: "manual", label: t("manualCreate"), icon: "✍️" },
     { key: "screenshot", label: t("importFromScreenshot"), icon: "📸" },
   ];
@@ -376,75 +320,6 @@ export default function JobsPage() {
       {/* Import Card */}
       <Card className="border-kawaii-purple/20 dark:border-kawaii-purple/30 bg-gradient-to-r from-kawaii-lavender/10 to-kawaii-pink/5 dark:from-dark-surface/30 dark:to-dark-surface/10">
         <CardContent className="p-4 sm:p-6">
-          {/* URL Tab */}
-          {activeTab === "url" && (
-            <div>
-              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
-                <div className="flex-1 w-full">
-                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2 mb-1.5">
-                    🔗 {t("importJobLabel")}
-                  </Label>
-                  <Input
-                    placeholder={t("importJobPlaceholder")}
-                    value={importUrl}
-                    onChange={(e) => setImportUrl(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleImport()}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-amber-500 dark:text-amber-400 mt-1 flex items-center gap-1">
-                    ⚠️ {t("importExperimental")}
-                  </p>
-                </div>
-                <Button
-                  variant="primary"
-                  onClick={handleImport}
-                  disabled={importing || !importUrl.trim()}
-                  className="shrink-0"
-                >
-                  {importing ? "⏳ Importing..." : "📋 Import"}
-                </Button>
-              </div>
-              {importError && (
-                <p className="text-sm text-red-500 mt-2 flex items-center gap-1">
-                  <span>⚠️</span> {importError}
-                </p>
-              )}
-              {importedJob && (
-                <div className="mt-4 p-4 bg-white dark:bg-dark-card border border-kawaii-lavender/30 dark:border-dark-surface rounded-2xl animate-slide-up">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-extrabold text-lg text-slate-800 dark:text-slate-100">
-                        {importedJob.title}
-                      </h3>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs">
-                          {importedJob.platform}
-                        </Badge>
-                        {importedJob.budget && (
-                          <Badge variant="secondary" className="text-xs">
-                            💰 {importedJob.budget}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 line-clamp-3">
-                        {importedJob.description?.slice(0, 500)}
-                        {importedJob.description?.length > 500 ? "..." : ""}
-                      </p>
-                      <div className="flex gap-2 mt-3">
-                        <Button size="sm" variant="primary" onClick={handleSaveImported} disabled={savingImport}>
-                          {savingImport ? "Saving..." : "💾 " + t("saveJob")}
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setImportedJob(null)}>
-                          {t("discard")}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Manual Tab */}
           {activeTab === "manual" && (
             <div className="space-y-4">
