@@ -61,6 +61,11 @@ export default function JobsPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>("manual");
 
+  // Agency toggle
+  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
+  const [assignOrg, setAssignOrg] = useState(false);
+  const [selectedOrgId, setSelectedOrgId] = useState("");
+
   // Manual form state
   const [manualTitle, setManualTitle] = useState("");
   const [manualPlatform, setManualPlatform] = useState("Upwork");
@@ -81,6 +86,14 @@ export default function JobsPage() {
 
   useEffect(() => {
     fetchJobs();
+    // Fetch user's orgs for agency toggle
+    fetch("/api/org")
+      .then((r) => r.json())
+      .then((data) => {
+        const list = (data.orgs ?? []).map((o: any) => ({ id: o.id, name: o.name }));
+        setOrgs(list);
+      })
+      .catch(() => {});
   }, []);
 
   const fetchJobs = async () => {
@@ -104,16 +117,21 @@ export default function JobsPage() {
     setManualSaving(true);
     setManualError("");
     try {
+      const jobPayload: any = {
+        title: manualTitle.trim(),
+        platform: manualPlatform,
+        description: manualDesc.trim(),
+        budget: manualBudget.trim(),
+        url: "",
+      };
+      if (assignOrg && selectedOrgId) {
+        jobPayload.org_id = selectedOrgId;
+      }
+
       const res = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: manualTitle.trim(),
-          platform: manualPlatform,
-          description: manualDesc.trim(),
-          budget: manualBudget.trim(),
-          url: "",
-        }),
+        body: JSON.stringify(jobPayload),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -126,6 +144,8 @@ export default function JobsPage() {
         setManualPlatform("Upwork");
         setManualDesc("");
         setManualBudget("");
+        setAssignOrg(false);
+        setSelectedOrgId("");
         showToast(t("jobSavedSuccess"));
       }
     } catch {
@@ -202,10 +222,15 @@ export default function JobsPage() {
     if (!extractedJob) return;
     setSavingExtracted(true);
     try {
+      const jobPayload: any = { ...extractedJob };
+      if (assignOrg && selectedOrgId) {
+        jobPayload.org_id = selectedOrgId;
+      }
+
       const res = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(extractedJob),
+        body: JSON.stringify(jobPayload),
       });
       const data = await res.json();
       if (data.job) {
@@ -213,6 +238,8 @@ export default function JobsPage() {
         setExtractedJob(null);
         setScreenshotFile(null);
         setScreenshotPreview(null);
+        setAssignOrg(false);
+        setSelectedOrgId("");
         showToast(t("jobSavedSuccess"));
       }
     } catch {
@@ -372,6 +399,31 @@ export default function JobsPage() {
                   rows={3}
                 />
               </div>
+              {orgs.length > 0 && (
+                <div className="pt-2 border-t border-kawaii-lavender/20">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={assignOrg}
+                      onChange={(e) => {
+                        setAssignOrg(e.target.checked);
+                        if (e.target.checked && orgs.length > 0) setSelectedOrgId(orgs[0].id);
+                      }}
+                      className="rounded border-kawaii-lavender/30 text-kawaii-purple focus:ring-kawaii-purple"
+                    />
+                    <span className="text-sm font-medium">{t("assignToAgency")}</span>
+                  </label>
+                  {assignOrg && (
+                    <select
+                      value={selectedOrgId}
+                      onChange={(e) => setSelectedOrgId(e.target.value)}
+                      className="mt-2 w-full rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 px-4 py-2 text-sm dark:bg-dark-card dark:border-dark-surface"
+                    >
+                      {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    </select>
+                  )}
+                </div>
+              )}
               {manualError && (
                 <p className="text-sm text-red-500 flex items-center gap-1">
                   <span>⚠️</span> {manualError}
@@ -492,6 +544,31 @@ export default function JobsPage() {
                         rows={3}
                       />
                     </div>
+                    {orgs.length > 0 && (
+                      <div className="pt-2 border-t border-kawaii-lavender/20">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={assignOrg}
+                            onChange={(e) => {
+                              setAssignOrg(e.target.checked);
+                              if (e.target.checked && orgs.length > 0) setSelectedOrgId(orgs[0].id);
+                            }}
+                            className="rounded border-kawaii-lavender/30 text-kawaii-purple focus:ring-kawaii-purple"
+                          />
+                          <span className="text-sm font-medium">{t("assignToAgency")}</span>
+                        </label>
+                        {assignOrg && (
+                          <select
+                            value={selectedOrgId}
+                            onChange={(e) => setSelectedOrgId(e.target.value)}
+                            className="mt-2 w-full rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 px-4 py-2 text-sm dark:bg-dark-card dark:border-dark-surface"
+                          >
+                            {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                          </select>
+                        )}
+                      </div>
+                    )}
                     <div className="flex gap-2">
                       <Button
                         size="sm"

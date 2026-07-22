@@ -27,6 +27,7 @@ const sidebarGroups = [
       { href: "/dashboard/vault", labelKey: "vault", icon: Shield },
       { href: "/academy/dashboard", labelKey: "academy", icon: BookOpen },
       { href: "/academy", labelKey: "academyLanding", icon: BookOpen },
+      { href: "/dashboard/agency", labelKey: "agency", icon: Shield },
     ],
   },
   {
