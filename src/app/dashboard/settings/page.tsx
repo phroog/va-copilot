@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useLocale } from "@/lib/i18n/context";
+import { useToast } from "@/components/toast";
 import { Textarea } from "@/components/ui/textarea";
 
 interface Profile {
@@ -18,11 +19,13 @@ interface Profile {
   business_email: string;
   bank_account: string;
   tax_id: string;
+  public_id: string;
 }
 
 export default function SettingsPage() {
   const { t } = useLocale();
-  const [profile, setProfile] = useState<Profile>({ full_name: "", desired_rate: "", bio: "", inbox_email_alias: "", business_name: "", business_address: "", business_email: "", bank_account: "", tax_id: "" });
+  const { showToast } = useToast();
+  const [profile, setProfile] = useState<Profile>({ full_name: "", desired_rate: "", bio: "", inbox_email_alias: "", business_name: "", business_address: "", business_email: "", bank_account: "", tax_id: "", public_id: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -135,6 +138,48 @@ export default function SettingsPage() {
             <Button onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "💾 Save Profile"}</Button>
             {saved && <span className="text-sm text-green-500 animate-fade-in">✅ Saved!</span>}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Public ID */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">🆔 Your Public ID</CardTitle>
+          <CardDescription>Share this ID so agency admins can find and invite you.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {profile.public_id ? (
+            <div className="flex items-center gap-2">
+              <Input value={profile.public_id} readOnly className="font-mono text-sm bg-kawaii-lavender/10 dark:bg-dark-surface/50 max-w-xs" />
+              <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(profile.public_id); showToast("Copied!"); }}>
+                📋 Copy
+              </Button>
+              <Button variant="ghost" size="sm" onClick={async () => {
+                const newId = window.prompt("Enter your new Public ID (letters, numbers, underscores only):", profile.public_id);
+                if (!newId || newId === profile.public_id) return;
+                const res = await fetch("/api/profile", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ ...profile, public_id: newId }),
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data.profile) setProfile(data.profile);
+                  showToast("Public ID updated!");
+                } else {
+                  const err = await res.json();
+                  showToast(err.error || "Failed to update", "error");
+                }
+              }}>
+                ✏️ Edit
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400">Loading...</p>
+          )}
+          <p className="text-xs text-slate-400">
+            Your unique tag: <strong>@{profile.public_id || "..."}</strong>. Give this to agency admins so they can find you instantly.
+          </p>
         </CardContent>
       </Card>
 

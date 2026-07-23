@@ -441,8 +441,13 @@ function AgencyInner() {
   // Members
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
-  const [inviteUserId, setInviteUserId] = useState("");
+  const [inviteSearch, setInviteSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<{ user_id: string; name: string; public_id: string }[]>([]);
+  const [selectedUser, setSelectedUser] = useState<{ user_id: string; name: string; public_id: string } | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchOrgs = async () => {
     try {
@@ -479,6 +484,25 @@ function AgencyInner() {
     }
   }, [activeOrg]);
 
+  // Search users for invite
+  useEffect(() => {
+    if (!activeOrg || !inviteSearch.trim() || inviteSearch.length < 2 || selectedUser) {
+      setSearchResults([]);
+      return;
+    }
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/org/${activeOrg.id}/search-users?q=${encodeURIComponent(inviteSearch)}`);
+        const data = await res.json();
+        setSearchResults(data.users ?? []);
+        setShowResults(true);
+      } catch {} finally { setSearching(false); }
+    }, 300);
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
+  }, [inviteSearch, activeOrg, selectedUser]);
+
   const handleCreate = async () => {
     if (!orgName.trim()) return;
     setCreating(true);
@@ -501,13 +525,13 @@ function AgencyInner() {
   };
 
   const handleInvite = async () => {
-    if (!inviteUserId.trim() || !activeOrg) return;
+    if (!selectedUser || !activeOrg) return;
     setInviting(true);
     try {
       const res = await fetch(`/api/org/${activeOrg.id}/invite`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: inviteUserId.trim() }),
+        body: JSON.stringify({ user_id: selectedUser.user_id }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -515,7 +539,9 @@ function AgencyInner() {
         return;
       }
       showToast("Member invited!");
-      setInviteUserId("");
+      setSelectedUser(null);
+      setInviteSearch("");
+      setSearchResults([]);
       fetchMembers(activeOrg.id);
     } catch { showToast("Failed to invite member", "error"); } finally { setInviting(false); }
   };
@@ -660,18 +686,54 @@ function AgencyInner() {
           <Card className="border-kawaii-purple/20 dark:border-kawaii-purple/30 bg-gradient-to-r from-kawaii-lavender/10 to-kawaii-pink/5">
             <CardContent className="p-4 sm:p-6">
               <h3 className="font-extrabold text-sm mb-3 flex items-center gap-2">✉️ {t("inviteMember")}</h3>
-              <div className="flex gap-2">
-                <Input
-                  value={inviteUserId}
-                  onChange={(e) => setInviteUserId(e.target.value)}
-                  placeholder={t("invitePlaceholder")}
-                  className="flex-1"
-                />
-                <Button variant="primary" size="sm" onClick={handleInvite} disabled={inviting || !inviteUserId.trim()}>
+              <div className="relative">
+                {selectedUser ? (
+                  <div className="flex items-center gap-2 p-2 rounded-xl border-2 border-kawaii-purple/30 bg-white/80 dark:bg-dark-card mb-2">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-kawaii-purple to-kawaii-pink flex items-center justify-center text-white text-xs font-bold">
+                      {selectedUser.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-medium">{selectedUser.name}</span>
+                      <span className="text-xs text-slate-400 ml-2">@{selectedUser.public_id}</span>
+                    </div>
+                    <button onClick={() => { setSelectedUser(null); setInviteSearch(""); }} className="text-slate-400 hover:text-red-500 squishy text-sm">✕</button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Input
+                      value={inviteSearch}
+                      onChange={(e) => setInviteSearch(e.target.value)}
+                      onFocus={() => searchResults.length > 0 && setShowResults(true)}
+                      placeholder={t("invitePlaceholder")}
+                      className="flex-1"
+                    />
+                    {searching && <span className="absolute right-3 top-3 text-xs text-slate-400 animate-pulse">{t("loading")}...</span>}
+                    {showResults && searchResults.length > 0 && (
+                      <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white dark:bg-dark-card border border-kawaii-lavender/30 rounded-2xl shadow-xl max-h-48 overflow-y-auto">
+                        {searchResults.map((u) => (
+                          <button
+                            key={u.user_id}
+                            onClick={() => { setSelectedUser(u); setInviteSearch(""); setShowResults(false); }}
+                            className="flex items-center gap-2 w-full px-3 py-2.5 text-sm hover:bg-kawaii-lavender/20 dark:hover:bg-dark-surface/50 squishy text-left"
+                          >
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-kawaii-purple to-kawaii-pink flex items-center justify-center text-white text-xs font-bold">
+                              {u.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <span>{u.name}</span>
+                              {u.public_id && <span className="text-xs text-slate-400 ml-2">@{u.public_id}</span>}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <Button variant="primary" size="sm" className="mt-2 w-full" onClick={handleInvite} disabled={inviting || !selectedUser}>
                   {inviting ? "⏳..." : "✉️ " + t("invite")}
                 </Button>
               </div>
-              <p className="text-xs text-slate-400 mt-1">{t("inviteHint")}</p>
+              <p className="text-xs text-slate-400 mt-2">{t("inviteHint")}</p>
             </CardContent>
           </Card>
 

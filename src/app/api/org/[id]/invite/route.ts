@@ -8,7 +8,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { id } = await params;
 
-  let body: { user_id?: string; email?: string };
+  let body: { user_id?: string };
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
   // Check caller is admin
@@ -23,31 +23,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Only admins can invite members" }, { status: 403 });
   }
 
-  let targetUserId = body.user_id;
-
-  // If email provided, look up user
-  if (!targetUserId && body.email) {
-    const { data: userData } = await supabase
-      .from("profiles")
-      .select("user_id")
-      .eq("user_id", body.email)
-      .maybeSingle();
-
-    if (userData) {
-      targetUserId = userData.user_id;
-    } else {
-      // Try auth.users via profiles
-      const { data: byEmail } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .maybeSingle();
-
-      if (byEmail) targetUserId = byEmail.user_id;
-    }
-  }
-
+  const targetUserId = body.user_id;
   if (!targetUserId) {
-    return NextResponse.json({ error: "User not found. Provide a valid user_id." }, { status: 404 });
+    return NextResponse.json({ error: "user_id is required" }, { status: 400 });
   }
 
   // Check not already a member
