@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useLocale } from "@/lib/i18n/context";
 import { useState, useEffect, useCallback } from "react";
-import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Inbox, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Inbox, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins } from "lucide-react";
 import dynamic from "next/dynamic";
 const VirtualPet = dynamic(() => import("@/components/virtual-pet"), { ssr: false });
 import { ToastProvider } from "@/components/toast";
@@ -60,6 +60,7 @@ const sidebarGroups = [
     defaultOpen: false,
     links: [
       { href: "/dashboard/settings", labelKey: "settings", icon: Settings },
+      { href: "/dashboard/credits", labelKey: "credits", icon: Coins },
     ],
   },
 ];
@@ -72,6 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [creditsBalance, setCreditsBalance] = useState<number | null>(null);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved: Record<string, boolean> = {};
     sidebarGroups.forEach((g) => { saved[g.labelKey] = g.defaultOpen; });
@@ -94,6 +96,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (data.user) setUserEmail(data.user.email ?? null);
     });
     fetchUnread();
+    fetch("/api/ai/credits").then(async r => { if (r.ok) { const d = await r.json(); setCreditsBalance(d.balance); } }).catch(() => {});
     const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
   }, [supabase, fetchUnread]);
@@ -187,10 +190,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Menu className="w-6 h-6" />
             </button>
             <div className="hidden lg:block" />
-            <div className="flex items-center gap-3">
-              <LanguageSwitcher />
-              <ThemeToggle />
-              <div className="flex items-center gap-2 pl-3 border-l border-kawaii-lavender/30 dark:border-dark-surface">
+              <div className="flex items-center gap-3">
+                <LanguageSwitcher />
+                <ThemeToggle />
+                <Link href="/dashboard/credits" className="flex items-center gap-1 px-2 py-1 rounded-xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 text-kawaii-purple dark:text-kawaii-lavender text-xs font-bold hover:bg-kawaii-lavender/30 transition-all">
+                  <Coins className="w-3.5 h-3.5" />
+                  <span>{creditsBalance ?? "..."}</span>
+                </Link>
+                <div className="flex items-center gap-2 pl-3 border-l border-kawaii-lavender/30 dark:border-dark-surface">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-kawaii-purple to-kawaii-pink flex items-center justify-center text-white text-xs font-bold">
                   {userEmail?.charAt(0).toUpperCase() ?? "U"}
                 </div>

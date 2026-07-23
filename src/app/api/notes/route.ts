@@ -7,13 +7,15 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data, error } = await supabase
-    .from("profiles")
-    .select("notes")
-    .eq("id", user.id)
-    .single();
+    .from("user_notes")
+    .select("content")
+    .eq("user_id", user.id)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ notes: data?.notes ?? "" });
+  return NextResponse.json({ notes: data?.content ?? "" });
 }
 
 export async function PUT(request: Request) {
@@ -26,11 +28,26 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "notes must be a string" }, { status: 400 });
   }
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({ notes })
-    .eq("id", user.id);
+  const { data: existing } = await supabase
+    .from("user_notes")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (existing) {
+    const { error } = await supabase
+      .from("user_notes")
+      .update({ content: notes, updated_at: new Date().toISOString() })
+      .eq("id", existing.id);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  } else {
+    const { error } = await supabase
+      .from("user_notes")
+      .insert({ user_id: user.id, content: notes });
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
   return NextResponse.json({ success: true });
 }

@@ -10,6 +10,7 @@
 </head>
 <body>
   <div id="app" class="container">
+    <!-- Login View -->
     <div id="login-view" class="view">
       <div class="header">
         <h1 class="logo">🌸 Sari</h1>
@@ -21,17 +22,23 @@
       <p class="hint">Connect your Sari account to manage tasks on the go.</p>
     </div>
 
+    <!-- Main View -->
     <div id="main-view" class="view hidden">
       <div class="header">
         <h1 class="logo">🌸 Sari</h1>
-        <button id="disconnect-btn" class="btn btn-ghost">Disconnect</button>
+        <div class="header-actions">
+          <button id="dark-toggle" class="btn btn-icon" title="Toggle dark mode">🌙</button>
+          <button id="disconnect-btn" class="btn btn-ghost">Disconnect</button>
+        </div>
       </div>
       <div class="tabs">
         <button class="tab active" data-tab="pitch">Pitch</button>
         <button class="tab" data-tab="time">Time</button>
         <button class="tab" data-tab="notes">Notes</button>
+        <button class="tab" data-tab="tools">Tools</button>
       </div>
 
+      <!-- Pitch Tab -->
       <div id="tab-pitch" class="tab-content">
         <div id="job-info" class="card">
           <p id="job-title" class="job-title-text">No job detected</p>
@@ -39,27 +46,50 @@
           <p id="job-desc" class="job-desc-text"></p>
         </div>
         <button id="extract-btn" class="btn btn-secondary">Re-extract from page</button>
-        <button id="generate-btn" class="btn btn-primary">Generate Pitch</button>
+        <button id="generate-btn" class="btn btn-primary">Generate Pitch (1 credit)</button>
         <div id="pitch-loading" class="loading hidden">Generating...</div>
         <div id="pitch-result" class="card hidden">
           <p id="pitch-text" class="pitch-text"></p>
           <div class="btn-row">
             <button id="copy-btn" class="btn btn-secondary">Copy</button>
-            <button id="polish-btn" class="btn btn-secondary">Polish</button>
+            <button id="polish-btn" class="btn btn-secondary">Polish (1 credit)</button>
           </div>
         </div>
         <p id="pitch-status" class="status-text hidden"></p>
       </div>
 
+      <!-- Time Tab -->
       <div id="tab-time" class="tab-content hidden">
         <div class="timer-display" id="timer-display">00:00:00</div>
         <button id="timer-btn" class="btn btn-primary">Start Timer</button>
         <p id="timer-status" class="status-text"></p>
       </div>
 
+      <!-- Notes Tab -->
       <div id="tab-notes" class="tab-content hidden">
         <textarea id="notes-textarea" placeholder="Write your notes here..." class="notes-input"></textarea>
         <p id="notes-status" class="status-text">Auto-saves on change</p>
+      </div>
+
+      <!-- Tools Tab -->
+      <div id="tab-tools" class="tab-content hidden">
+        <div class="tools-section">
+          <h3 class="tools-heading">🔍 Quick Job Search</h3>
+          <input type="text" id="job-search-input" class="search-input" placeholder="Search your jobs...">
+          <div id="job-search-results" class="search-results"></div>
+        </div>
+        <div class="tools-section">
+          <h3 class="tools-heading">📅 Follow-ups</h3>
+          <div id="follow-ups-content">
+            <p class="status-text">Loading...</p>
+          </div>
+        </div>
+        <div class="tools-section">
+          <h3 class="tools-heading">🍅 Pomodoro</h3>
+          <div class="pomodoro-display" id="pomodoro-display">25:00</div>
+          <button id="pomodoro-btn" class="btn btn-primary">Start Pomodoro</button>
+          <p id="pomodoro-status" class="status-text"></p>
+        </div>
       </div>
     </div>
   </div>

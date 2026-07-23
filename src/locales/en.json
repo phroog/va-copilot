@@ -126,6 +126,7 @@
   "businessEmail": "Business Email",
   "bankAccount": "Bank Account",
   "taxId": "Tax ID / VAT",
+  "credits": "Credits",
   "vault": "Vault",
   "vaultSetup": "Set Up Your Vault",
   "vaultSetupDesc": "Create a master password to encrypt your passwords. This password cannot be recovered — don't lose it!",

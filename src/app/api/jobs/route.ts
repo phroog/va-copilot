@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  const search = searchParams.get("search");
 
   const { data: userOrgs } = await supabase
     .from("org_members")
@@ -21,6 +24,10 @@ export async function GET() {
     query = query.eq("user_id", user.id);
   }
 
+  if (search) {
+    query = query.ilike("title", `%${search}%`);
+  }
+
   const { data: jobs, error } = await query.order("posted_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ jobs: jobs ?? [] });
@@ -34,7 +41,6 @@ export async function POST(request: Request) {
   const { title, description, budget, platform, url, org_id } = await request.json();
   if (!title) return NextResponse.json({ error: "Title is required" }, { status: 400 });
 
-  // If org_id provided, verify caller is a member
   if (org_id) {
     const { data: membership } = await supabase
       .from("org_members")
