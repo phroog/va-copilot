@@ -43,19 +43,29 @@
         <div id="job-info" class="card">
           <p id="job-title" class="job-title-text">No job detected</p>
           <p id="job-platform" class="job-platform-text"></p>
+          <div id="job-enriched" class="job-enriched hidden">
+            <p id="job-budget" class="job-meta"></p>
+            <p id="job-client" class="job-meta"></p>
+            <p id="job-skills" class="job-meta"></p>
+          </div>
           <p id="job-desc" class="job-desc-text"></p>
         </div>
         <button id="extract-btn" class="btn btn-secondary">Re-extract from page</button>
+        <button id="save-job-btn" class="btn btn-secondary hidden">Save to Sari</button>
         <button id="generate-btn" class="btn btn-primary">Generate Pitch (1 credit)</button>
         <div id="pitch-loading" class="loading hidden">Generating...</div>
         <div id="pitch-result" class="card hidden">
-          <p id="pitch-text" class="pitch-text"></p>
+          <div class="pitch-scroll">
+            <p id="pitch-text" class="pitch-text"></p>
+          </div>
           <div class="btn-row">
             <button id="copy-btn" class="btn btn-secondary">Copy</button>
             <button id="polish-btn" class="btn btn-secondary">Polish (1 credit)</button>
+            <button id="retry-btn" class="btn btn-secondary hidden">Retry</button>
           </div>
         </div>
         <p id="pitch-status" class="status-text hidden"></p>
+        <p id="save-status" class="status-text hidden"></p>
       </div>
 
       <!-- Time Tab -->

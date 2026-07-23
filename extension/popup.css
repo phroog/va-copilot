@@ -259,8 +259,32 @@ body.dark .pitch-text {
   color: #f0e6f6;
 }
 
+.job-enriched {
+  font-size: 11px;
+  color: #6c4e8f;
+  margin-bottom: 6px;
+}
+
+body.dark .job-enriched {
+  color: #b39ddb;
+}
+
+.job-meta {
+  margin-bottom: 2px;
+  line-height: 1.4;
+}
+
+.pitch-scroll {
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 4px;
+}
+
 .btn-row {
   margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 /* Timer */

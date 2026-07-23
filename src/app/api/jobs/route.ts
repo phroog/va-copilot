@@ -38,7 +38,8 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { title, description, budget, platform, url, org_id } = await request.json();
+  const body = await request.json();
+  const { title, org_id } = body;
   if (!title) return NextResponse.json({ error: "Title is required" }, { status: 400 });
 
   if (org_id) {
@@ -54,18 +55,27 @@ export async function POST(request: Request) {
     }
   }
 
+  const insert: Record<string, any> = {
+    user_id: user.id,
+    title,
+    description: body.description ?? "",
+    budget: body.budget ?? "",
+    budget_type: body.budget_type ?? null,
+    budget_amount: body.budget_amount ?? null,
+    platform: body.platform ?? "Unknown",
+    url: body.url ?? "",
+    org_id: org_id ?? null,
+    client_name: body.client_name ?? null,
+    client_country: body.client_country ?? null,
+    client_rating: body.client_rating ?? null,
+    client_total_spent: body.client_total_spent ?? null,
+    skills: body.skills ?? null,
+    posted_at: new Date().toISOString(),
+  };
+
   const { data, error } = await supabase
     .from("jobs")
-    .insert({
-      user_id: user.id,
-      title,
-      description: description ?? "",
-      budget: budget ?? "",
-      platform: platform ?? "Unknown",
-      url: url ?? "",
-      org_id: org_id ?? null,
-      posted_at: new Date().toISOString(),
-    })
+    .insert(insert)
     .select()
     .single();
 
