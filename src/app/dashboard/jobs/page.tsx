@@ -662,6 +662,10 @@ function JobCard({ job, generating, generatePitch, deleteJob, t }: { job: any; g
   const [tokenLink, setTokenLink] = useState("");
   const [generatingToken, setGeneratingToken] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewLink, setReviewLink] = useState("");
+  const [genReview, setGenReview] = useState(false);
+  const [reviewCopied, setReviewCopied] = useState(false);
 
   const generateToken = async () => {
     setGeneratingToken(true);
@@ -702,6 +706,9 @@ function JobCard({ job, generating, generatePitch, deleteJob, t }: { job: any; g
           <Button size="sm" variant="outline" onClick={() => setPortalOpen(!portalOpen)}>
             🔗 {t("clientPortal")}
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setReviewOpen(!reviewOpen)}>
+            ⭐ Request Review
+          </Button>
           <button onClick={() => deleteJob(job.id, job.title)} className="ml-auto text-slate-400 hover:text-red-500 transition-colors squishy" title="Delete job">
             🗑️
           </button>
@@ -721,6 +728,34 @@ function JobCard({ job, generating, generatePitch, deleteJob, t }: { job: any; g
             ) : (
               <Button size="sm" variant="primary" onClick={generateToken} disabled={generatingToken}>
                 {generatingToken ? "Generating..." : "🔗 " + t("generateLink")}
+              </Button>
+            )}
+          </div>
+        )}
+
+        {reviewOpen && (
+          <div className="mt-4 p-4 bg-white dark:bg-dark-card border border-kawaii-lavender/30 dark:border-dark-surface rounded-2xl animate-slide-up">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">⭐ Request Review</p>
+            <p className="text-xs text-slate-500 mb-3">Generate a review link to share with your client after completing this job.</p>
+            {reviewLink ? (
+              <div className="flex items-center gap-2">
+                <Input value={reviewLink} readOnly className="text-sm font-mono" />
+                <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(reviewLink); setReviewCopied(true); setTimeout(() => setReviewCopied(false), 1500); }}>
+                  {reviewCopied ? "✅" : "📋"}
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" variant="primary" onClick={async () => {
+                setGenReview(true);
+                try {
+                  const res = await fetch(`/api/jobs/${job.id}/request-review`, { method: "POST" });
+                  const data = await res.json();
+                  if (data.token) {
+                    setReviewLink(`${window.location.origin}/review/${data.token.token}`);
+                  }
+                } catch {} finally { setGenReview(false); }
+              }} disabled={genReview}>
+                {genReview ? "Generating..." : "⭐ Generate Review Link"}
               </Button>
             )}
           </div>

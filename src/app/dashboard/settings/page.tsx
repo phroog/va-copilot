@@ -22,10 +22,21 @@ interface Profile {
   public_id: string;
 }
 
+interface PublicProfile {
+  username: string;
+  display_name: string;
+  bio: string;
+  skills: string;
+  photo_url: string;
+}
+
 export default function SettingsPage() {
   const { t } = useLocale();
   const { showToast } = useToast();
   const [profile, setProfile] = useState<Profile>({ full_name: "", desired_rate: "", bio: "", inbox_email_alias: "", business_name: "", business_address: "", business_email: "", bank_account: "", tax_id: "", public_id: "" });
+  const [publicProfile, setPublicProfile] = useState<PublicProfile>({ username: "", display_name: "", bio: "", skills: "", photo_url: "" });
+  const [pubSaving, setPubSaving] = useState(false);
+  const [pubSaved, setPubSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -40,10 +51,12 @@ export default function SettingsPage() {
     Promise.all([
       fetch("/api/profile").then((r) => r.json()),
       fetch("/api/user-settings").then((r) => r.json()),
+      fetch("/api/profile/public").then((r) => r.json()),
     ])
-      .then(([profileData, settingsData]) => {
+      .then(([profileData, settingsData, pubData]) => {
         if (profileData.profile) setProfile(profileData.profile);
         if (settingsData.settings) setDefaultRate(String(settingsData.settings.default_hourly_rate ?? "0"));
+        if (pubData.profile) setPublicProfile(pubData.profile);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -180,6 +193,62 @@ export default function SettingsPage() {
           <p className="text-xs text-slate-400">
             Your unique tag: <strong>@{profile.public_id || "..."}</strong>. Give this to agency admins so they can find you instantly.
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Public Profile */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">🌐 {t("publicProfile")}</CardTitle>
+          <CardDescription>{t("publicProfileDesc")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Username *</Label>
+            <Input value={publicProfile.username} onChange={(e) => setPublicProfile({ ...publicProfile, username: e.target.value })} placeholder="your-vaname" />
+            <p className="text-xs text-slate-400">Letters, numbers, underscores only. This is your public URL: <strong>sari.ai/va/{publicProfile.username || "..."}</strong></p>
+          </div>
+          <div className="space-y-2">
+            <Label>{t("displayName")}</Label>
+            <Input value={publicProfile.display_name} onChange={(e) => setPublicProfile({ ...publicProfile, display_name: e.target.value })} placeholder="Your VA Name" />
+          </div>
+          <div className="space-y-2">
+            <Label>Bio</Label>
+            <Textarea value={publicProfile.bio} onChange={(e) => setPublicProfile({ ...publicProfile, bio: e.target.value })} placeholder="Tell potential clients about yourself..." rows={3} />
+          </div>
+          <div className="space-y-2">
+            <Label>{t("skills")}</Label>
+            <Input value={publicProfile.skills} onChange={(e) => setPublicProfile({ ...publicProfile, skills: e.target.value })} placeholder="e.g. Admin Support, Social Media, Email Management" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Button onClick={async () => {
+              setPubSaving(true);
+              try {
+                const res = await fetch("/api/profile/public", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(publicProfile),
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data.profile) setPublicProfile(data.profile);
+                  setPubSaved(true);
+                  setTimeout(() => setPubSaved(false), 2000);
+                } else {
+                  const err = await res.json();
+                  showToast(err.error || "Failed to save", "error");
+                }
+              } catch { showToast("Network error", "error"); } finally { setPubSaving(false); }
+            }} disabled={pubSaving || !publicProfile.username.trim()}>
+              {pubSaving ? "Saving..." : t("savePublicProfile")}
+            </Button>
+            {pubSaved && <span className="text-sm text-green-500 animate-fade-in">✅ Saved!</span>}
+          </div>
+          {publicProfile.username && (
+            <p className="text-xs text-slate-400">
+              {t("profileUrl")}: <a href={`/va/${publicProfile.username}`} target="_blank" className="text-kawaii-purple underline">/va/{publicProfile.username}</a>
+            </p>
+          )}
         </CardContent>
       </Card>
 
