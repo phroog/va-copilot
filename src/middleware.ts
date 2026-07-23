@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const protectedPaths = ["/dashboard"];
+  const protectedPaths = ["/dashboard", "/extension-auth"];
   const isProtected = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
