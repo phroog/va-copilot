@@ -10,6 +10,11 @@ let pomodoroRemaining = 0;
 let pomodoroRunning = false;
 let savedJobId = null;
 
+/* ── Vault state ───────────────────────────────────────────────── */
+let vaultKey = null;
+let vaultItems = [];
+let vaultDerivedKey = null;
+
 /* ── DOM refs ─────────────────────────────────────────────────── */
 const $ = (id) => document.getElementById(id);
 
@@ -18,6 +23,9 @@ const mainView = $("main-view");
 const connectBtn = $("connect-btn");
 const disconnectBtn = $("disconnect-btn");
 const connectStatus = $("connect-status");
+
+const creditBar = $("credit-bar");
+const creditBalance = $("credit-balance");
 
 const jobTitle = $("job-title");
 const jobPlatform = $("job-platform");
@@ -52,6 +60,21 @@ const followUpsContent = $("follow-ups-content");
 const pomodoroDisplay = $("pomodoro-display");
 const pomodoroBtn = $("pomodoro-btn");
 const pomodoroStatus = $("pomodoro-status");
+
+const vaultLocked = $("vault-locked");
+const vaultUnlocked = $("vault-unlocked");
+const vaultPassword = $("vault-password");
+const vaultUnlockBtn = $("vault-unlock-btn");
+const vaultStatus = $("vault-status");
+const vaultLockBtn = $("vault-lock-btn");
+const vaultItemsEl = $("vault-items");
+const vaultAddBtn = $("vault-add-btn");
+const vaultAddForm = $("vault-add-form");
+const vaultNewTitle = $("vault-new-title");
+const vaultNewUsername = $("vault-new-username");
+const vaultNewUrl = $("vault-new-url");
+const vaultNewPassword = $("vault-new-password");
+const vaultSaveItemBtn = $("vault-save-item-btn");
 
 const tabs = document.querySelectorAll(".tab");
 const tabContents = document.querySelectorAll(".tab-content");
@@ -104,9 +127,20 @@ function render() {
     loginView.classList.add("hidden");
     mainView.classList.remove("hidden");
     renderJobInfo();
+    fetchCreditBalance();
   } else {
     loginView.classList.remove("hidden");
     mainView.classList.add("hidden");
+  }
+}
+
+async function fetchCreditBalance() {
+  try {
+    const data = await apiFetch("/api/ai/credits");
+    creditBalance.textContent = data.balance ?? 0;
+    creditBar.classList.remove("hidden");
+  } catch {
+    creditBar.classList.add("hidden");
   }
 }
 
@@ -174,8 +208,212 @@ tabs.forEach((tab) => {
     if (target) target.classList.remove("hidden");
     if (tab.dataset.tab === "time") initTimer();
     if (tab.dataset.tab === "notes") loadNotes();
+    if (tab.dataset.tab === "vault") initVault();
     if (tab.dataset.tab === "tools") initTools();
   });
+});
+
+/* ── Vault ─────────────────────────────────────────────────────── */
+function vaultDeriveKey(password, salt) {
+  let enc = new TextEncoder();
+  let data = enc.encode(password + salt);
+  for (let i = 0; i < 1000; i++) {
+    let hash = nacl.hash(data);
+    data = hash.slice(0, 32);
+  }
+  return data;
+}
+
+function vaultEncrypt(key, plaintext) {
+  let enc = new TextEncoder();
+  let nonce = nacl.randomBytes(24);
+  let cipher = nacl.secretbox(enc.encode(plaintext), nonce, key);
+  return nacl_util.encodeBase64(nonce) + ":" + nacl_util.encodeBase64(cipher);
+}
+
+function vaultDecrypt(key, ciphertext) {
+  let [nonceB64, cipherB64] = ciphertext.split(":");
+  let nonce = nacl_util.decodeBase64(nonceB64);
+  let cipher = nacl_util.decodeBase64(cipherB64);
+  let plain = nacl.secretbox.open(cipher, nonce, key);
+  if (!plain) throw new Error("Decryption failed");
+  return new TextDecoder().decode(plain);
+}
+
+async function initVault() {
+  if (vaultKey) {
+    vaultLocked.classList.add("hidden");
+    vaultUnlocked.classList.remove("hidden");
+    loadVaultItems();
+    return;
+  }
+
+  // Check if vault is set up
+  try {
+    const data = await apiFetch("/api/vault/setup");
+    if (data.salt && data.keyCheck) {
+      vaultLocked.classList.remove("hidden");
+      vaultUnlocked.classList.add("hidden");
+      vaultStatus.textContent = "";
+    } else {
+      vaultLocked.classList.remove("hidden");
+      vaultUnlocked.classList.add("hidden");
+      vaultStatus.textContent = "Vault not set up. Go to Sari Dashboard to initialize.";
+    }
+  } catch {
+    vaultStatus.textContent = "Could not check vault status";
+  }
+}
+
+async function unlockVault() {
+  const password = vaultPassword.value;
+  if (!password) { vaultStatus.textContent = "Enter your master password"; return; }
+
+  vaultUnlockBtn.disabled = true;
+  vaultStatus.textContent = "Unlocking...";
+
+  try {
+    const setup = await apiFetch("/api/vault/setup");
+    if (!setup.salt || !setup.keyCheck) {
+      vaultStatus.textContent = "Vault not set up yet. Use the Sari Dashboard.";
+      vaultUnlockBtn.disabled = false;
+      return;
+    }
+
+    const key = vaultDeriveKey(password, setup.salt);
+    const [nonceB64, cipherB64] = setup.keyCheck.split(":");
+    const nonce = nacl_util.decodeBase64(nonceB64);
+    const cipher = nacl_util.decodeBase64(cipherB64);
+    const decrypted = nacl.secretbox.open(cipher, nonce, key);
+
+    if (decrypted) {
+      vaultKey = key;
+      vaultLocked.classList.add("hidden");
+      vaultUnlocked.classList.remove("hidden");
+      vaultPassword.value = "";
+      vaultStatus.textContent = "";
+      loadVaultItems();
+    } else {
+      vaultStatus.textContent = "Wrong password";
+    }
+  } catch (err) {
+    vaultStatus.textContent = "Unlock failed: " + err.message;
+  } finally {
+    vaultUnlockBtn.disabled = false;
+  }
+}
+
+function lockVault() {
+  vaultKey = null;
+  vaultLocked.classList.remove("hidden");
+  vaultUnlocked.classList.add("hidden");
+  vaultItems = [];
+}
+
+async function loadVaultItems() {
+  try {
+    const data = await apiFetch("/api/vault");
+    vaultItems = data.items || [];
+    renderVaultItems();
+  } catch (err) {
+    vaultItemsEl.innerHTML = "<p class='status-text'>Failed to load vault items</p>";
+  }
+}
+
+function renderVaultItems() {
+  if (vaultItems.length === 0) {
+    vaultItemsEl.innerHTML = "<p class='status-text'>No vault items yet</p>";
+    return;
+  }
+
+  vaultItemsEl.innerHTML = vaultItems.map((item, idx) => {
+    let uname = "";
+    try { uname = item.username ? vaultDecrypt(vaultKey, item.username) : ""; } catch {}
+    return `<div class="vault-item">
+      <span class="vault-item-title">${item.title}</span>
+      <span class="vault-item-uname">${uname}</span>
+      <div class="vault-item-actions">
+        <button class="vault-reveal-btn" data-idx="${idx}">👁️</button>
+        <button class="vault-copy-btn" data-idx="${idx}">📋</button>
+        <button class="vault-del-btn" data-idx="${idx}">🗑️</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  vaultItemsEl.querySelectorAll(".vault-reveal-btn").forEach((btn) => {
+    btn.addEventListener("click", () => revealVaultItem(parseInt(btn.dataset.idx)));
+  });
+  vaultItemsEl.querySelectorAll(".vault-copy-btn").forEach((btn) => {
+    btn.addEventListener("click", () => copyVaultItem(parseInt(btn.dataset.idx)));
+  });
+  vaultItemsEl.querySelectorAll(".vault-del-btn").forEach((btn) => {
+    btn.addEventListener("click", () => deleteVaultItem(parseInt(btn.dataset.idx)));
+  });
+}
+
+function revealVaultItem(idx) {
+  const item = vaultItems[idx];
+  if (!item) return;
+  try {
+    const pwd = vaultDecrypt(vaultKey, item.encrypted_password);
+    alert("Password: " + pwd);
+  } catch {
+    alert("Could not decrypt password");
+  }
+}
+
+function copyVaultItem(idx) {
+  const item = vaultItems[idx];
+  if (!item) return;
+  try {
+    const pwd = vaultDecrypt(vaultKey, item.encrypted_password);
+    navigator.clipboard.writeText(pwd).catch(() => {});
+  } catch {}
+}
+
+async function deleteVaultItem(idx) {
+  const item = vaultItems[idx];
+  if (!item || !confirm(`Delete "${item.title}"?`)) return;
+  try {
+    await apiFetch(`/api/vault/${item.id}`, { method: "DELETE" });
+    vaultItems.splice(idx, 1);
+    renderVaultItems();
+  } catch {}
+}
+
+vaultUnlockBtn.addEventListener("click", unlockVault);
+vaultPassword.addEventListener("keydown", (e) => { if (e.key === "Enter") unlockVault(); });
+vaultLockBtn.addEventListener("click", lockVault);
+vaultAddBtn.addEventListener("click", () => {
+  vaultAddForm.classList.toggle("hidden");
+});
+vaultSaveItemBtn.addEventListener("click", async () => {
+  const title = vaultNewTitle.value.trim();
+  const username = vaultNewUsername.value.trim();
+  const url = vaultNewUrl.value.trim();
+  const password = vaultNewPassword.value.trim();
+  if (!title || !password) { vaultStatus.textContent = "Title and password required"; return; }
+
+  vaultSaveItemBtn.disabled = true;
+  try {
+    const encPwd = vaultEncrypt(vaultKey, password);
+    const encUname = username ? vaultEncrypt(vaultKey, username) : "";
+    const payload = { title, encrypted_password: encPwd, username: encUname, url, notes: "" };
+    const data = await apiFetch("/api/vault", { method: "POST", body: JSON.stringify(payload) });
+    if (data.item) {
+      vaultItems.unshift(data.item);
+      renderVaultItems();
+      vaultNewTitle.value = "";
+      vaultNewUsername.value = "";
+      vaultNewUrl.value = "";
+      vaultNewPassword.value = "";
+      vaultAddForm.classList.add("hidden");
+    }
+  } catch (err) {
+    vaultStatus.textContent = "Save failed: " + err.message;
+  } finally {
+    vaultSaveItemBtn.disabled = false;
+  }
 });
 
 /* ── Connect / Disconnect ─────────────────────────────────────── */

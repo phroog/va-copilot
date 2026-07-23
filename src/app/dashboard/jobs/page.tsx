@@ -35,6 +35,7 @@ interface Job {
   client_rating?: number;
   client_total_spent?: string;
   skills?: string[];
+  has_pitch?: boolean;
 }
 
 interface ImportedJob {
@@ -67,6 +68,7 @@ export default function JobsPage() {
   const [polishing, setPolishing] = useState(false);
   const [savingPitch, setSavingPitch] = useState(false);
   const [pitchDialogOpen, setPitchDialogOpen] = useState(false);
+  const [creditSuckJobId, setCreditSuckJobId] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<Tab>("manual");
 
@@ -277,8 +279,25 @@ export default function JobsPage() {
 
   // --- Pitch ---
 
-  const generatePitch = async (jobId: string, title: string) => {
+  const generatePitch = async (jobId: string, title: string, hasExisting: boolean) => {
+    if (hasExisting) {
+      const res = await fetch("/api/generate-pitch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId, jobTitle: title }),
+      });
+      const data = await res.json();
+      if (data.pitch) {
+        setPitchResult(data.pitch);
+        setPitchJobId(jobId);
+        setPitchDialogOpen(true);
+      }
+      return;
+    }
+
     setGenerating(jobId);
+    setCreditSuckJobId(jobId);
+    setTimeout(() => setCreditSuckJobId(null), 1200);
     try {
       const res = await fetch("/api/generate-pitch", {
         method: "POST",
@@ -290,6 +309,7 @@ export default function JobsPage() {
         setPitchResult(data.pitch);
         setPitchJobId(jobId);
         setPitchDialogOpen(true);
+        setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, has_pitch: true } : j)));
       }
     } catch {
     } finally {
@@ -644,11 +664,13 @@ export default function JobsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map((job) => (
                 <JobCard
+                  key={job.id}
                   job={job}
                   generating={generating}
                   generatePitch={generatePitch}
                   deleteJob={deleteJob}
                   t={t}
+                  creditSuckJobId={creditSuckJobId}
                 />
           ))}
         </div>
@@ -699,7 +721,7 @@ export default function JobsPage() {
   );
 }
 
-function JobCard({ job, generating, generatePitch, deleteJob, t }: { job: any; generating: string | null; generatePitch: (id: string, title: string) => void; deleteJob: (id: string, title: string) => void; t: any }) {
+function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId }: { job: any; generating: string | null; generatePitch: (id: string, title: string, hasExisting: boolean) => void; deleteJob: (id: string, title: string) => void; t: any; creditSuckJobId: string | null }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
   const [tokenLink, setTokenLink] = useState("");
@@ -738,9 +760,17 @@ function JobCard({ job, generating, generatePitch, deleteJob, t }: { job: any; g
           {job.description}
         </p>
         <div className="flex flex-wrap gap-2 items-center">
-          <Button size="sm" variant="primary" onClick={() => generatePitch(job.id, job.title)} disabled={generating === job.id}>
-            {generating === job.id ? "Loading..." : job.has_pitch ? "📋 View Pitch" : "🚀 Generate Pitch"}
-          </Button>
+          <div className="relative inline-flex">
+            <Button size="sm" variant="primary" onClick={() => generatePitch(job.id, job.title, !!job.has_pitch)} disabled={generating === job.id}>
+              {generating === job.id ? "Loading..." : job.has_pitch ? "📋 View Pitch" : "🚀 Generate Pitch"}
+            </Button>
+            {creditSuckJobId === job.id && (
+              <>
+                <span className="absolute -top-3 -left-3 text-base animate-credit-suck">💎</span>
+                <span className="absolute -top-2 -right-2 text-lg animate-ping">🕳️</span>
+              </>
+            )}
+          </div>
           <Button size="sm" variant="outline" onClick={() => setDetailOpen(!detailOpen)}>
             {detailOpen ? "▲ Details" : "▼ Details"}
           </Button>

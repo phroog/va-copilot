@@ -95,12 +95,24 @@ export default function PipelinePage() {
             <h3 className="font-bold text-sm mb-3 text-slate-700 dark:text-slate-200">
               {col.label} <span className="text-slate-400 font-normal">({getColumnApps(col.key).length})</span>
             </h3>
-            <div className="space-y-2 max-h-[70vh] overflow-y-auto">
+                <div
+                  className="space-y-2 max-h-[70vh] overflow-y-auto min-h-[60px]"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    const id = e.dataTransfer.getData("appId");
+                    if (id) moveStatus(id, col.key);
+                  }}
+                >
               {getColumnApps(col.key).length === 0 ? (
                 <p className="text-xs text-slate-400 text-center py-4">—</p>
               ) : (
                 getColumnApps(col.key).map((app) => (
-                  <div key={app.id} className="bg-white dark:bg-dark-surface border border-kawaii-lavender/20 dark:border-dark-surface rounded-xl p-3 squishy shadow-sm hover:shadow-md transition-shadow">
+                  <div
+                    key={app.id}
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData("appId", app.id)}
+                    className="bg-white dark:bg-dark-surface border border-kawaii-lavender/20 dark:border-dark-surface rounded-xl p-3 squishy shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
+                  >
                     <button className="w-full text-left" onClick={() => setDetailApp(app)}>
                       <p className="text-sm font-semibold truncate">{app.jobs?.title ?? "Unknown"}</p>
                       <p className="text-xs text-slate-400 truncate">{app.jobs?.platform ?? ""}</p>

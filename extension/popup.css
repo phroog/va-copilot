@@ -456,3 +456,129 @@ body.dark .pomodoro-display {
 body.dark .status-text {
   color: #8a7a9a;
 }
+
+/* Credit bar */
+.credit-bar {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6c4e8f;
+  background: #b39ddb20;
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin-bottom: 8px;
+}
+
+body.dark .credit-bar {
+  color: #b39ddb;
+  background: #4a356060;
+}
+
+/* Vault */
+.vault-section {
+  margin-bottom: 12px;
+}
+
+.vault-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.vault-heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: #6c4e8f;
+  margin-bottom: 8px;
+}
+
+body.dark .vault-heading {
+  color: #b39ddb;
+}
+
+.vault-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e8e0f0;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  background: #fffdf9;
+  color: #2e1e3a;
+  margin-bottom: 6px;
+}
+
+body.dark .vault-input {
+  background: #3c2a4a;
+  border-color: #4a3560;
+  color: #f0e6f6;
+}
+
+.vault-input:focus {
+  outline: none;
+  border-color: #6c4e8f;
+}
+
+.vault-items {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.vault-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  border: 1px solid #e8e0f0;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  background: #fffdf9;
+}
+
+body.dark .vault-item {
+  background: #3c2a4a;
+  border-color: #4a3560;
+}
+
+.vault-item-title {
+  font-size: 12px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.vault-item-uname {
+  font-size: 11px;
+  color: #b39ddb;
+  margin: 0 8px;
+}
+
+.vault-item-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.vault-item-actions button {
+  padding: 2px 6px;
+  font-size: 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.vault-reveal-btn {
+  background: #b39ddb;
+  color: #fff;
+}
+
+.vault-copy-btn {
+  background: #a8d8b9;
+  color: #fff;
+}
+
+.vault-del-btn {
+  background: #e8a598;
+  color: #fff;
+}

@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="popup.css">
+  <script src="https://unpkg.com/tweetnacl@1.0.3/nacl-fast.min.js"></script>
+  <script src="https://unpkg.com/tweetnacl-util@0.15.0/nacl-util.min.js"></script>
 </head>
 <body>
   <div id="app" class="container">
@@ -31,10 +33,13 @@
           <button id="disconnect-btn" class="btn btn-ghost">Disconnect</button>
         </div>
       </div>
+      <div id="credit-bar" class="credit-bar hidden">💎 <span id="credit-balance">0</span> credits</div>
+
       <div class="tabs">
         <button class="tab active" data-tab="pitch">Pitch</button>
         <button class="tab" data-tab="time">Time</button>
         <button class="tab" data-tab="notes">Notes</button>
+        <button class="tab" data-tab="vault">Vault</button>
         <button class="tab" data-tab="tools">Tools</button>
       </div>
 
@@ -79,6 +84,31 @@
       <div id="tab-notes" class="tab-content hidden">
         <textarea id="notes-textarea" placeholder="Write your notes here..." class="notes-input"></textarea>
         <p id="notes-status" class="status-text">Auto-saves on change</p>
+      </div>
+
+      <!-- Vault Tab -->
+      <div id="tab-vault" class="tab-content hidden">
+        <div id="vault-locked" class="vault-section">
+          <p class="vault-heading">🔐 Vault Locked</p>
+          <input type="password" id="vault-password" class="vault-input" placeholder="Enter master password">
+          <button id="vault-unlock-btn" class="btn btn-primary">Unlock</button>
+          <p id="vault-status" class="status-text"></p>
+        </div>
+        <div id="vault-unlocked" class="vault-section hidden">
+          <div class="vault-header">
+            <p class="vault-heading">🔓 Vault</p>
+            <button id="vault-lock-btn" class="btn btn-ghost">Lock</button>
+          </div>
+          <div id="vault-items" class="vault-items"></div>
+          <button id="vault-add-btn" class="btn btn-secondary">+ Add Item</button>
+          <div id="vault-add-form" class="hidden">
+            <input type="text" id="vault-new-title" class="vault-input" placeholder="Title">
+            <input type="text" id="vault-new-username" class="vault-input" placeholder="Username">
+            <input type="text" id="vault-new-url" class="vault-input" placeholder="URL">
+            <input type="password" id="vault-new-password" class="vault-input" placeholder="Password">
+            <button id="vault-save-item-btn" class="btn btn-primary">Save</button>
+          </div>
+        </div>
       </div>
 
       <!-- Tools Tab -->
