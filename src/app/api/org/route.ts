@@ -44,5 +44,8 @@ export async function POST(request: Request) {
 
   if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 });
 
+  // Auto-create default "General" chat room
+  await supabase.from("org_chat_rooms").insert({ org_id: org.id, name: "General" });
+
   return NextResponse.json({ org });
 }

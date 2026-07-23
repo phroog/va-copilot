@@ -230,6 +230,10 @@
   "remove": "Alisin",
   "sharedVault": "Shared Vault",
   "assignToAgency": "Italaga sa Ahensya",
+  "teamChat": "Chat ng Team",
+  "rooms": "Mga Silid",
+  "noRooms": "Wala pang silid",
+  "selectRoom": "Pumili ng silid para magsimulang mag-chat",
   "language": {
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",

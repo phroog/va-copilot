@@ -230,6 +230,10 @@
   "remove": "Remove",
   "sharedVault": "Shared Vault",
   "assignToAgency": "Assign to Agency",
+  "teamChat": "Team Chat",
+  "rooms": "Rooms",
+  "noRooms": "No rooms yet",
+  "selectRoom": "Select a room to start chatting",
   "language": {
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",

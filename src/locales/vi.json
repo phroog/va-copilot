@@ -230,6 +230,10 @@
   "remove": "Xóa",
   "sharedVault": "Kho chia sẻ",
   "assignToAgency": "Gán cho Công ty",
+  "teamChat": "Trò chuyện nhóm",
+  "rooms": "Phòng",
+  "noRooms": "Chưa có phòng nào",
+  "selectRoom": "Chọn phòng để bắt đầu trò chuyện",
   "language": {
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",
