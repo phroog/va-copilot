@@ -27,6 +27,14 @@
       ],
       "js": ["content.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://sari.vercel.app/*",
+        "http://localhost:3000/*"
+      ],
+      "js": ["webapp-bridge.js"],
+      "run_at": "document_idle"
     }
   ],
   "icons": {

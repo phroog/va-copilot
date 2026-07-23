@@ -13,6 +13,7 @@ const loginView = $("login-view");
 const mainView = $("main-view");
 const connectBtn = $("connect-btn");
 const disconnectBtn = $("disconnect-btn");
+const connectStatus = $("connect-status");
 
 const jobTitle = $("job-title");
 const jobPlatform = $("job-platform");
@@ -37,10 +38,6 @@ const tabs = document.querySelectorAll(".tab");
 const tabContents = document.querySelectorAll(".tab-content");
 
 /* ── Helpers ──────────────────────────────────────────────────── */
-function delay(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 function apiHeaders() {
   return {
     "Content-Type": "application/json",
@@ -65,11 +62,6 @@ async function loadState() {
   const result = await chrome.storage.local.get(["sariToken", "currentJob"]);
   sariToken = result.sariToken || null;
   currentJob = result.currentJob || null;
-}
-
-async function setToken(token) {
-  sariToken = token;
-  await chrome.storage.local.set({ sariToken: token });
 }
 
 async function clearToken() {
@@ -126,91 +118,48 @@ disconnectBtn.addEventListener("click", async () => {
 });
 
 async function connectToSari() {
-  const url = SARI_API + "/extension-auth";
   connectBtn.disabled = true;
-  connectBtn.textContent = "Connecting...";
+  connectBtn.textContent = "Opening Sari...";
+  if (connectStatus) connectStatus.classList.remove("hidden");
 
-  const tab = await chrome.tabs.create({ url, active: false });
+  await chrome.tabs.create({ url: SARI_API + "/extension-auth" });
+
+  setConnectStatus(
+    "Waiting for you to log in and authorize the extension..."
+  );
 
   try {
-    const token = await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        chrome.tabs.onUpdated.removeListener(listener);
-        reject(new Error("Timed out waiting for the page to load"));
-      }, 15000);
-
-      const listener = async (tabId, changeInfo) => {
-        if (tabId === tab.id && changeInfo.status === "complete") {
-          chrome.tabs.onUpdated.removeListener(listener);
-          clearTimeout(timeout);
-
-          await delay(300);
-
-          try {
-            const results = await chrome.scripting.executeScript({
-              target: { tabId: tab.id },
-              func: grabTokenFromPage,
-            });
-            const token = results?.[0]?.result;
-            if (token) resolve(token);
-            else reject(new Error("No session found. Are you logged in to Sari?"));
-          } catch (err) {
-            reject(err);
-          }
-        }
-      };
-
-      chrome.tabs.onUpdated.addListener(listener);
-    });
-
-    await setToken(token);
+    const token = await pollForToken(30_000);
+    sariToken = token;
     render();
+    setConnectStatus("Connected!");
   } catch (err) {
-    alert("Failed to connect: " + err.message);
+    setConnectStatus("Timed out. Please try again.");
+    alert("Authentication failed: " + err.message);
   } finally {
-    chrome.tabs.remove(tab.id);
     connectBtn.disabled = false;
     connectBtn.textContent = "Connect to Sari";
   }
 }
 
-function grabTokenFromPage() {
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith("sb-") && key.includes("auth-token")) {
-        const data = JSON.parse(localStorage.getItem(key));
-        if (data?.access_token) return data.access_token;
-      }
-    }
-  } catch {}
+function setConnectStatus(msg) {
+  if (connectStatus) connectStatus.textContent = msg;
+}
 
-  try {
-    const cookies = document.cookie.split(";").map((c) => c.trim());
-    for (const cookie of cookies) {
-      if (cookie.startsWith("sb-") && cookie.includes("auth-token")) {
-        const value = cookie.split("=").slice(1).join("=");
-        const decoded = decodeURIComponent(value);
-        const data = JSON.parse(decoded);
-        if (data?.access_token) return data.access_token;
+function pollForToken(timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const interval = setInterval(async () => {
+      const result = await chrome.storage.local.get("sariToken");
+      if (result.sariToken) {
+        clearInterval(interval);
+        resolve(result.sariToken);
+      } else if (Date.now() - start >= timeoutMs) {
+        clearInterval(interval);
+        reject(new Error("Timed out waiting for authentication"));
       }
-    }
-  } catch {}
-
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      const val = localStorage.getItem(key);
-      if (val && val.length > 100 && val.includes("access_token")) {
-        try {
-          const data = JSON.parse(val);
-          if (data?.access_token) return data.access_token;
-        } catch {}
-      }
-    }
-  } catch {}
-
-  return null;
+    }, 1000);
+  });
 }
 
 /* ── Extract job from active tab ──────────────────────────────── */
