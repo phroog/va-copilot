@@ -5,7 +5,7 @@
   "description": "Your all-in-one freelancing companion for VAs",
   "permissions": ["storage", "activeTab", "scripting", "tabs"],
   "host_permissions": [
-    "https://sari.vercel.app/*",
+    "https://va-copilot-theta.vercel.app/*",
     "http://localhost:3000/*"
   ],
   "action": {
@@ -30,7 +30,7 @@
     },
     {
       "matches": [
-        "https://sari.vercel.app/*",
+        "https://va-copilot-theta.vercel.app/*",
         "http://localhost:3000/*"
       ],
       "js": ["webapp-bridge.js"],

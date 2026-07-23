@@ -1,4 +1,4 @@
-const SARI_API = "https://sari.vercel.app";
+const SARI_API = "https://va-copilot-theta.vercel.app";
 
 let sariToken = null;
 let currentJob = null;
