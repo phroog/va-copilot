@@ -63,7 +63,9 @@ export default function JobsPage() {
   const [search, setSearch] = useState("");
   const [generating, setGenerating] = useState<string | null>(null);
   const [pitchResult, setPitchResult] = useState<string | null>(null);
+  const [pitchJobId, setPitchJobId] = useState<string | null>(null);
   const [polishing, setPolishing] = useState(false);
+  const [savingPitch, setSavingPitch] = useState(false);
   const [pitchDialogOpen, setPitchDialogOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<Tab>("manual");
@@ -286,11 +288,33 @@ export default function JobsPage() {
       const data = await res.json();
       if (data.pitch) {
         setPitchResult(data.pitch);
+        setPitchJobId(jobId);
         setPitchDialogOpen(true);
       }
     } catch {
     } finally {
       setGenerating(null);
+    }
+  };
+
+  const savePitch = async () => {
+    if (!pitchJobId || !pitchResult) return;
+    setSavingPitch(true);
+    try {
+      const res = await fetch("/api/pitches", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: pitchJobId, content: pitchResult }),
+      });
+      if (res.ok) {
+        showToast("Pitch saved");
+      } else {
+        showToast("Failed to save pitch");
+      }
+    } catch {
+      showToast("Failed to save pitch");
+    } finally {
+      setSavingPitch(false);
     }
   };
 
@@ -634,12 +658,15 @@ export default function JobsPage() {
       <Dialog open={pitchDialogOpen} onOpenChange={setPitchDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">🚀 Generated Pitch</DialogTitle>
-            <DialogDescription>AI-crafted pitch for this job</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">🚀 Pitch</DialogTitle>
+            <DialogDescription>Edit your pitch below, then copy or save</DialogDescription>
           </DialogHeader>
-          <div className="bg-kawaii-lavender/10 dark:bg-dark-surface/50 rounded-2xl p-4 mt-2">
-            <p className="text-sm whitespace-pre-wrap">{pitchResult}</p>
-          </div>
+          <Textarea
+            value={pitchResult ?? ""}
+            onChange={(e) => setPitchResult(e.target.value)}
+            rows={12}
+            className="text-sm mt-2"
+          />
           <div className="flex justify-end gap-2 mt-2">
             <Button
               variant="outline"
@@ -648,6 +675,14 @@ export default function JobsPage() {
               disabled={polishing}
             >
               {polishing ? "Polishing..." : "✨ Polish English"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={savePitch}
+              disabled={savingPitch}
+            >
+              {savingPitch ? "Saving..." : "💾 Save"}
             </Button>
             <Button
               size="sm"
@@ -704,7 +739,7 @@ function JobCard({ job, generating, generatePitch, deleteJob, t }: { job: any; g
         </p>
         <div className="flex flex-wrap gap-2 items-center">
           <Button size="sm" variant="primary" onClick={() => generatePitch(job.id, job.title)} disabled={generating === job.id}>
-            {generating === job.id ? "Generating..." : "🚀 Generate Pitch"}
+            {generating === job.id ? "Loading..." : job.has_pitch ? "📋 View Pitch" : "🚀 Generate Pitch"}
           </Button>
           <Button size="sm" variant="outline" onClick={() => setDetailOpen(!detailOpen)}>
             {detailOpen ? "▲ Details" : "▼ Details"}

@@ -30,7 +30,20 @@ export async function GET(request: Request) {
 
   const { data: jobs, error } = await query.order("posted_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ jobs: jobs ?? [] });
+
+  // Attach has_pitch flag
+  const { data: userPitches } = await supabase
+    .from("pitches")
+    .select("job_id")
+    .eq("user_id", user.id);
+
+  const pitchedJobIds = new Set((userPitches ?? []).map((p: any) => p.job_id));
+  const jobsWithFlag = (jobs ?? []).map((j: any) => ({
+    ...j,
+    has_pitch: pitchedJobIds.has(j.id),
+  }));
+
+  return NextResponse.json({ jobs: jobsWithFlag });
 }
 
 export async function POST(request: Request) {
