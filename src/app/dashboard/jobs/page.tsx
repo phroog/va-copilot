@@ -28,6 +28,13 @@ interface Job {
   description: string;
   url: string;
   created_at: string;
+  budget_type?: string;
+  budget_amount?: string;
+  client_name?: string;
+  client_country?: string;
+  client_rating?: number;
+  client_total_spent?: string;
+  skills?: string[];
 }
 
 interface ImportedJob {
@@ -658,6 +665,7 @@ export default function JobsPage() {
 }
 
 function JobCard({ job, generating, generatePitch, deleteJob, t }: { job: any; generating: string | null; generatePitch: (id: string, title: string) => void; deleteJob: (id: string, title: string) => void; t: any }) {
+  const [detailOpen, setDetailOpen] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
   const [tokenLink, setTokenLink] = useState("");
   const [generatingToken, setGeneratingToken] = useState(false);
@@ -698,6 +706,9 @@ function JobCard({ job, generating, generatePitch, deleteJob, t }: { job: any; g
           <Button size="sm" variant="primary" onClick={() => generatePitch(job.id, job.title)} disabled={generating === job.id}>
             {generating === job.id ? "Generating..." : "🚀 Generate Pitch"}
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setDetailOpen(!detailOpen)}>
+            {detailOpen ? "▲ Details" : "▼ Details"}
+          </Button>
           {job.url && (
             <Button size="sm" variant="outline" asChild>
               <a href={job.url} target="_blank" rel="noopener noreferrer">View Job ↗</a>
@@ -713,6 +724,30 @@ function JobCard({ job, generating, generatePitch, deleteJob, t }: { job: any; g
             🗑️
           </button>
         </div>
+
+        {detailOpen && (
+          <div className="mt-4 p-4 bg-white dark:bg-dark-card border border-kawaii-lavender/30 dark:border-dark-surface rounded-2xl animate-slide-up">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">📋 Job Details</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              {job.budget_type && <><span className="text-slate-500">Budget Type</span><span className="font-medium">{job.budget_type}</span></>}
+              {job.budget_amount && <><span className="text-slate-500">Budget Amount</span><span className="font-medium">{job.budget_amount}</span></>}
+              {job.client_name && <><span className="text-slate-500">Client</span><span className="font-medium">{job.client_name}</span></>}
+              {job.client_country && <><span className="text-slate-500">Country</span><span className="font-medium">{job.client_country}</span></>}
+              {job.client_rating != null && <><span className="text-slate-500">Rating</span><span className="font-medium">{"⭐".repeat(Math.round(job.client_rating))} {job.client_rating}</span></>}
+              {job.client_total_spent && <><span className="text-slate-500">Total Spent</span><span className="font-medium">{job.client_total_spent}</span></>}
+              {job.skills?.length > 0 && (
+                <div className="col-span-2">
+                  <span className="text-slate-500 block mb-1">Skills</span>
+                  <div className="flex flex-wrap gap-1">
+                    {job.skills.map((s: string) => (
+                      <span key={s} className="text-xs px-2 py-0.5 bg-kawaii-lavender/20 dark:bg-kawaii-purple/20 rounded-full">{s}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {portalOpen && (
           <div className="mt-4 p-4 bg-white dark:bg-dark-card border border-kawaii-lavender/30 dark:border-dark-surface rounded-2xl animate-slide-up">

@@ -32,6 +32,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
+    // Return cached pitch if already exists — no credit cost
+    const { data: existingPitch } = await supabase
+      .from("pitches")
+      .select("content")
+      .eq("job_id", jobId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (existingPitch) {
+      return NextResponse.json({ pitch: existingPitch.content });
+    }
+
     const creditCheck = await checkCredits(user.id);
     if (!creditCheck.ok) {
       return NextResponse.json(
