@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sari</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app" class="container">
+    <div id="login-view" class="view">
+      <div class="header">
+        <h1 class="logo">🌸 Sari</h1>
+        <span class="badge">VA</span>
+      </div>
+      <p class="subtitle">VA Assistant Extension</p>
+      <button id="connect-btn" class="btn btn-primary">Connect to Sari</button>
+      <p class="hint">Connect your Sari account to manage tasks on the go.</p>
+    </div>
+
+    <div id="main-view" class="view hidden">
+      <div class="header">
+        <h1 class="logo">🌸 Sari</h1>
+        <button id="disconnect-btn" class="btn btn-ghost">Disconnect</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="pitch">Pitch</button>
+        <button class="tab" data-tab="time">Time</button>
+        <button class="tab" data-tab="notes">Notes</button>
+      </div>
+
+      <div id="tab-pitch" class="tab-content">
+        <div id="job-info" class="card">
+          <p id="job-title" class="job-title-text">No job detected</p>
+          <p id="job-platform" class="job-platform-text"></p>
+          <p id="job-desc" class="job-desc-text"></p>
+        </div>
+        <button id="extract-btn" class="btn btn-secondary">Re-extract from page</button>
+        <button id="generate-btn" class="btn btn-primary">Generate Pitch</button>
+        <div id="pitch-loading" class="loading hidden">Generating...</div>
+        <div id="pitch-result" class="card hidden">
+          <p id="pitch-text" class="pitch-text"></p>
+          <div class="btn-row">
+            <button id="copy-btn" class="btn btn-secondary">Copy</button>
+            <button id="polish-btn" class="btn btn-secondary">Polish</button>
+          </div>
+        </div>
+        <p id="pitch-status" class="status-text hidden"></p>
+      </div>
+
+      <div id="tab-time" class="tab-content hidden">
+        <div class="timer-display" id="timer-display">00:00:00</div>
+        <button id="timer-btn" class="btn btn-primary">Start Timer</button>
+        <p id="timer-status" class="status-text"></p>
+      </div>
+
+      <div id="tab-notes" class="tab-content hidden">
+        <textarea id="notes-textarea" placeholder="Write your notes here..." class="notes-input"></textarea>
+        <p id="notes-status" class="status-text">Auto-saves on change</p>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
