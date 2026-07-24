@@ -731,6 +731,10 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
   const [reviewLink, setReviewLink] = useState("");
   const [genReview, setGenReview] = useState(false);
   const [reviewCopied, setReviewCopied] = useState(false);
+  const [scamScore, setScamScore] = useState<number | null>(null);
+  const [scamAnalysis, setScamAnalysis] = useState("");
+  const [scamChecking, setScamChecking] = useState(false);
+  const [scamDialogOpen, setScamDialogOpen] = useState(false);
 
   const generateToken = async () => {
     setGeneratingToken(true);
@@ -782,6 +786,23 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
           <Button size="sm" variant="outline" onClick={() => setPortalOpen(!portalOpen)}>
             🔗 {t("clientPortal")}
           </Button>
+          <Button size="sm" variant="outline" onClick={async () => {
+            setScamChecking(true);
+            try {
+              const res = await fetch("/api/ai/scam-check", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ client_name: job.client_name || "", website_url: job.url || "", job_description: job.description || "" }),
+              });
+              const data = await res.json();
+              if (res.status === 402) { alert(data.error); return; }
+              setScamScore(data.score);
+              setScamAnalysis(data.analysis);
+              setScamDialogOpen(true);
+            } catch {} finally { setScamChecking(false); }
+          }} disabled={scamChecking}>
+            {scamChecking ? "⏳" : "🕵️"} Scam Check (1🪙)
+          </Button>
           <Button size="sm" variant="outline" onClick={() => setReviewOpen(!reviewOpen)}>
             ⭐ Request Review
           </Button>
@@ -832,6 +853,43 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
             )}
           </div>
         )}
+
+        {/* Scam Check Result */}
+        <Dialog open={scamDialogOpen} onOpenChange={setScamDialogOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>🕵️ Scam Check Result</DialogTitle>
+              <DialogDescription>Trust score for this client</DialogDescription>
+            </DialogHeader>
+            {scamScore !== null && (
+              <div className="flex flex-col items-center gap-4 py-4">
+                <div className="relative w-32 h-32">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+                    <circle
+                      cx="18" cy="18" r="15.9" fill="none"
+                      stroke={scamScore >= 70 ? "#22c55e" : scamScore >= 40 ? "#eab308" : "#ef4444"}
+                      strokeWidth="3"
+                      strokeDasharray={`${(scamScore / 100) * 100} 100`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className={`text-3xl font-extrabold ${scamScore >= 70 ? "text-green-500" : scamScore >= 40 ? "text-yellow-500" : "text-red-500"}`}>
+                      {scamScore}
+                    </span>
+                  </div>
+                </div>
+                {scamScore < 50 && (
+                  <div className="w-full p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300 font-medium">
+                    ⚠️ Scam warning — this client has a low trust score
+                  </div>
+                )}
+                <p className="text-sm text-slate-600 dark:text-slate-300 text-center">{scamAnalysis}</p>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {reviewOpen && (
           <div className="mt-4 p-4 bg-white dark:bg-dark-card border border-kawaii-lavender/30 dark:border-dark-surface rounded-2xl animate-slide-up">

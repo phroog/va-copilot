@@ -61,6 +61,28 @@ const pomodoroDisplay = $("pomodoro-display");
 const pomodoroBtn = $("pomodoro-btn");
 const pomodoroStatus = $("pomodoro-status");
 
+/* ── Clients tab ───────────────────────────────────────────────── */
+const clientsContent = $("clients-content");
+const clientsRefreshBtn = $("clients-refresh-btn");
+const clientsViewAll = $("clients-view-all");
+const clientsQuickAdd = $("clients-quick-add");
+const clientsNewName = $("clients-new-name");
+const clientsNewTitle = $("clients-new-title");
+const clientsSaveBtn = $("clients-save-btn");
+const clientsStatus = $("clients-status");
+
+/* ── Scam Check tab ────────────────────────────────────────────── */
+const scamClientName = $("scam-client-name");
+const scamUrl = $("scam-url");
+const scamCheckBtn = $("scam-check-btn");
+const scamManualName = $("scam-manual-name");
+const scamManualUrl = $("scam-manual-url");
+const scamManualBtn = $("scam-manual-btn");
+const scamResult = $("scam-result");
+const scamScoreDisplay = $("scam-score-display");
+const scamAnalysis = $("scam-analysis");
+const scamStatus = $("scam-status");
+
 const vaultLocked = $("vault-locked");
 const vaultUnlocked = $("vault-unlocked");
 const vaultPassword = $("vault-password");
@@ -210,6 +232,8 @@ tabs.forEach((tab) => {
     if (tab.dataset.tab === "notes") loadNotes();
     if (tab.dataset.tab === "vault") initVault();
     if (tab.dataset.tab === "tools") initTools();
+    if (tab.dataset.tab === "clients") initClients();
+    if (tab.dataset.tab === "scam") initScamCheck();
   });
 });
 
@@ -978,6 +1002,159 @@ function stopPomodoro() {
   }
   pomodoroDisplay.textContent = "25:00";
 }
+
+/* ── Clients Tab ───────────────────────────────────────────────── */
+async function initClients() {
+  clientsContent.innerHTML = "<p class='status-text'>Loading...</p>";
+  try {
+    const data = await apiFetch("/api/client-links");
+    const links = data.links || [];
+    if (links.length === 0) {
+      clientsContent.innerHTML = "<p class='status-text'>No client links yet</p>";
+      clientsViewAll.classList.add("hidden");
+      maybeShowQuickAdd();
+      return;
+    }
+    const grouped = {};
+    links.slice(0, 10).forEach(l => {
+      if (!grouped[l.client_name]) grouped[l.client_name] = [];
+      grouped[l.client_name].push(l);
+    });
+    let html = "";
+    Object.entries(grouped).forEach(([name, items]) => {
+      html += `<div class="client-group"><div class="client-group-name">👤 ${name}</div>`;
+      items.forEach(item => {
+        html += `<a href="${item.url}" target="_blank" class="client-link-btn">${item.title}</a>`;
+      });
+      html += "</div>";
+    });
+    clientsContent.innerHTML = html;
+    if (links.length > 10) {
+      clientsViewAll.classList.remove("hidden");
+      clientsViewAll.onclick = () => chrome.tabs.create({ url: SARI_API + "/dashboard/clients" });
+    } else {
+      clientsViewAll.classList.add("hidden");
+    }
+    maybeShowQuickAdd();
+  } catch {
+    clientsContent.innerHTML = "<p class='status-text'>Could not load client links</p>";
+  }
+}
+
+function maybeShowQuickAdd() {
+  if (currentJob && currentJob.clientName) {
+    clientsQuickAdd.classList.remove("hidden");
+    clientsNewName.value = currentJob.clientName;
+    clientsNewTitle.value = "Website";
+  } else {
+    clientsQuickAdd.classList.add("hidden");
+  }
+}
+
+clientsRefreshBtn.addEventListener("click", initClients);
+
+clientsSaveBtn.addEventListener("click", async () => {
+  const name = clientsNewName.value.trim();
+  const title = clientsNewTitle.value.trim() || "Website";
+  if (!name) { clientsStatus.textContent = "Client name required"; return; }
+  clientsSaveBtn.disabled = true;
+  clientsStatus.textContent = "Saving...";
+  try {
+    await apiFetch("/api/client-links", {
+      method: "POST",
+      body: JSON.stringify({
+        client_name: name,
+        title: title,
+        url: currentJob?.url || location.href,
+        link_type: "website",
+      }),
+    });
+    clientsStatus.textContent = "Saved! ✅";
+    initClients();
+  } catch (err) {
+    clientsStatus.textContent = "Save failed: " + err.message;
+  } finally {
+    clientsSaveBtn.disabled = false;
+  }
+});
+
+/* ── Scam Check Tab ────────────────────────────────────────────── */
+function initScamCheck() {
+  if (currentJob) {
+    scamClientName.textContent = "👤 " + (currentJob.clientName || "Unknown client");
+    scamUrl.textContent = currentJob.url ? "🔗 " + currentJob.url : "";
+    scamCheckBtn.classList.remove("hidden");
+  } else {
+    scamClientName.textContent = "No client detected on current page";
+    scamUrl.textContent = "";
+    scamCheckBtn.classList.add("hidden");
+  }
+  scamResult.classList.add("hidden");
+  scamStatus.classList.add("hidden");
+}
+
+async function runScamCheck(clientName, url) {
+  scamStatus.classList.remove("hidden");
+  scamStatus.textContent = "Checking...";
+  scamResult.classList.add("hidden");
+  try {
+    const data = await apiFetch("/api/ai/scam-check", {
+      method: "POST",
+      body: JSON.stringify({
+        client_name: clientName || undefined,
+        website_url: url || undefined,
+      }),
+    });
+    scamScoreDisplay.textContent = data.score;
+    scamScoreDisplay.className = "scam-score " + (
+      data.score >= 70 ? "scam-score-high" : data.score >= 40 ? "scam-score-med" : "scam-score-low"
+    );
+    scamAnalysis.textContent = data.analysis;
+    scamResult.classList.remove("hidden");
+    scamStatus.classList.add("hidden");
+  } catch (err) {
+    scamStatus.textContent = "Check failed: " + err.message;
+  }
+}
+
+scamCheckBtn.addEventListener("click", () => {
+  const name = currentJob?.clientName || "";
+  const url = currentJob?.url || "";
+  runScamCheck(name, url);
+});
+
+scamManualBtn.addEventListener("click", () => {
+  const name = scamManualName.value.trim();
+  const url = scamManualUrl.value.trim();
+  if (!name && !url) { scamStatus.textContent = "Enter a name or URL"; scamStatus.classList.remove("hidden"); return; }
+  runScamCheck(name, url);
+});
+
+scamManualUrl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") scamManualBtn.click();
+});
+
+/* ── Pitch tab: scam warning ───────────────────────────────────── */
+// After generating a pitch, show scam hint if not checked
+const origDoGenerate = doGeneratePitch;
+doGeneratePitch = async function(jobId) {
+  await origDoGenerate(jobId);
+  // Scam hint: after pitch generation, if no scam check has run, show subtle hint
+  const pitchTab = $("tab-pitch");
+  const existingHint = pitchTab.querySelector(".scam-hint");
+  if (!existingHint && currentJob && currentJob.clientName) {
+    const hint = document.createElement("p");
+    hint.className = "scam-hint status-text";
+    hint.style.marginTop = "6px";
+    hint.style.fontSize = "10px";
+    hint.innerHTML = 'Not sure about this client? <a href="#" id="scam-hint-link" style="color:#7c4dff;font-weight:600">Run a Scam Check (1🪙)</a>';
+    pitchTab.appendChild(hint);
+    hint.querySelector("#scam-hint-link").addEventListener("click", (e) => {
+      e.preventDefault();
+      document.querySelector('.tab[data-tab="scam"]')?.click();
+    });
+  }
+};
 
 /* ── Init ─────────────────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", async () => {

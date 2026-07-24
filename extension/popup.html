@@ -39,6 +39,8 @@
         <button class="tab active" data-tab="pitch">Pitch</button>
         <button class="tab" data-tab="time">Time</button>
         <button class="tab" data-tab="notes">Notes</button>
+        <button class="tab" data-tab="clients">Clients</button>
+        <button class="tab" data-tab="scam">Scam Check</button>
         <button class="tab" data-tab="vault">Vault</button>
         <button class="tab" data-tab="tools">Tools</button>
       </div>
@@ -84,6 +86,51 @@
       <div id="tab-notes" class="tab-content hidden">
         <textarea id="notes-textarea" placeholder="Write your notes here..." class="notes-input"></textarea>
         <p id="notes-status" class="status-text">Auto-saves on change</p>
+      </div>
+
+      <!-- Clients Tab -->
+      <div id="tab-clients" class="tab-content hidden">
+        <div class="clients-section">
+          <div class="clients-header">
+            <h3 class="tools-heading">📇 Client Links</h3>
+            <button id="clients-refresh-btn" class="btn btn-icon" title="Refresh">🔄</button>
+          </div>
+          <div id="clients-content" class="clients-content">
+            <p class="status-text">Loading...</p>
+          </div>
+          <button id="clients-view-all" class="btn btn-secondary hidden">View All in Dashboard</button>
+        </div>
+        <div id="clients-quick-add" class="card hidden" style="margin-top:8px">
+          <p class="vault-heading" style="font-size:13px">➕ Save current page as link</p>
+          <input type="text" id="clients-new-name" class="vault-input" placeholder="Client name">
+          <input type="text" id="clients-new-title" class="vault-input" placeholder="Link title (e.g. Website)">
+          <button id="clients-save-btn" class="btn btn-primary" style="margin-top:4px">Save Link</button>
+          <p id="clients-status" class="status-text"></p>
+        </div>
+      </div>
+
+      <!-- Scam Check Tab -->
+      <div id="tab-scam" class="tab-content hidden">
+        <div id="scam-auto" class="card">
+          <p class="vault-heading" style="font-size:13px">🕵️ Auto-fill from current page</p>
+          <p id="scam-client-name" class="job-meta">No client detected</p>
+          <p id="scam-url" class="job-meta"></p>
+          <button id="scam-check-btn" class="btn btn-primary">Check this client (1🪙)</button>
+        </div>
+        <div class="card" style="margin-top:8px">
+          <p class="vault-heading" style="font-size:13px">✍️ Manual input</p>
+          <input type="text" id="scam-manual-name" class="vault-input" placeholder="Client name">
+          <input type="text" id="scam-manual-url" class="vault-input" placeholder="Website URL">
+          <button id="scam-manual-btn" class="btn btn-secondary">Check (1🪙)</button>
+        </div>
+        <div id="scam-result" class="card hidden" style="margin-top:8px">
+          <div class="scam-gauge" style="text-align:center;padding:8px 0">
+            <div id="scam-score-display" class="scam-score" style="font-size:32px;font-weight:800">--</div>
+            <div id="scam-score-label" class="status-text">Trust Score</div>
+          </div>
+          <p id="scam-analysis" class="status-text"></p>
+        </div>
+        <p id="scam-status" class="status-text hidden"></p>
       </div>
 
       <!-- Vault Tab -->

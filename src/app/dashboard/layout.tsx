@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useLocale } from "@/lib/i18n/context";
 import { useState, useEffect, useCallback } from "react";
-import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Inbox, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins } from "lucide-react";
+import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Inbox, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search } from "lucide-react";
 import dynamic from "next/dynamic";
 const VirtualPet = dynamic(() => import("@/components/virtual-pet"), { ssr: false });
 import { ToastProvider } from "@/components/toast";
@@ -28,6 +28,7 @@ const sidebarGroups = [
       { href: "/academy/dashboard", labelKey: "academy", icon: BookOpen },
       { href: "/academy", labelKey: "academyLanding", icon: BookOpen },
       { href: "/dashboard/agency", labelKey: "agency", icon: Shield },
+      { href: "/dashboard/clients", labelKey: "clients", icon: Users },
     ],
   },
   {
@@ -61,6 +62,7 @@ const sidebarGroups = [
     links: [
       { href: "/dashboard/settings", labelKey: "settings", icon: Settings },
       { href: "/dashboard/credits", labelKey: "credits", icon: Coins },
+      { href: "/dashboard/scam-check", labelKey: "scamCheck", icon: Search },
     ],
   },
 ];

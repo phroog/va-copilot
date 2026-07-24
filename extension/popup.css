@@ -582,3 +582,76 @@ body.dark .vault-item {
   background: #e8a598;
   color: #fff;
 }
+
+/* ── Clients Tab ──────────────────────────────────────────────── */
+.clients-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.client-group {
+  margin-bottom: 10px;
+}
+.client-group-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #7c4dff;
+  margin-bottom: 4px;
+}
+.client-link-btn {
+  display: inline-block;
+  padding: 3px 10px;
+  margin: 2px;
+  border-radius: 12px;
+  border: 1px solid #d1c4e9;
+  background: #f3efff;
+  color: #4a148c;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-decoration: none;
+}
+.client-link-btn:hover {
+  background: #e8def8;
+  border-color: #7c4dff;
+}
+.dark .client-link-btn {
+  background: #2d1b4e;
+  border-color: #4a3580;
+  color: #d1c4e9;
+}
+.dark .client-link-btn:hover {
+  background: #4a3580;
+}
+.client-link-btn-small {
+  display: inline-block;
+  padding: 2px 6px;
+  margin: 1px;
+  border-radius: 8px;
+  border: none;
+  background: #e8def8;
+  color: #4a148c;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+.dark .client-link-btn-small {
+  background: #3d2a6a;
+  color: #d1c4e9;
+}
+
+/* ── Scam Check Tab ───────────────────────────────────────────── */
+.scam-score {
+  font-size: 32px;
+  font-weight: 800;
+}
+.scam-gauge {
+  text-align: center;
+  padding: 8px 0;
+}
+.scam-score-high { color: #22c55e; }
+.scam-score-med { color: #eab308; }
+.scam-score-low { color: #ef4444; }
