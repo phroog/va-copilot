@@ -285,6 +285,13 @@
   "pitches": "Pitches",
   "revenue": "Doanh thu",
   "notAdmin": "Bạn cần là quản trị viên đại lý để xem báo cáo.",
+  "mochiChat": "Trò chuyện với Mochi",
+  "mochiSummarizeWeek": "Tổng kết tuần của tôi",
+  "mochiProductivityTip": "Mẹo năng suất",
+  "mochiInputPlaceholder": "Hỏi Mochi bất cứ điều gì...",
+  "mochiThinking": "Mochi đang suy nghĩ...",
+  "mochiNoMessages": "Trò chuyện với Mochi! Hỏi tôi bất cứ điều gì về công việc của bạn.",
+  "mochiError": "Không nhận được phản hồi",
   "language": {
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",

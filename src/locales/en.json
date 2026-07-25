@@ -286,6 +286,13 @@
   "pitches": "Pitches",
   "revenue": "Revenue",
   "notAdmin": "You need to be an agency admin to view reports.",
+  "mochiChat": "Chat with Mochi",
+  "mochiSummarizeWeek": "Summarize my week",
+  "mochiProductivityTip": "Give me a productivity tip",
+  "mochiInputPlaceholder": "Ask Mochi anything...",
+  "mochiThinking": "Mochi is thinking...",
+  "mochiNoMessages": "Chat with Mochi! Ask me anything about your work.",
+  "mochiError": "Failed to get reply",
   "language": {
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",

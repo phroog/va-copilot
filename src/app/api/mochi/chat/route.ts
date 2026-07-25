@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   }
 
   // Gather context
-  const [recentEntries, upcomingFollowUps, recentPitches, academyProgress, mood, pet] = await Promise.all([
+  const [recentEntries, upcomingFollowUps, recentPitches, academyProgress, mood, pet, completedMilestones] = await Promise.all([
     supabase
       .from("time_entries")
       .select("*")
@@ -61,6 +61,14 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .maybeSingle()
       .then(r => r.data),
+    supabase
+      .from("job_milestones")
+      .select("*, jobs(title)")
+      .eq("user_id", user.id)
+      .eq("status", "done")
+      .order("created_at", { ascending: false })
+      .limit(5)
+      .then(r => r.data ?? []),
   ]);
 
   // Calculate pitch success rate
@@ -79,6 +87,7 @@ export async function POST(request: Request) {
     `Academy progress: ${academyProgress ? `Completed ${academyProgress.completed_lessons ?? 0} lessons, streak ${academyProgress.streak ?? 0}` : 'Not started'}.`,
     `Current mood: ${mood?.mood ?? 'Not recorded'}.`,
     `Pet status: ${pet?.name ? `Has pet "${pet.name}" (happiness: ${pet.happiness ?? 50}, hunger: ${pet.hunger ?? 50})` : 'No pet'}.`,
+    `Recently completed milestones: ${completedMilestones.length > 0 ? completedMilestones.map((m: any) => `"${m.title}" for job "${m.jobs?.title || 'Unknown'}"`).join('; ') : 'None'}.`,
   ];
 
   const systemPrompt = `You are Mochi, a cute and helpful AI assistant for the Sari productivity platform. You speak in a kawaii, encouraging tone with occasional emojis. You help users manage their freelancing work.

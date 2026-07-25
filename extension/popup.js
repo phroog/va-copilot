@@ -945,11 +945,11 @@ async function askMochi(prompt) {
 }
 
 mochiSummarizeBtn.addEventListener("click", () => {
-  askMochi("📊 Summarize my week please! Tell me what I've been working on and how productive I've been. 🎉");
+  askMochi("Please summarize my week.");
 });
 
 mochiTipBtn.addEventListener("click", () => {
-  askMochi("🧠 Give me a productivity tip based on my recent activity! Keep it short and actionable.");
+  askMochi("Give me a productivity tip based on my recent activity.");
 });
 
 /* ── Notes ────────────────────────────────────────────────────── */

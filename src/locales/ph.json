@@ -285,6 +285,13 @@
   "pitches": "Pitches",
   "revenue": "Kita",
   "notAdmin": "Kailangan mong maging admin ng ahensya upang makita ang mga ulat.",
+  "mochiChat": "Makipag-chat kay Mochi",
+  "mochiSummarizeWeek": "I-summarize ang aking linggo",
+  "mochiProductivityTip": "Magbigay ng tip sa pagiging produktibo",
+  "mochiInputPlaceholder": "Magtanong kay Mochi...",
+  "mochiThinking": "Nag-iisip si Mochi...",
+  "mochiNoMessages": "Makipag-chat kay Mochi! Magtanong tungkol sa iyong trabaho.",
+  "mochiError": "Hindi nakuha ang sagot",
   "language": {
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",

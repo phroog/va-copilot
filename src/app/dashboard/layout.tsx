@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Inbox, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3 } from "lucide-react";
 import dynamic from "next/dynamic";
 const VirtualPet = dynamic(() => import("@/components/virtual-pet"), { ssr: false });
+const MochiChat = dynamic(() => import("@/components/mochi-chat"), { ssr: false });
 import { ToastProvider } from "@/components/toast";
 import { FocusTimerProvider } from "@/components/focus-timer-provider";
 import Soundscapes from "@/components/soundscapes";
@@ -219,6 +220,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
 
+      <MochiChat />
       <VirtualPet />
       <Soundscapes />
     </div>
