@@ -400,31 +400,31 @@ export default function SettingsPage() {
       {/* Google Calendar Integration */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">📅 Google Calendar</CardTitle>
-          <CardDescription>Sync your events with Google Calendar</CardDescription>
+          <CardTitle className="flex items-center gap-2">{t("googleCalendar")}</CardTitle>
+          <CardDescription>{t("googleCalendarDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
           {checkingGoogle ? (
-            <p className="text-sm text-slate-400 animate-pulse">Checking...</p>
+            <p className="text-sm text-slate-400 animate-pulse">{t("checking")}</p>
           ) : hasGoogleCal ? (
             <div className="flex items-center gap-3">
               <span className="text-sm text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
-                ✅ Connected
+                {t("connected")}
               </span>
               <Button variant="outline" size="sm" onClick={disconnectGoogleCalendar}>
-                Disconnect
+                {t("disconnect")}
               </Button>
             </div>
           ) : (
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
-                Connect your Google Calendar to sync events. You can then sync from the Calendar page.
+                {t("googleCalendarText")}
               </p>
               <Button variant="primary" onClick={connectGoogleCalendar}>
-                🔗 Connect Google Calendar
+                {t("connectGoogle")}
               </Button>
               <p className="text-xs text-slate-400 mt-2">
-                {!process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID && "⚠️ Google OAuth not configured. Set NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID."}
+                {!process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID && t("googleNotConfigured")}
               </p>
             </div>
           )}

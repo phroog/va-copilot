@@ -230,7 +230,7 @@ export default function CalendarPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-extrabold">📅 {t("calendar")}</h1>
         <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
-          {syncing ? "⏳ Syncing..." : "🔄 Sync with Google Calendar"}
+          {syncing ? t("syncing") : t("syncWithGoogle")}
         </Button>
       </div>
 
