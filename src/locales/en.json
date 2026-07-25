@@ -258,6 +258,11 @@
   "checking": "Checking...",
   "none": "None",
   "title": "Title",
+  "backupExport": "📦 Backup & Export",
+  "backupExportDesc": "Download all your data as a JSON file",
+  "backupExportText": "Export all your jobs, time entries, invoices, notes, events, and more. The file is a JSON document you can import elsewhere.",
+  "exportAllData": "📦 Export all my data",
+  "exporting": "⏳ Exporting...",
   "language": {
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",

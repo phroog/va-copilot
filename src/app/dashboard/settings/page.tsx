@@ -47,19 +47,29 @@ export default function SettingsPage() {
   const [rateSaving, setRateSaving] = useState(false);
   const [rateSaved, setRateSaved] = useState(false);
 
+  // Google Calendar integration
+  const [hasGoogleCal, setHasGoogleCal] = useState(false);
+  const [checkingGoogle, setCheckingGoogle] = useState(true);
+
+  // Backup
+  const [backingUp, setBackingUp] = useState(false);
+
   useEffect(() => {
     Promise.all([
       fetch("/api/profile").then((r) => r.json()),
       fetch("/api/user-settings").then((r) => r.json()),
       fetch("/api/profile/public").then((r) => r.json()),
+      fetch("/api/user-integrations").then((r) => r.json()),
     ])
-      .then(([profileData, settingsData, pubData]) => {
+      .then(([profileData, settingsData, pubData, integData]) => {
         if (profileData.profile) setProfile(profileData.profile);
         if (settingsData.settings) setDefaultRate(String(settingsData.settings.default_hourly_rate ?? "0"));
         if (pubData.profile) setPublicProfile(pubData.profile);
+        const gcal = (integData.integrations ?? []).find((i: any) => i.provider === "google_calendar");
+        setHasGoogleCal(!!gcal);
       })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => setCheckingGoogle(false));
   }, []);
 
   const handleSave = async () => {
@@ -104,6 +114,50 @@ export default function SettingsPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const handleBackup = async () => {
+    setBackingUp(true);
+    try {
+      const res = await fetch("/api/backup/export");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sari-backup-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast("Backup failed", "error");
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
+  const connectGoogleCalendar = () => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID;
+    if (!clientId) {
+      showToast("Google OAuth not configured. Set NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID env var.", "error");
+      return;
+    }
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    const scope = "https://www.googleapis.com/auth/calendar.events";
+    const url =
+      `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${clientId}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `response_type=code&` +
+      `scope=${encodeURIComponent(scope)}&` +
+      `access_type=offline&` +
+      `prompt=consent&` +
+      `state=google_calendar`;
+    window.location.href = url;
+  };
+
+  const disconnectGoogleCalendar = async () => {
+    await fetch("/api/user-integrations?provider=google_calendar", { method: "DELETE" });
+    setHasGoogleCal(false);
+    showToast("Google Calendar disconnected");
   };
 
   if (loading) {
@@ -340,6 +394,56 @@ export default function SettingsPage() {
               <li>Messages will appear automatically in your inbox!</li>
             </ol>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Google Calendar Integration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">📅 Google Calendar</CardTitle>
+          <CardDescription>Sync your events with Google Calendar</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {checkingGoogle ? (
+            <p className="text-sm text-slate-400 animate-pulse">Checking...</p>
+          ) : hasGoogleCal ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
+                ✅ Connected
+              </span>
+              <Button variant="outline" size="sm" onClick={disconnectGoogleCalendar}>
+                Disconnect
+              </Button>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                Connect your Google Calendar to sync events. You can then sync from the Calendar page.
+              </p>
+              <Button variant="primary" onClick={connectGoogleCalendar}>
+                🔗 Connect Google Calendar
+              </Button>
+              <p className="text-xs text-slate-400 mt-2">
+                {!process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID && "⚠️ Google OAuth not configured. Set NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID."}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Backup & Export */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">{t("backupExport")}</CardTitle>
+          <CardDescription>{t("backupExportDesc")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+            {t("backupExportText")}
+          </p>
+          <Button variant="primary" onClick={handleBackup} disabled={backingUp}>
+            {backingUp ? t("exporting") : t("exportAllData")}
+          </Button>
         </CardContent>
       </Card>
 

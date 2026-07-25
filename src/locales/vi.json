@@ -257,6 +257,11 @@
   "checking": "Đang kiểm tra...",
   "none": "Không",
   "title": "Tiêu đề",
+  "backupExport": "📦 Sao lưu & Xuất dữ liệu",
+  "backupExportDesc": "Tải toàn bộ dữ liệu dưới dạng tệp JSON",
+  "backupExportText": "Xuất tất cả công việc, bản ghi thời gian, hóa đơn, ghi chú, sự kiện và nhiều hơn nữa. Tệp JSON này có thể nhập vào nơi khác.",
+  "exportAllData": "📦 Xuất tất cả dữ liệu",
+  "exporting": "⏳ Đang xuất...",
   "language": {
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",

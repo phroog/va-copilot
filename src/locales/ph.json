@@ -257,6 +257,11 @@
   "checking": "Sinusuri...",
   "none": "Wala",
   "title": "Pamagat",
+  "backupExport": "📦 Backup & Export",
+  "backupExportDesc": "I-download ang lahat ng data bilang JSON file",
+  "backupExportText": "I-export ang lahat ng iyong trabaho, time entries, invoices, notes, events, at iba pa. Ang file ay isang JSON document na maaaring i-import sa ibang lugar.",
+  "exportAllData": "📦 I-export ang lahat ng data",
+  "exporting": "⏳ Nag-e-export...",
   "language": {
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",
