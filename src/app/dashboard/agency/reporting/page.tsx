@@ -75,12 +75,12 @@ export default function AgencyReportingPage() {
   if (error) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <h1 className="text-3xl font-extrabold">📊 Agency Reporting</h1>
+        <h1 className="text-3xl font-extrabold">📊 {t("reporting")}</h1>
         <Card>
           <CardContent className="p-12 text-center">
             <p className="text-4xl mb-3">🚫</p>
             <p className="text-slate-500">{error}</p>
-            <p className="text-sm text-slate-400 mt-2">You need to be an agency admin to view reports.</p>
+            <p className="text-sm text-slate-400 mt-2">{t("notAdmin")}</p>
           </CardContent>
         </Card>
       </div>
@@ -90,9 +90,9 @@ export default function AgencyReportingPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-extrabold">📊 Agency Reporting</h1>
+        <h1 className="text-3xl font-extrabold">📊 {t("reporting")}</h1>
         <Button variant="outline" size="sm" onClick={exportCsv} disabled={!data}>
-          📥 Export CSV
+          📥 {t("exportCsv")}
         </Button>
       </div>
 
@@ -101,11 +101,11 @@ export default function AgencyReportingPage() {
         <CardContent className="p-4">
           <div className="flex items-end gap-3 flex-wrap">
             <div>
-              <label className="text-xs font-medium text-slate-500 mb-1 block">Start Date</label>
+              <label className="text-xs font-medium text-slate-500 mb-1 block">{t("startDate")}</label>
               <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-44" />
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-500 mb-1 block">End Date</label>
+              <label className="text-xs font-medium text-slate-500 mb-1 block">{t("endDate")}</label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-44" />
             </div>
             <Button variant="primary" size="sm" onClick={handleSearch} disabled={loading}>
@@ -130,25 +130,25 @@ export default function AgencyReportingPage() {
             <Card className="bg-gradient-to-br from-kawaii-purple/10 to-kawaii-pink/5 dark:from-dark-surface/30 dark:to-dark-surface/10">
               <CardContent className="p-6 text-center">
                 <p className="text-2xl font-extrabold text-slate-800 dark:text-slate-100">{data.total_agency_hours.toFixed(1)}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total Hours</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t("totalHours")}</p>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-green-100 to-green-50 dark:from-green-900/20 dark:to-green-900/10">
               <CardContent className="p-6 text-center">
                 <p className="text-2xl font-extrabold text-green-700 dark:text-green-300">${data.total_revenue.toFixed(2)}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total Revenue</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t("totalRevenue")}</p>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/20 dark:to-blue-900/10">
               <CardContent className="p-6 text-center">
                 <p className="text-2xl font-extrabold text-blue-700 dark:text-blue-300">{data.total_pitches}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Pitches</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t("pitches")}</p>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900/20 dark:to-orange-900/10">
               <CardContent className="p-6 text-center">
                 <p className="text-2xl font-extrabold text-orange-700 dark:text-orange-300">{data.active_members}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Active Members</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t("activeMembers")}</p>
               </CardContent>
             </Card>
           </div>
@@ -156,17 +156,17 @@ export default function AgencyReportingPage() {
           {/* Team Table */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">👥 Team Overview</CardTitle>
+              <CardTitle className="text-lg">{t("teamOverview")}</CardTitle>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-kawaii-lavender/20 dark:border-dark-surface/50">
-                    <th className="text-left p-4 font-bold text-slate-600 dark:text-slate-300">Member</th>
-                    <th className="text-right p-4 font-bold text-slate-600 dark:text-slate-300">Hours</th>
-                    <th className="text-right p-4 font-bold text-slate-600 dark:text-slate-300">Pitches</th>
-                    <th className="text-right p-4 font-bold text-slate-600 dark:text-slate-300">Invoices</th>
-                    <th className="text-right p-4 font-bold text-slate-600 dark:text-slate-300">Revenue</th>
+                    <th className="text-left p-4 font-bold text-slate-600 dark:text-slate-300">{t("member")}</th>
+                    <th className="text-right p-4 font-bold text-slate-600 dark:text-slate-300">{t("hours")}</th>
+                    <th className="text-right p-4 font-bold text-slate-600 dark:text-slate-300">{t("pitches")}</th>
+                    <th className="text-right p-4 font-bold text-slate-600 dark:text-slate-300">{t("invoices")}</th>
+                    <th className="text-right p-4 font-bold text-slate-600 dark:text-slate-300">{t("revenue")}</th>
                   </tr>
                 </thead>
                 <tbody>
