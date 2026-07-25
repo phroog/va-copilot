@@ -263,6 +263,10 @@
   "backupExportText": "Export all your jobs, time entries, invoices, notes, events, and more. The file is a JSON document you can import elsewhere.",
   "exportAllData": "📦 Export all my data",
   "exporting": "⏳ Exporting...",
+  "verified": "✅ Verified",
+  "verify": "☑️ Verify",
+  "screenshotToggle": "📸 Random screenshots (proof of work)",
+  "screenshotActive": "📸 Screenshot capture active",
   "language": {
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",

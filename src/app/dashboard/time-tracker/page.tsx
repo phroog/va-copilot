@@ -648,7 +648,7 @@ function isSameDay(a: string, b: string): boolean {
                                   onClick={() => toggleVerified(entry)}
                                   className={`text-xs px-2 py-0.5 rounded-full font-medium squishy ${entry.verified ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-slate-100 text-slate-400 dark:bg-dark-surface/50"}`}
                                 >
-                                  {entry.verified ? "✅ Verified" : "☑️ Verify"}
+                                  {entry.verified ? t("verified") : t("verify")}
                                 </button>
                               </div>
                             </div>

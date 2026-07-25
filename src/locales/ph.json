@@ -262,6 +262,10 @@
   "backupExportText": "I-export ang lahat ng iyong trabaho, time entries, invoices, notes, events, at iba pa. Ang file ay isang JSON document na maaaring i-import sa ibang lugar.",
   "exportAllData": "📦 I-export ang lahat ng data",
   "exporting": "⏳ Nag-e-export...",
+  "verified": "✅ Na-verify",
+  "verify": "☑️ I-verify",
+  "screenshotToggle": "📸 Random screenshots (proof of work)",
+  "screenshotActive": "📸 Aktibo ang pag-capture ng screenshot",
   "language": {
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",

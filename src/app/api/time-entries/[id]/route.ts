@@ -20,6 +20,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (body.hourly_rate !== undefined) update.hourly_rate = body.hourly_rate;
     if (body.job_id !== undefined) update.job_id = body.job_id;
     if (body.event_id !== undefined) update.event_id = body.event_id;
+    if (body.verified !== undefined) update.verified = body.verified;
 
     const { data, error } = await supabase
       .from("time_entries")

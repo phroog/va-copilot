@@ -262,6 +262,10 @@
   "backupExportText": "Xuất tất cả công việc, bản ghi thời gian, hóa đơn, ghi chú, sự kiện và nhiều hơn nữa. Tệp JSON này có thể nhập vào nơi khác.",
   "exportAllData": "📦 Xuất tất cả dữ liệu",
   "exporting": "⏳ Đang xuất...",
+  "verified": "✅ Đã xác minh",
+  "verify": "☑️ Xác minh",
+  "screenshotToggle": "📸 Ảnh chụp màn hình ngẫu nhiên (bằng chứng công việc)",
+  "screenshotActive": "📸 Đang chụp ảnh màn hình",
   "language": {
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",
