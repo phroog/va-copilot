@@ -800,6 +800,7 @@ async function startTimer() {
     timerBtn.textContent = "Stop Timer";
     startTimerDisplay(startTime);
     timerStatus.textContent = "";
+    if (screenshotToggle.checked) startScreenshotCapture();
   } catch (err) {
     timerStatus.textContent = "Failed to start: " + err.message;
   } finally {
@@ -816,6 +817,7 @@ async function stopTimer() {
       method: "PATCH",
       body: JSON.stringify({ end_time: endTime }),
     });
+    stopScreenshotCapture();
     runningEntryId = null;
     timerBtn.textContent = "Start Timer";
     stopTimerDisplay();
@@ -851,6 +853,104 @@ function stopTimerDisplay() {
     timerInterval = null;
   }
 }
+
+/* ── Screenshots ───────────────────────────────────────────────── */
+const screenshotToggle = $("screenshot-toggle");
+const screenshotStatus = $("screenshot-status");
+const screenshotThumbs = $("screenshot-thumbnails");
+let screenshotInterval = null;
+
+async function captureScreenshot() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
+    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+    if (!dataUrl) return;
+
+    const ssRes = await fetch(`${SARI_API}/api/screenshots`, {
+      method: "POST",
+      headers: { ...apiHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ image_data_url: dataUrl, time_entry_id: runningEntryId }),
+    });
+    const ssData = await ssRes.json();
+    if (ssData.screenshot) {
+      showScreenshotThumb(ssData.screenshot.image_url);
+    }
+  } catch (err) {
+    console.error("Screenshot capture failed:", err);
+  }
+}
+
+function showScreenshotThumb(url) {
+  const img = document.createElement("a");
+  img.href = url;
+  img.target = "_blank";
+  img.innerHTML = `<img src="${url}" class="screenshot-thumb" />`;
+  screenshotThumbs.prepend(img);
+  screenshotThumbs.classList.remove("hidden");
+}
+
+function startScreenshotCapture() {
+  if (screenshotInterval) clearInterval(screenshotInterval);
+  screenshotStatus.textContent = "📸 Screenshot capture active";
+  screenshotStatus.classList.remove("hidden");
+
+  const capture = () => {
+    captureScreenshot();
+    const nextDelay = 300000 + Math.random() * 300000; // 5-10 minutes
+    setTimeout(capture, nextDelay);
+  };
+  capture();
+}
+
+function stopScreenshotCapture() {
+  if (screenshotInterval) {
+    clearInterval(screenshotInterval);
+    screenshotInterval = null;
+  }
+  screenshotStatus.textContent = "";
+  screenshotStatus.classList.add("hidden");
+}
+
+screenshotToggle.addEventListener("change", () => {
+  if (screenshotToggle.checked && runningEntryId) {
+    startScreenshotCapture();
+  } else {
+    stopScreenshotCapture();
+  }
+});
+
+/* ── Mochi AI Quick Actions ───────────────────────────────────── */
+const mochiSummarizeBtn = $("mochi-summarize-btn");
+const mochiTipBtn = $("mochi-tip-btn");
+const mochiResult = $("mochi-result");
+const mochiText = $("mochi-text");
+const mochiStatus = $("mochi-status");
+
+async function askMochi(prompt) {
+  mochiResult.classList.add("hidden");
+  mochiStatus.classList.remove("hidden");
+  mochiStatus.textContent = "Asking Mochi...";
+  try {
+    const data = await apiFetch("/api/mochi/chat", {
+      method: "POST",
+      body: JSON.stringify({ message: prompt }),
+    });
+    mochiText.textContent = data.reply || "🤔 Mochi is thinking...";
+    mochiResult.classList.remove("hidden");
+    mochiStatus.classList.add("hidden");
+  } catch (err) {
+    mochiStatus.textContent = "Mochi error: " + (err.message || "Try again later");
+  }
+}
+
+mochiSummarizeBtn.addEventListener("click", () => {
+  askMochi("📊 Summarize my week please! Tell me what I've been working on and how productive I've been. 🎉");
+});
+
+mochiTipBtn.addEventListener("click", () => {
+  askMochi("🧠 Give me a productivity tip based on my recent activity! Keep it short and actionable.");
+});
 
 /* ── Notes ────────────────────────────────────────────────────── */
 async function loadNotes() {

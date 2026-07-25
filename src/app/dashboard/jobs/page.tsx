@@ -721,6 +721,17 @@ export default function JobsPage() {
   );
 }
 
+interface Milestone {
+  id: string;
+  job_id: string;
+  title: string;
+  description: string;
+  due_date: string | null;
+  status: "todo" | "in_progress" | "done";
+  order_index: number;
+  created_at: string;
+}
+
 function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId }: { job: any; generating: string | null; generatePitch: (id: string, title: string, hasExisting: boolean) => void; deleteJob: (id: string, title: string) => void; t: any; creditSuckJobId: string | null }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
@@ -736,6 +747,55 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
   const [scamChecking, setScamChecking] = useState(false);
   const [scamDialogOpen, setScamDialogOpen] = useState(false);
 
+  // Milestones
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [milestonesOpen, setMilestonesOpen] = useState(false);
+  const [milestonesLoading, setMilestonesLoading] = useState(false);
+  const [newMilestoneTitle, setNewMilestoneTitle] = useState("");
+  const [newMilestoneDesc, setNewMilestoneDesc] = useState("");
+  const [newMilestoneDate, setNewMilestoneDate] = useState("");
+
+  const fetchMilestones = async () => {
+    setMilestonesLoading(true);
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/milestones`);
+      const data = await res.json();
+      setMilestones(data.milestones ?? []);
+    } catch {} finally { setMilestonesLoading(false); }
+  };
+
+  useEffect(() => {
+    if (milestonesOpen) fetchMilestones();
+  }, [milestonesOpen]);
+
+  const addMilestone = async () => {
+    if (!newMilestoneTitle.trim()) return;
+    await fetch(`/api/jobs/${job.id}/milestones`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newMilestoneTitle.trim(), description: newMilestoneDesc.trim(), due_date: newMilestoneDate || null }),
+    });
+    setNewMilestoneTitle("");
+    setNewMilestoneDesc("");
+    setNewMilestoneDate("");
+    fetchMilestones();
+  };
+
+  const updateMilestoneStatus = async (milestoneId: string, status: string) => {
+    await fetch(`/api/jobs/${job.id}/milestones/${milestoneId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    fetchMilestones();
+  };
+
+  const deleteMilestone = async (milestoneId: string) => {
+    if (!confirm("Delete this milestone?")) return;
+    await fetch(`/api/jobs/${job.id}/milestones/${milestoneId}`, { method: "DELETE" });
+    fetchMilestones();
+  };
+
   const generateToken = async () => {
     setGeneratingToken(true);
     try {
@@ -750,6 +810,8 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
       }
     } catch {} finally { setGeneratingToken(false); }
   };
+
+  const statusMilestones = (status: string) => milestones.filter(m => m.status === status);
 
   return (
     <Card key={job.id}>
@@ -805,6 +867,9 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
           </Button>
           <Button size="sm" variant="outline" onClick={() => setReviewOpen(!reviewOpen)}>
             ⭐ Request Review
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setMilestonesOpen(!milestonesOpen)}>
+            📋 Milestones {milestones.filter(m => m.status !== "done").length > 0 && `(${milestones.filter(m => m.status !== "done").length})`}
           </Button>
           <button onClick={() => deleteJob(job.id, job.title)} className="ml-auto text-slate-400 hover:text-red-500 transition-colors squishy" title="Delete job">
             🗑️
@@ -918,7 +983,91 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
             )}
           </div>
         )}
+
+        {/* Milestones Board */}
+        {milestonesOpen && (
+          <div className="mt-4 p-4 bg-white dark:bg-dark-card border border-kawaii-lavender/30 dark:border-dark-surface rounded-2xl animate-slide-up">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-200">📋 Milestones</p>
+              <div className="flex gap-2">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">{statusMilestones("todo").length} Todo</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">{statusMilestones("in_progress").length} In Progress</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">{statusMilestones("done").length} Done</span>
+              </div>
+            </div>
+
+            {/* Add milestone form */}
+            <div className="flex flex-col sm:flex-row gap-2 mb-4 p-3 bg-kawaii-lavender/10 dark:bg-dark-surface/30 rounded-xl">
+              <Input value={newMilestoneTitle} onChange={(e) => setNewMilestoneTitle(e.target.value)} placeholder="Milestone title" className="flex-1" />
+              <Input value={newMilestoneDesc} onChange={(e) => setNewMilestoneDesc(e.target.value)} placeholder="Description (optional)" className="flex-1" />
+              <Input type="date" value={newMilestoneDate} onChange={(e) => setNewMilestoneDate(e.target.value)} className="w-40" />
+              <Button size="sm" variant="primary" onClick={addMilestone} disabled={!newMilestoneTitle.trim()}>➕ Add</Button>
+            </div>
+
+            {milestonesLoading ? (
+              <div className="text-center py-4 text-sm text-slate-400 animate-pulse">Loading...</div>
+            ) : milestones.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-4">No milestones yet. Add your first one!</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Todo */}
+                <div className="bg-yellow-50 dark:bg-yellow-900/10 rounded-xl p-3">
+                  <p className="text-xs font-bold text-yellow-700 dark:text-yellow-300 mb-2 uppercase tracking-wider">To Do</p>
+                  <div className="space-y-2">
+                    {statusMilestones("todo").map((m) => (
+                      <MilestoneCard key={m.id} milestone={m} onStatusChange={updateMilestoneStatus} onDelete={deleteMilestone} />
+                    ))}
+                  </div>
+                </div>
+                {/* In Progress */}
+                <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-3">
+                  <p className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-2 uppercase tracking-wider">In Progress</p>
+                  <div className="space-y-2">
+                    {statusMilestones("in_progress").map((m) => (
+                      <MilestoneCard key={m.id} milestone={m} onStatusChange={updateMilestoneStatus} onDelete={deleteMilestone} />
+                    ))}
+                  </div>
+                </div>
+                {/* Done */}
+                <div className="bg-green-50 dark:bg-green-900/10 rounded-xl p-3">
+                  <p className="text-xs font-bold text-green-700 dark:text-green-300 mb-2 uppercase tracking-wider">Done</p>
+                  <div className="space-y-2">
+                    {statusMilestones("done").map((m) => (
+                      <MilestoneCard key={m.id} milestone={m} onStatusChange={updateMilestoneStatus} onDelete={deleteMilestone} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+function MilestoneCard({ milestone, onStatusChange, onDelete }: { milestone: Milestone; onStatusChange: (id: string, status: string) => void; onDelete: (id: string) => void }) {
+  const nextStatus = milestone.status === "todo" ? "in_progress" : milestone.status === "in_progress" ? "done" : "todo";
+  const statusLabel = milestone.status === "todo" ? "▶ Start" : milestone.status === "in_progress" ? "✅ Complete" : "🔄 Redo";
+
+  return (
+    <div className="bg-white dark:bg-dark-card rounded-lg p-3 border border-kawaii-lavender/20 dark:border-dark-surface/50 shadow-sm">
+      <div className="flex items-start justify-between gap-1">
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 break-words flex-1">{milestone.title}</p>
+        <button onClick={() => onDelete(milestone.id)} className="text-slate-300 hover:text-red-500 shrink-0 text-xs">🗑️</button>
+      </div>
+      {milestone.description && (
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{milestone.description}</p>
+      )}
+      {milestone.due_date && (
+        <p className="text-xs text-slate-400 mt-1">📅 {milestone.due_date}</p>
+      )}
+      <button
+        onClick={() => onStatusChange(milestone.id, nextStatus)}
+        className="mt-2 w-full text-xs px-2 py-1 rounded-full font-medium transition-all squishy bg-kawaii-lavender/20 hover:bg-kawaii-lavender/40 text-kawaii-purple dark:bg-dark-surface/50 dark:hover:bg-dark-surface"
+      >
+        {statusLabel}
+      </button>
+    </div>
   );
 }

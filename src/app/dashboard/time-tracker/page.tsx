@@ -16,6 +16,14 @@ interface TimeEntry {
   end_time: string | null;
   hourly_rate: number;
   job_id?: string | null;
+  verified?: boolean;
+}
+
+interface Screenshot {
+  id: string;
+  time_entry_id: string;
+  image_url: string;
+  taken_at: string;
 }
 
 interface JobOption {
@@ -85,6 +93,7 @@ function isSameDay(a: string, b: string): boolean {
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [manualJobId, setManualJobId] = useState<string>("");
   const [eventId, setEventId] = useState<string>("");
+  const [screenshots, setScreenshots] = useState<Record<string, Screenshot[]>>({});
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load event from query param for event linking
@@ -128,6 +137,26 @@ function isSameDay(a: string, b: string): boolean {
   }, [filterDate, filterProject]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Load screenshots for entries
+  useEffect(() => {
+    if (entries.length > 0) {
+      const entryIds = entries.map(e => e.id).filter(Boolean);
+      if (entryIds.length > 0) {
+        fetch(`/api/screenshots?time_entry_id=${entryIds[0]}`)
+          .then(r => r.json())
+          .then(data => {
+            const map: Record<string, Screenshot[]> = {};
+            for (const s of data.screenshots ?? []) {
+              if (!map[s.time_entry_id]) map[s.time_entry_id] = [];
+              map[s.time_entry_id].push(s);
+            }
+            setScreenshots(map);
+          })
+          .catch(() => {});
+      }
+    }
+  }, [entries]);
 
   // Load default rate
   useEffect(() => {
@@ -267,6 +296,17 @@ function isSameDay(a: string, b: string): boolean {
     } catch (e: any) {
       setApiError(e?.message ?? "Failed to save");
     }
+  };
+
+  const toggleVerified = async (entry: TimeEntry) => {
+    try {
+      await fetch(`/api/time-entries/${entry.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verified: !entry.verified }),
+      });
+      fetchData();
+    } catch {}
   };
 
   const exportCsv = () => {
@@ -531,6 +571,7 @@ function isSameDay(a: string, b: string): boolean {
                     const secs = getEntryDurationSeconds(entry);
                     const amount = (secs / 3600) * entry.hourly_rate;
                     const isEditing = editingId === entry.id;
+                    const entryScreenshots = screenshots[entry.id] || [];
                     return (
                       <Card key={entry.id} className="squishy">
                         <CardContent className="p-4">
@@ -561,6 +602,9 @@ function isSameDay(a: string, b: string): boolean {
                                   <Badge variant="outline" className="text-xs">
                                     {formatDuration(secs)}
                                   </Badge>
+                                  {entry.verified && (
+                                    <Badge variant="default" className="text-xs bg-green-500">✅ Verified</Badge>
+                                  )}
                                 </div>
                                 <p className="text-sm text-slate-600 dark:text-slate-300 truncate">
                                   {entry.description || "(no description)"}
@@ -573,18 +617,39 @@ function isSameDay(a: string, b: string): boolean {
                                     ${entry.hourly_rate}/hr · ${amount.toFixed(2)}
                                   </span>
                                 </div>
+                                {/* Screenshot thumbnails */}
+                                {entryScreenshots.length > 0 && (
+                                  <div className="flex gap-1 mt-2">
+                                    {entryScreenshots.slice(0, 3).map((s) => (
+                                      <a key={s.id} href={s.image_url} target="_blank" rel="noopener noreferrer">
+                                        <img src={s.image_url} alt="Screenshot" className="w-12 h-8 object-cover rounded border border-kawaii-lavender/30" />
+                                      </a>
+                                    ))}
+                                    {entryScreenshots.length > 3 && (
+                                      <span className="text-xs text-slate-400 self-end">+{entryScreenshots.length - 3}</span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              <div className="flex gap-1 shrink-0">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => { setEditingId(entry.id); setEditDesc(entry.description); setEditProject(entry.project_name); setEditRate(String(entry.hourly_rate)); }}
+                              <div className="flex flex-col gap-1 shrink-0 items-end">
+                                <div className="flex gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => { setEditingId(entry.id); setEditDesc(entry.description); setEditProject(entry.project_name); setEditRate(String(entry.hourly_rate)); }}
+                                  >
+                                    ✏️
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => deleteEntry(entry.id)}>
+                                    🗑️
+                                  </Button>
+                                </div>
+                                <button
+                                  onClick={() => toggleVerified(entry)}
+                                  className={`text-xs px-2 py-0.5 rounded-full font-medium squishy ${entry.verified ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-slate-100 text-slate-400 dark:bg-dark-surface/50"}`}
                                 >
-                                  ✏️
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => deleteEntry(entry.id)}>
-                                  🗑️
-                                </Button>
+                                  {entry.verified ? "✅ Verified" : "☑️ Verify"}
+                                </button>
                               </div>
                             </div>
                           )}

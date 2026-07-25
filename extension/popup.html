@@ -80,6 +80,14 @@
         <div class="timer-display" id="timer-display">00:00:00</div>
         <button id="timer-btn" class="btn btn-primary">Start Timer</button>
         <p id="timer-status" class="status-text"></p>
+        <div style="margin-top:8px">
+          <label class="toggle-label">
+            <input type="checkbox" id="screenshot-toggle">
+            <span>📸 Random screenshots while tracking</span>
+          </label>
+          <p id="screenshot-status" class="status-text hidden"></p>
+          <div id="screenshot-thumbnails" class="screenshot-thumbs"></div>
+        </div>
       </div>
 
       <!-- Notes Tab -->
@@ -176,6 +184,15 @@
           <div class="pomodoro-display" id="pomodoro-display">25:00</div>
           <button id="pomodoro-btn" class="btn btn-primary">Start Pomodoro</button>
           <p id="pomodoro-status" class="status-text"></p>
+        </div>
+        <div class="tools-section">
+          <h3 class="tools-heading">🤖 Mochi AI</h3>
+          <button id="mochi-summarize-btn" class="btn btn-secondary" style="margin-bottom:4px">📊 Summarize my week</button>
+          <button id="mochi-tip-btn" class="btn btn-secondary">🧠 Give me a productivity tip</button>
+          <div id="mochi-result" class="card hidden" style="margin-top:6px">
+            <p id="mochi-text" class="status-text"></p>
+          </div>
+          <p id="mochi-status" class="status-text hidden"></p>
         </div>
       </div>
     </div>

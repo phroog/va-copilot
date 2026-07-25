@@ -138,7 +138,7 @@ export default function ChatPage() {
           <div ref={bottomRef} />
         </div>
 
-        <div className="p-4 border-t border-kawaii-lavender/20 dark:border-dark-surface/50 bg-white/80 dark:bg-dark-card/80">
+        <div className="p-4 border-t border-kawaii-lavender/20 dark:border-dark-surface/50 bg-white/80 dark:bg-dark-card/80 space-y-2">
           <div className="flex gap-2">
             <Input
               ref={inputRef as any}

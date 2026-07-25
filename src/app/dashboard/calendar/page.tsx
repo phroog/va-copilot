@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocale } from "@/lib/i18n/context";
+import { useToast } from "@/components/toast";
 import Link from "next/link";
 
 interface CalendarEvent {
@@ -31,6 +32,7 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function CalendarPage() {
   const { t } = useLocale();
+  const { showToast } = useToast();
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -52,6 +54,9 @@ export default function CalendarPage() {
   const [formAllDay, setFormAllDay] = useState(false);
   const [formMeetingLink, setFormMeetingLink] = useState("");
   const [formCalendly, setFormCalendly] = useState("");
+
+  // Google Calendar sync
+  const [syncing, setSyncing] = useState(false);
 
   const fetchEvents = useCallback(async (month: number, year: number) => {
     setLoading(true);
@@ -181,6 +186,28 @@ export default function CalendarPage() {
     }
   };
 
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/calendar/sync", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message || "Synced!");
+        fetchEvents(currentMonth, currentYear);
+      } else {
+        if (data.needsConnect) {
+          showToast("Connect Google Calendar first in Settings", "error");
+        } else {
+          showToast(data.error || "Sync failed", "error");
+        }
+      }
+    } catch {
+      showToast("Sync failed", "error");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const isToday = (day: number) => {
     return day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
   };
@@ -200,7 +227,12 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <h1 className="text-3xl font-extrabold">📅 {t("calendar")}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-extrabold">📅 {t("calendar")}</h1>
+        <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
+          {syncing ? "⏳ Syncing..." : "🔄 Sync with Google Calendar"}
+        </Button>
+      </div>
 
       <Card>
         <CardContent className="p-6">
@@ -247,6 +279,8 @@ export default function CalendarPage() {
                         className={`text-[10px] leading-tight px-1.5 py-0.5 rounded-full truncate font-medium ${
                           ev.source === "follow-up"
                             ? "bg-pink-200 dark:bg-pink-800/60 text-pink-800 dark:text-pink-200"
+                            : ev.source === "google_calendar"
+                            ? "bg-blue-200 dark:bg-blue-800/60 text-blue-800 dark:text-blue-200"
                             : "bg-kawaii-lavender/40 dark:bg-kawaii-purple/30 text-slate-700 dark:text-slate-200"
                         }`}
                         title={ev.title}
@@ -289,12 +323,15 @@ export default function CalendarPage() {
             ) : (
               dayEvents.map((ev) => {
                 const isFollowUp = ev.source === "follow-up";
+                const isGoogle = ev.source === "google_calendar";
                 return (
                   <div
                     key={ev.id}
                     className={`p-4 rounded-2xl cursor-pointer transition-all squishy ${
                       isFollowUp
                         ? "bg-pink-100 dark:bg-pink-900/30 border-2 border-pink-200 dark:border-pink-700/50"
+                        : isGoogle
+                        ? "bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-200 dark:border-blue-700/50"
                         : "bg-kawaii-lavender/15 dark:bg-dark-surface/50 border-2 border-transparent hover:border-kawaii-lavender/30"
                     }`}
                     onClick={() => setShowDetail(ev)}
@@ -302,6 +339,7 @@ export default function CalendarPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         {isFollowUp && <span className="text-sm">🔔</span>}
+                        {isGoogle && <span className="text-sm">📅</span>}
                         <span className="font-bold text-slate-800 dark:text-slate-100">{ev.title}</span>
                       </div>
                       <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -368,13 +406,16 @@ export default function CalendarPage() {
               {showDetail.source === "follow-up" && (
                 <p className="text-sm text-pink-500">🔔 Follow-up reminder</p>
               )}
+              {showDetail.source === "google_calendar" && (
+                <p className="text-sm text-blue-500">📅 From Google Calendar</p>
+              )}
             </div>
 
             <div className="flex gap-2 flex-wrap">
               <Link href={`/dashboard/time-tracker?eventId=${showDetail.id}`}>
                 <Button variant="primary" size="sm">⏱ Track Time</Button>
               </Link>
-              {showDetail.source !== "follow-up" && (
+              {showDetail.source !== "follow-up" && showDetail.source !== "google_calendar" && (
                 <>
                   <Button variant="outline" size="sm" onClick={() => openEdit(showDetail)}>✏️ Edit</Button>
                   <Button variant="destructive" size="sm" onClick={() => handleDelete(showDetail.id)}>🗑️ Delete</Button>
