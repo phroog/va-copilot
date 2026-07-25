@@ -28,8 +28,8 @@ export async function GET(request: Request) {
     .select("user_id, org_id, organizations(name)")
     .in("org_id", orgIds);
 
-  const memberIds = [...new Set((allMembers ?? []).map((m: any) => m.user_id))];
-  const orgName = allMembers?.[0]?.organizations?.name ?? "Agency";
+  const memberIds = Array.from(new Set((allMembers ?? []).map((m: any) => m.user_id)));
+  const orgName = allMembers?.[0]?.organizations?.[0]?.name ?? "Agency";
 
   // Fetch aggregated data for all members
   const [timeEntries, pitches, invoices, profiles] = await Promise.all([
@@ -135,9 +135,9 @@ export async function GET(request: Request) {
     start,
     end,
     total_agency_hours: totalAgencyHours,
-    total_revenue,
-    total_pitches,
-    total_invoices,
+    total_revenue: totalRevenue,
+    total_pitches: totalPitches,
+    total_invoices: totalInvoices,
     active_members: activeMembers,
     members,
   });
