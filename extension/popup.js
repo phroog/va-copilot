@@ -234,6 +234,7 @@ tabs.forEach((tab) => {
     if (tab.dataset.tab === "tools") initTools();
     if (tab.dataset.tab === "clients") initClients();
     if (tab.dataset.tab === "scam") initScamCheck();
+    if (tab.dataset.tab === "scanner") initScanner();
   });
 });
 
@@ -1255,6 +1256,463 @@ doGeneratePitch = async function(jobId) {
     });
   }
 };
+
+/* ── Scanner Tab ──────────────────────────────────────────────── */
+
+/* ── Scanner UI refs ──────────────────────────────────────────── */
+const scanCurrentBtn = $("scan-current-btn");
+const scanStatus = $("scan-status");
+const scanResults = $("scan-results");
+const scanList = $("scan-list");
+const scanActions = $("scan-actions");
+const scanSaveBtn = $("scan-save-btn");
+const scanSaveStatus = $("scan-save-status");
+const scanExportBtn = $("scan-export-btn");
+const scanBatchBtn = $("scan-batch-btn");
+const scanProgress = $("scan-progress");
+const scanProgressText = $("scan-progress-text");
+const scanProgressFill = $("scan-progress-fill");
+const scanUrlsInput = $("scan-urls-input");
+const scanSaveUrlsBtn = $("scan-save-urls-btn");
+const scanUrlsStatus = $("scan-urls-status");
+const scanStartBgBtn = $("scan-start-bg-btn");
+
+let scannedJobs = [];
+let scanInProgress = false;
+
+/* ── Load saved search URLs ──────────────────────────────────── */
+async function loadScanUrls() {
+  const result = await chrome.storage.local.get("scanUrls");
+  if (result.scanUrls) {
+    scanUrlsInput.value = result.scanUrls.join("\n");
+  }
+}
+
+async function saveScanUrls() {
+  const raw = scanUrlsInput.value.trim();
+  const urls = raw ? raw.split("\n").map((u) => u.trim()).filter(Boolean) : [];
+  await chrome.storage.local.set({ scanUrls: urls });
+  scanUrlsStatus.textContent = `Saved ${urls.length} URL(s)`;
+  setTimeout(() => { scanUrlsStatus.textContent = ""; }, 2000);
+}
+
+scanSaveUrlsBtn.addEventListener("click", saveScanUrls);
+
+/* ── Detect platform from URL ─────────────────────────────────── */
+function detectPlatform(url) {
+  if (!url) return "";
+  if (url.includes("upwork.com")) return "Upwork";
+  if (url.includes("onlinejobs.ph")) return "OnlineJobs.ph";
+  if (url.includes("facebook.com")) return "Facebook";
+  if (url.includes("linkedin.com")) return "LinkedIn";
+  return "";
+}
+
+function supportedScanSite(url) {
+  return !!detectPlatform(url);
+}
+
+/* ── Scan Current Page ────────────────────────────────────────── */
+scanCurrentBtn.addEventListener("click", scanCurrentPage);
+
+async function scanCurrentPage() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab || !supportedScanSite(tab.url)) {
+    scanStatus.textContent = "❌ Not on a supported job page (Upwork, OnlineJobs.ph, Facebook, LinkedIn)";
+    scanStatus.classList.remove("hidden");
+    return;
+  }
+
+  scanStatus.textContent = "🔍 Scanning page for job listings...";
+  scanStatus.className = "status-text";
+  scanStatus.classList.remove("hidden");
+  scanCurrentBtn.disabled = true;
+  scanResults.classList.add("hidden");
+  scanActions.classList.add("hidden");
+
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const hostname = window.location.hostname;
+        const url = window.location.href;
+        let platform = "";
+        if (hostname.includes("upwork.com")) platform = "Upwork";
+        else if (hostname.includes("onlinejobs.ph")) platform = "OnlineJobs.ph";
+        else if (hostname.includes("facebook.com")) platform = "Facebook";
+        else if (hostname.includes("linkedin.com")) platform = "LinkedIn";
+        else platform = hostname;
+
+        const jobs = [];
+
+        /* Upwork */
+        if (platform === "Upwork") {
+          const cards = document.querySelectorAll(
+            'section[data-test="JobCard"], section[class*="job-tile"], div[class*="job-card"], article[class*="job"]'
+          );
+          cards.forEach((card) => {
+            const titleEl = card.querySelector(
+              '[data-test="job-title"], .job-title-link, h2 a, h3 a, a[class*="job-title"]'
+            );
+            const title = titleEl?.textContent?.trim() || "";
+            if (!title) return;
+
+            const descEl = card.querySelector(
+              '[data-test="job-description"], .job-description, .break-word, p[class*="description"]'
+            );
+            const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
+
+            const budgetEl = card.querySelector(
+              '[data-test="budget"], [data-test="JobBudget"], .job-budget, [class*="budget"]'
+            );
+            const budgetText = budgetEl?.textContent?.trim() || "";
+            let budgetAmount = "";
+            let budgetType = "";
+            if (budgetText) {
+              const m = budgetText.match(/\$[\d,]+(?:\.\d{2})?(?:\s*-\s*\$?[\d,]+(?:\.\d{2})?)?/);
+              if (m) budgetAmount = m[0];
+              if (/hourly|\/hr/i.test(budgetText)) budgetType = "hourly";
+              else if (/fixed/i.test(budgetText)) budgetType = "fixed";
+            }
+
+            const linkEl = titleEl?.closest("a") || card.querySelector("a[href*='/job/']");
+            const jobUrl = linkEl?.href
+              ? (linkEl.href.startsWith("http") ? linkEl.href : "https://www.upwork.com" + linkEl.getAttribute("href"))
+              : url;
+
+            const skills = [];
+            const skillEls = card.querySelectorAll('[data-test="skill-tag"], .skill-tag, [class*="skill"]');
+            skillEls.forEach((el) => {
+              const t = el.textContent?.trim();
+              if (t) skills.push(t);
+            });
+
+            const postedEl = card.querySelector('[data-test="posted-date"], time, [class*="posted"]');
+            const postedDate = postedEl?.textContent?.trim() || "";
+
+            jobs.push({ title, description, budgetAmount, budgetType, url: jobUrl, platform, skills, postedDate, clientName: "" });
+          });
+        }
+
+        /* OnlineJobs.ph */
+        else if (platform === "OnlineJobs.ph") {
+          const items = document.querySelectorAll(
+            '.joblist-item, .job-post-item, #joblist > li, div[class*="job-listing"], tr[class*="job"]'
+          );
+          items.forEach((item) => {
+            const titleEl = item.querySelector(
+              '.joblist-item-title a, .job-title a, h4 a, h3 a, a[class*="title"], a[href*="/jobseekers/job/"]'
+            );
+            const title = titleEl?.textContent?.trim() || "";
+            if (!title) return;
+
+            const descEl = item.querySelector(
+              '.joblist-item-description, .job-description, p[class*="desc"]'
+            );
+            const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
+
+            const salaryEl = item.querySelector(
+              '.joblist-item-salary, .salary, [class*="salary"], [class*="budget"]'
+            );
+            const budgetAmount = salaryEl?.textContent?.trim() || "";
+
+            const linkHref = titleEl?.getAttribute("href") || "";
+            const jobUrl = linkHref.startsWith("http")
+              ? linkHref
+              : "https://www.onlinejobs.ph" + (linkHref.startsWith("/") ? "" : "/") + linkHref;
+
+            const companyEl = item.querySelector(
+              '.joblist-item-company, .company, [class*="company"]'
+            );
+            const clientName = companyEl?.textContent?.trim() || "";
+
+            const postedEl = item.querySelector(
+              '.joblist-item-date, .date, time, [class*="posted"]'
+            );
+            const postedDate = postedEl?.textContent?.trim() || "";
+
+            jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName });
+          });
+        }
+
+        /* Facebook */
+        else if (platform === "Facebook") {
+          const postSelectors = [
+            'div[data-pagelet] div[role="article"]',
+            'div[role="article"]',
+            '.userContentWrapper',
+            'div[class*="post"]',
+          ];
+          let posts = [];
+          for (const sel of postSelectors) {
+            posts = document.querySelectorAll(sel);
+            if (posts.length > 0) break;
+          }
+
+          const keywords = /\b(looking for|hiring|need a|job|vacancy|open position|freelancer|virtual assistant|va)\b/i;
+          posts.forEach((post) => {
+            const text = post.textContent || "";
+            if (!keywords.test(text)) return;
+
+            const title = text.split("\n").find((l) => keywords.test(l))?.trim()?.substring(0, 200) || text.substring(0, 120).trim();
+            const description = text.substring(0, 2000).trim();
+
+            const linkEl = post.querySelector('a[href*="/posts/"], a[href*="story"], a[href*="permalink"]');
+            const jobUrl = linkEl?.href || url;
+
+            const budgetMatch = text.match(/\$\s*[\d,]+(?:\s*-\s*\$?\s*[\d,]+)?(?:\s*\/\s*hr)?/i);
+            const budgetAmount = budgetMatch ? budgetMatch[0] : "";
+
+            jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate: "", clientName: "" });
+          });
+        }
+
+        /* LinkedIn */
+        else if (platform === "LinkedIn") {
+          const cards = document.querySelectorAll(
+            '.job-card-container, .job-search-card, .job-card, article[class*="job"], li[class*="job"]'
+          );
+          cards.forEach((card) => {
+            const titleEl = card.querySelector(
+              '.job-card-list__title, .job-card-container__link, artdeco-entity-lockup__title a, a[class*="job-title"], h3 a, a[class*="job-card"]'
+            );
+            const title = titleEl?.textContent?.trim() || "";
+            if (!title) return;
+
+            const companyEl = card.querySelector(
+              '.job-card-container__company-name, .job-search-card__subtitle, [class*="company"]'
+            );
+            const clientName = companyEl?.textContent?.trim() || "";
+
+            const locationEl = card.querySelector(
+              '.job-card-container__metadata-item, .job-search-card__location, [class*="location"]'
+            );
+            const location = locationEl?.textContent?.trim() || "";
+
+            const linkHref = titleEl?.getAttribute("href") || "";
+            const jobUrl = linkHref.startsWith("http")
+              ? linkHref
+              : "https://www.linkedin.com" + (linkHref.startsWith("/") ? "" : "/") + linkHref;
+
+            const descEl = card.querySelector(
+              '.job-card-container__description, .job-search-card__snippet, [class*="description"], [class*="snippet"]'
+            );
+            const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
+
+            const budgetEl = card.querySelector('[class*="salary"], [class*="pay"], [class*="compensation"]');
+            const budgetAmount = budgetEl?.textContent?.trim() || "";
+
+            const postedEl = card.querySelector('time, [class*="posted"], [class*="date"]');
+            const postedDate = postedEl?.textContent?.trim() || "";
+
+            jobs.push({ title, description: description || location, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName });
+          });
+        }
+
+        return { platform, count: jobs.length, jobs };
+      },
+    });
+
+    const data = results?.[0]?.result;
+    if (!data || !data.jobs || data.jobs.length === 0) {
+      scanStatus.textContent =
+        "No job listings found on this page. The page structure may have changed. Try manual import.";
+      return;
+    }
+
+    scanStatus.textContent = `Found ${data.jobs.length} job(s) on ${data.platform}`;
+    scanResults.classList.remove("hidden");
+    renderScanResults(data.jobs);
+  } catch (err) {
+    scanStatus.textContent = "Scan failed: " + err.message;
+    console.error("Scan error:", err);
+  } finally {
+    scanCurrentBtn.disabled = false;
+  }
+}
+
+/* ── Render scan results ──────────────────────────────────────── */
+function renderScanResults(jobs) {
+  scannedJobs = jobs.map((j, i) => ({ ...j, _selected: true, _idx: i }));
+  renderScanList();
+  scanActions.classList.remove("hidden");
+  scanSaveBtn.textContent = `Save ${jobs.length} jobs to Sari`;
+  scanExportBtn.classList.remove("hidden");
+}
+
+function renderScanList() {
+  if (scannedJobs.length === 0) {
+    scanList.innerHTML = "<p class='status-text'>No jobs found</p>";
+    return;
+  }
+
+  scanList.innerHTML = scannedJobs
+    .map(
+      (j, i) =>
+        `<label class="scan-item ${j._selected ? "" : "scan-item-deselected"}">
+          <input type="checkbox" class="scan-checkbox" data-idx="${i}" ${j._selected ? "checked" : ""}>
+          <div class="scan-item-body">
+            <span class="scan-item-title">${j.title}</span>
+            <span class="scan-item-meta">${j.platform}${j.budgetAmount ? " | " + j.budgetAmount : ""}${j.clientName ? " | " + j.clientName : ""}</span>
+            <span class="scan-item-desc">${(j.description || "").substring(0, 150)}</span>
+          </div>
+        </label>`
+    )
+    .join("");
+
+  scanList.querySelectorAll(".scan-checkbox").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const idx = parseInt(cb.dataset.idx);
+      if (scannedJobs[idx]) {
+        scannedJobs[idx]._selected = cb.checked;
+        const selected = scannedJobs.filter((j) => j._selected);
+        scanSaveBtn.textContent = `Save ${selected.length} job(s) to Sari`;
+        cb.closest(".scan-item").classList.toggle("scan-item-deselected", !cb.checked);
+      }
+    });
+  });
+}
+
+/* ── Save selected jobs ───────────────────────────────────────── */
+scanSaveBtn.addEventListener("click", saveSelectedJobs);
+
+async function saveSelectedJobs() {
+  const selected = scannedJobs.filter((j) => j._selected);
+  if (selected.length === 0) {
+    scanSaveStatus.textContent = "No jobs selected";
+    scanSaveStatus.classList.remove("hidden");
+    return;
+  }
+
+  scanSaveBtn.disabled = true;
+  scanSaveStatus.textContent = `Saving ${selected.length} job(s)...`;
+  scanSaveStatus.className = "status-text";
+  scanSaveStatus.classList.remove("hidden");
+
+  try {
+    const payload = selected.map((j) => ({
+      title: j.title,
+      description: j.description || "",
+      platform: j.platform || "Unknown",
+      url: j.url || "",
+      budget_type: j.budgetType || null,
+      budget_amount: j.budgetAmount || null,
+      client_name: j.clientName || null,
+      skills: j.skills?.length ? j.skills : null,
+    }));
+
+    const data = await apiFetch("/api/jobs/bulk", {
+      method: "POST",
+      body: JSON.stringify({ jobs: payload }),
+    });
+
+    scanSaveStatus.textContent = `✅ Saved ${data.count || selected.length} job(s) to Sari!`;
+    scanSaveStatus.className = "status-text";
+    scanSaveBtn.classList.add("hidden");
+
+    setTimeout(() => {
+      scanSaveStatus.textContent = "";
+      scanSaveStatus.classList.add("hidden");
+    }, 4000);
+  } catch (err) {
+    scanSaveStatus.textContent = "Save failed: " + err.message;
+    scanSaveBtn.disabled = false;
+  }
+}
+
+/* ── Copy selected as text ────────────────────────────────────── */
+scanExportBtn.addEventListener("click", () => {
+  const selected = scannedJobs.filter((j) => j._selected);
+  if (selected.length === 0) return;
+  const text = selected
+    .map((j) => `${j.title} [${j.platform}]${j.budgetAmount ? " " + j.budgetAmount : ""}\n  ${j.url}`)
+    .join("\n\n");
+  navigator.clipboard.writeText(text).catch(() => {});
+  scanSaveStatus.textContent = "📋 Copied to clipboard";
+  scanSaveStatus.classList.remove("hidden");
+  setTimeout(() => { scanSaveStatus.classList.add("hidden"); }, 2000);
+});
+
+/* ── Background Scanner ───────────────────────────────────────── */
+scanStartBgBtn.addEventListener("click", startBackgroundScan);
+scanBatchBtn.addEventListener("click", startBackgroundScan);
+
+async function startBackgroundScan() {
+  const result = await chrome.storage.local.get("scanUrls");
+  let urls = result.scanUrls || [];
+
+  // If no saved URLs and triggered from batch button, use defaults
+  if (urls.length === 0) {
+    scanStatus.textContent = "⚠️ No search URLs saved. Add URLs in Scanner Settings.";
+    scanStatus.classList.remove("hidden");
+    setTimeout(() => { scanStatus.classList.add("hidden"); }, 3000);
+    return;
+  }
+
+  scanStatus.textContent = "Starting background scan...";
+  scanStatus.classList.remove("hidden");
+  scanProgress.classList.remove("hidden");
+  scanResults.classList.add("hidden");
+  scanActions.classList.add("hidden");
+  scanInProgress = true;
+  scanStartBgBtn.disabled = true;
+  scanBatchBtn.disabled = true;
+
+  pollScanProgress();
+
+  try {
+    const data = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { action: "startBackgroundScan", urls },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(response);
+          }
+        }
+      );
+    });
+
+    if (data && data.jobs && data.jobs.length > 0) {
+      scanStatus.textContent = `Background scan complete: ${data.jobs.length} job(s) found across ${data.sources} source(s)`;
+      scanResults.classList.remove("hidden");
+      renderScanResults(data.jobs);
+    } else {
+      scanStatus.textContent = "Background scan complete. No jobs found on the scanned pages.";
+    }
+  } catch (err) {
+    scanStatus.textContent = "Background scan failed: " + err.message;
+  } finally {
+    scanProgress.classList.add("hidden");
+    scanInProgress = false;
+    scanStartBgBtn.disabled = false;
+    scanBatchBtn.disabled = false;
+  }
+}
+
+/* ── Poll background scan progress ────────────────────────────── */
+async function pollScanProgress() {
+  while (scanInProgress) {
+    const result = await chrome.storage.session?.get(["scanProgress"]) || {};
+    if (result.scanProgress) {
+      const p = result.scanProgress;
+      scanProgressFill.style.width = p.total > 0 ? `${(p.current / p.total) * 100}%` : "0%";
+      scanProgressText.textContent = `Scanning ${p.current}/${p.total}: ${p.currentUrl || ""}`;
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+}
+
+/* ── Init scanner tab ─────────────────────────────────────────── */
+function initScanner() {
+  loadScanUrls();
+  scannedJobs = [];
+  scanResults.classList.add("hidden");
+  scanActions.classList.add("hidden");
+  scanProgress.classList.add("hidden");
+  scanSaveBtn.classList.remove("hidden");
+}
 
 /* ── Init ─────────────────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", async () => {

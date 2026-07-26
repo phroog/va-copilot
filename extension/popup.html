@@ -39,6 +39,7 @@
         <button class="tab active" data-tab="pitch">Pitch</button>
         <button class="tab" data-tab="time">Time</button>
         <button class="tab" data-tab="notes">Notes</button>
+        <button class="tab" data-tab="scanner">🔍 Scanner</button>
         <button class="tab" data-tab="clients">Clients</button>
         <button class="tab" data-tab="scam">Scam Check</button>
         <button class="tab" data-tab="vault">Vault</button>
@@ -139,6 +140,45 @@
           <p id="scam-analysis" class="status-text"></p>
         </div>
         <p id="scam-status" class="status-text hidden"></p>
+      </div>
+
+      <!-- Scanner Tab -->
+      <div id="tab-scanner" class="tab-content hidden">
+        <!-- Scan Current Page -->
+        <button id="scan-current-btn" class="btn btn-primary">🔍 Scan this page for jobs</button>
+        <p id="scan-status" class="status-text hidden"></p>
+
+        <!-- Scanning progress (background scan) -->
+        <div id="scan-progress" class="card hidden">
+          <p id="scan-progress-text" class="status-text">Scanning progress...</p>
+          <div class="scan-progress-bar"><div id="scan-progress-fill" class="scan-progress-fill"></div></div>
+        </div>
+
+        <!-- Results -->
+        <div id="scan-results" class="hidden">
+          <div id="scan-list" class="scan-list"></div>
+          <div id="scan-actions" class="hidden">
+            <button id="scan-save-btn" class="btn btn-primary">Save selected jobs to Sari</button>
+            <p id="scan-save-status" class="status-text hidden"></p>
+          </div>
+          <button id="scan-export-btn" class="btn btn-secondary hidden">Copy selected as text</button>
+        </div>
+
+        <!-- Divider -->
+        <hr class="scan-divider">
+
+        <!-- Batch Scan All Platforms -->
+        <button id="scan-batch-btn" class="btn btn-secondary">🌐 Scan all platforms</button>
+
+        <!-- Search URLs Settings -->
+        <details class="scan-settings">
+          <summary class="scan-settings-summary">⚙️ Scanner Settings</summary>
+          <p class="status-text">Add search URLs (one per line) for background scanning.</p>
+          <textarea id="scan-urls-input" class="vault-input" rows="4" placeholder="https://www.upwork.com/nx/search/jobs/?q=virtual+assistant&#10;https://www.onlinejobs.ph/jobseekers/joblist"></textarea>
+          <button id="scan-save-urls-btn" class="btn btn-secondary">Save URLs</button>
+          <p id="scan-urls-status" class="status-text"></p>
+          <button id="scan-start-bg-btn" class="btn btn-primary">▶ Start Background Scan</button>
+        </details>
       </div>
 
       <!-- Vault Tab -->

@@ -697,3 +697,137 @@ body.dark .toggle-label {
 body.dark .screenshot-thumb {
   border-color: #4a3560;
 }
+
+/* ── Scanner Tab ──────────────────────────────────────────────── */
+.scan-list {
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 6px;
+}
+
+.scan-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 6px;
+  border: 1px solid #e8e0f0;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  background: #fffdf9;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+body.dark .scan-item {
+  background: #3c2a4a;
+  border-color: #4a3560;
+}
+
+.scan-item:hover {
+  background: #b39ddb10;
+}
+
+.scan-item-deselected {
+  opacity: 0.5;
+}
+
+.scan-checkbox {
+  margin-top: 3px;
+  accent-color: #6c4e8f;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.scan-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.scan-item-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2e1e3a;
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+
+body.dark .scan-item-title {
+  color: #f0e6f6;
+}
+
+.scan-item-meta {
+  display: block;
+  font-size: 10px;
+  color: #b39ddb;
+  margin-bottom: 2px;
+}
+
+.scan-item-desc {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.dark .scan-item-desc {
+  color: #999;
+}
+
+.scan-divider {
+  border: none;
+  border-top: 1px solid #e8e0f0;
+  margin: 12px 0;
+}
+
+body.dark .scan-divider {
+  border-color: #4a3560;
+}
+
+.scan-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #e8e0f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+body.dark .scan-progress-bar {
+  background: #4a3560;
+}
+
+.scan-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #6c4e8f, #b39ddb);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.scan-settings {
+  margin-top: 8px;
+}
+
+.scan-settings-summary {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c4e8f;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+body.dark .scan-settings-summary {
+  color: #b39ddb;
+}
+
+.scan-settings textarea {
+  margin-top: 6px;
+  font-size: 12px;
+  resize: vertical;
+}
