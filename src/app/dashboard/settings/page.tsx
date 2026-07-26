@@ -72,7 +72,10 @@ export default function SettingsPage() {
         setHasGoogleCal(!!gcal);
       })
       .catch(() => {})
-      .finally(() => setCheckingGoogle(false));
+      .finally(() => {
+        setLoading(false);
+        setCheckingGoogle(false);
+      });
   }, []);
 
   const handleSave = async () => {
