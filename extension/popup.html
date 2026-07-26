@@ -154,6 +154,18 @@
           <div class="scan-progress-bar"><div id="scan-progress-fill" class="scan-progress-fill"></div></div>
         </div>
 
+        <!-- Scoring Toggle -->
+        <div class="scan-toggle-row">
+          <label class="toggle-label">
+            <input type="checkbox" id="scan-score-toggle" checked>
+            <span>🎯 Show matching score</span>
+          </label>
+          <div class="scan-toggle-actions">
+            <button id="scan-rescore-btn" class="btn btn-secondary btn-sm hidden">💡 Re-score</button>
+            <button id="scan-ai-btn" class="btn btn-secondary btn-sm" title="AI Deep Match (1 credit)">🧠 AI</button>
+          </div>
+        </div>
+
         <!-- Results -->
         <div id="scan-results" class="hidden">
           <div id="scan-list" class="scan-list"></div>

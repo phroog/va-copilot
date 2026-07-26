@@ -36,6 +36,8 @@ interface Job {
   client_total_spent?: string;
   skills?: string[];
   has_pitch?: boolean;
+  score?: number;
+  match_reason?: string;
 }
 
 interface ImportedJob {
@@ -816,9 +818,56 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
   return (
     <Card key={job.id}>
       <CardHeader>
-        <CardTitle className="text-lg">{job.title}</CardTitle>
+        <div className="flex items-start justify-between gap-2">
+          <CardTitle className="text-lg flex-1">{job.title}</CardTitle>
+          {job.score != null ? (
+            <div className="flex items-center gap-1 shrink-0">
+              <span className={`text-sm font-extrabold px-2.5 py-0.5 rounded-lg ${
+                job.score >= 70 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" :
+                job.score >= 40 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" :
+                "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+              }`}>
+                {job.score}
+              </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); alert("🧠 AI Deep Match coming soon! 🚀"); }}
+                className="text-xs px-1.5 py-0.5 rounded-full bg-kawaii-lavender/10 text-kawaii-purple/60 dark:text-kawaii-lavender/60 hover:bg-kawaii-lavender/30 squishy"
+                title="AI Deep Match (1 credit) - Coming soon"
+              >
+                🧠
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const btn = e.currentTarget;
+                  btn.textContent = "...";
+                  btn.disabled = true;
+                  try {
+                    const res = await fetch(`/api/jobs/${job.id}/score`, { method: "POST" });
+                    const data = await res.json();
+                    if (data.job) {
+                      window.location.reload();
+                    }
+                  } catch {
+                    btn.textContent = "Score now";
+                    btn.disabled = false;
+                  }
+                }}
+                className="text-xs px-2 py-0.5 rounded-full bg-kawaii-lavender/20 text-kawaii-purple dark:text-kawaii-lavender hover:bg-kawaii-lavender/40 squishy"
+              >
+                Score now
+              </button>
+            </div>
+          )}
+        </div>
         <p className="text-sm text-kawaii-purple dark:text-kawaii-lavender font-medium">
           {job.platform} — {job.budget}
+          {job.match_reason && (
+            <span className="text-xs text-slate-400 dark:text-slate-500 font-normal ml-2">🎯 {job.match_reason}</span>
+          )}
         </p>
       </CardHeader>
       <CardContent>

@@ -52,9 +52,9 @@ export async function PUT(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id, public_id } = await request.json();
+  const { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id, public_id, skills, experience_level, job_categories } = await request.json();
 
-  const update: Record<string, any> = { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id };
+  const update: Record<string, any> = { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id, skills, experience_level, job_categories };
 
   if (public_id !== undefined) {
     const cleaned = public_id.trim();

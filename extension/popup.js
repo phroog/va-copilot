@@ -1279,6 +1279,11 @@ const scanStartBgBtn = $("scan-start-bg-btn");
 
 let scannedJobs = [];
 let scanInProgress = false;
+let scanScoreEnabled = true;
+
+const scanScoreToggle = $("scan-score-toggle");
+const scanRescoreBtn = $("scan-rescore-btn");
+const scanAiBtn = $("scan-ai-btn");
 
 /* ── Load saved search URLs ──────────────────────────────────── */
 async function loadScanUrls() {
@@ -1531,14 +1536,84 @@ async function scanCurrentPage() {
   }
 }
 
+/* ── Score toggle ─────────────────────────────────────────────── */
+scanScoreToggle.addEventListener("change", () => {
+  scanScoreEnabled = scanScoreToggle.checked;
+  renderScanList();
+  scanRescoreBtn.classList.toggle("hidden", !scanScoreEnabled);
+});
+
+/* ── Fetch scores from API ────────────────────────────────────── */
+async function fetchScoresForJobs(jobs) {
+  if (!jobs || jobs.length === 0) return [];
+  try {
+    const payload = jobs.map((j) => ({
+      title: j.title,
+      description: j.description || "",
+      budget: j.budget || j.budgetAmount || "",
+      budget_amount: j.budgetAmount || "",
+      skills: j.skills || [],
+      platform: j.platform || "",
+    }));
+    const data = await apiFetch("/api/jobs/score-batch", {
+      method: "POST",
+      body: JSON.stringify({ jobs: payload }),
+    });
+    return data.jobs || [];
+  } catch {
+    return [];
+  }
+}
+
 /* ── Render scan results ──────────────────────────────────────── */
-function renderScanResults(jobs) {
+async function renderScanResults(jobs) {
   scannedJobs = jobs.map((j, i) => ({ ...j, _selected: true, _idx: i }));
+
+  // Fetch scores if toggle is on
+  if (scanScoreEnabled && jobs.length > 0) {
+    const scored = await fetchScoresForJobs(jobs);
+    if (scored.length > 0) {
+      scannedJobs = scored.map((sj, i) => ({
+        ...(scannedJobs[i] || sj),
+        ...sj,
+        _selected: true,
+        _idx: i,
+      }));
+    }
+  }
+
   renderScanList();
   scanActions.classList.remove("hidden");
   scanSaveBtn.textContent = `Save ${jobs.length} jobs to Sari`;
   scanExportBtn.classList.remove("hidden");
+  scanRescoreBtn.classList.toggle("hidden", !scanScoreEnabled);
 }
+
+/* ── AI Deep Match (placeholder) ──────────────────────────────── */
+scanAiBtn.addEventListener("click", () => {
+  scanStatus.textContent = "🧠 AI Deep Match coming soon!";
+  scanStatus.classList.remove("hidden");
+  setTimeout(() => { scanStatus.classList.add("hidden"); }, 2500);
+});
+
+/* ── Re-score ─────────────────────────────────────────────────── */
+scanRescoreBtn.addEventListener("click", async () => {
+  if (scannedJobs.length === 0) return;
+  scanRescoreBtn.disabled = true;
+  scanRescoreBtn.textContent = "Scoring...";
+  const scored = await fetchScoresForJobs(scannedJobs);
+  if (scored.length > 0) {
+    scannedJobs = scored.map((sj, i) => ({
+      ...(scannedJobs[i] || sj),
+      ...sj,
+      _selected: scannedJobs[i]?._selected !== false,
+      _idx: i,
+    }));
+    renderScanList();
+  }
+  scanRescoreBtn.disabled = false;
+  scanRescoreBtn.textContent = "💡 Re-score";
+});
 
 function renderScanList() {
   if (scannedJobs.length === 0) {
@@ -1548,15 +1623,20 @@ function renderScanList() {
 
   scanList.innerHTML = scannedJobs
     .map(
-      (j, i) =>
-        `<label class="scan-item ${j._selected ? "" : "scan-item-deselected"}">
+      (j, i) => {
+        const scoreHtml = scanScoreEnabled && j.score != null
+          ? `<span class="scan-score scan-score-${j.score >= 70 ? "high" : j.score >= 40 ? "med" : "low"}">${j.score}</span>`
+          : "";
+        return `<label class="scan-item ${j._selected ? "" : "scan-item-deselected"}">
           <input type="checkbox" class="scan-checkbox" data-idx="${i}" ${j._selected ? "checked" : ""}>
+          ${scoreHtml}
           <div class="scan-item-body">
             <span class="scan-item-title">${j.title}</span>
             <span class="scan-item-meta">${j.platform}${j.budgetAmount ? " | " + j.budgetAmount : ""}${j.clientName ? " | " + j.clientName : ""}</span>
-            <span class="scan-item-desc">${(j.description || "").substring(0, 150)}</span>
+            <span class="scan-item-desc">${(j.description || "").substring(0, 150)}${j.match_reason ? " — " + j.match_reason : ""}</span>
           </div>
-        </label>`
+        </label>`;
+      }
     )
     .join("");
 

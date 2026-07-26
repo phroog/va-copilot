@@ -20,6 +20,9 @@ interface Profile {
   bank_account: string;
   tax_id: string;
   public_id: string;
+  skills?: string[];
+  experience_level?: string;
+  job_categories?: string[];
 }
 
 interface PublicProfile {
@@ -33,7 +36,7 @@ interface PublicProfile {
 export default function SettingsPage() {
   const { t } = useLocale();
   const { showToast } = useToast();
-  const [profile, setProfile] = useState<Profile>({ full_name: "", desired_rate: "", bio: "", inbox_email_alias: "", business_name: "", business_address: "", business_email: "", bank_account: "", tax_id: "", public_id: "" });
+  const [profile, setProfile] = useState<Profile>({ full_name: "", desired_rate: "", bio: "", inbox_email_alias: "", business_name: "", business_address: "", business_email: "", bank_account: "", tax_id: "", public_id: "", skills: [], experience_level: "beginner", job_categories: [] });
   const [publicProfile, setPublicProfile] = useState<PublicProfile>({ username: "", display_name: "", bio: "", skills: "", photo_url: "" });
   const [pubSaving, setPubSaving] = useState(false);
   const [pubSaved, setPubSaved] = useState(false);
@@ -203,6 +206,50 @@ export default function SettingsPage() {
           </div>
           <div className="flex items-center gap-3">
             <Button onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "💾 Save Profile"}</Button>
+            {saved && <span className="text-sm text-green-500 animate-fade-in">✅ Saved!</span>}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Job Matching Profile */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">🎯 Job Matching Profile</CardTitle>
+          <CardDescription>Set up your skills and preferences for the extension's job matching score.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Skills (comma-separated)</Label>
+            <Input
+              value={(profile.skills || []).join(", ")}
+              onChange={(e) => setProfile({ ...profile, skills: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+              placeholder="e.g. Admin Support, Social Media Management, Data Entry"
+            />
+            <p className="text-xs text-slate-400">Used to match job descriptions against your skill set.</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Experience Level</Label>
+            <select
+              value={profile.experience_level || "beginner"}
+              onChange={(e) => setProfile({ ...profile, experience_level: e.target.value })}
+              className="w-full h-10 px-3 rounded-xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200"
+            >
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="expert">Expert</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label>Job Categories (comma-separated)</Label>
+            <Input
+              value={(profile.job_categories || []).join(", ")}
+              onChange={(e) => setProfile({ ...profile, job_categories: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+              placeholder="e.g. Admin Support, Graphic Design, Social Media"
+            />
+            <p className="text-xs text-slate-400">Categories help match jobs to your preferred work areas.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "💾 Save Matching Profile"}</Button>
             {saved && <span className="text-sm text-green-500 animate-fade-in">✅ Saved!</span>}
           </div>
         </CardContent>

@@ -23,6 +23,8 @@ export async function POST(request: Request) {
     budget_amount: job.budget_amount ?? null,
     client_name: job.client_name ?? null,
     skills: job.skills ?? null,
+    score: job.score ?? null,
+    match_reason: job.match_reason ?? null,
     posted_at: new Date().toISOString(),
   }));
 

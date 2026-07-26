@@ -831,3 +831,88 @@ body.dark .scan-settings-summary {
   font-size: 12px;
   resize: vertical;
 }
+
+/* ── Score display ────────────────────────────────────────────── */
+.scan-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.scan-score-high {
+  background: #d4edda;
+  color: #155724;
+}
+
+body.dark .scan-score-high {
+  background: #1e3a2a;
+  color: #6fcf97;
+}
+
+.scan-score-med {
+  background: #fff3cd;
+  color: #856404;
+}
+
+body.dark .scan-score-med {
+  background: #3a3010;
+  color: #f0c040;
+}
+
+.scan-score-low {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+body.dark .scan-score-low {
+  background: #3a1a1e;
+  color: #e06060;
+}
+
+.scan-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  gap: 6px;
+}
+
+.scan-toggle-row .toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c4e8f;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+body.dark .scan-toggle-row .toggle-label {
+  color: #b39ddb;
+}
+
+.scan-toggle-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.scan-toggle-row .toggle-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #6c4e8f;
+  cursor: pointer;
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 11px;
+}
