@@ -54,6 +54,8 @@ const retryBtn = $("retry-btn");
 const timerDisplay = $("timer-display");
 const timerBtn = $("timer-btn");
 const timerStatus = $("timer-status");
+const timerJobSelect = $("timer-job-select");
+const timerProjectInput = $("timer-project-input");
 
 const pomodoroDisplay = $("pomodoro-display");
 const pomodoroBtn = $("pomodoro-btn");
@@ -567,6 +569,26 @@ doGeneratePitch = async function (jobId) {
    TIME TRACKING
    ══════════════════════════════════════════════════════════════════ */
 
+async function loadTimerJobs() {
+  try {
+    const data = await apiFetch("/api/jobs");
+    const jobs = data.jobs || data || [];
+    const currentVal = timerJobSelect.value;
+    timerJobSelect.innerHTML = '<option value="">-- Select job (optional) --</option>';
+    (Array.isArray(jobs) ? jobs : []).forEach((j) => {
+      const opt = document.createElement("option");
+      opt.value = j.id;
+      opt.textContent = (j.title || "Untitled").substring(0, 60) + (j.platform ? " | " + j.platform : "");
+      timerJobSelect.appendChild(opt);
+    });
+    if (currentVal) timerJobSelect.value = currentVal;
+  } catch (err) { /* silently fail, jobs are optional */ }
+}
+
+timerJobSelect.addEventListener("change", () => {
+  if (timerJobSelect.value) timerProjectInput.value = "";
+});
+
 async function initTimer() {
   try {
     const data = await apiFetch("/api/time-entries");
@@ -574,7 +596,7 @@ async function initTimer() {
       runningEntryId = data.running.id;
       timerBtn.textContent = "Stop Timer";
       startTimerDisplay(data.running.start_time);
-      timerStatus.textContent = "";
+      timerStatus.textContent = data.running.description ? "Tracking: " + data.running.description : "";
     } else {
       runningEntryId = null;
       timerBtn.textContent = "Start Timer";
@@ -582,6 +604,7 @@ async function initTimer() {
       timerDisplay.textContent = "00:00:00";
       timerStatus.textContent = "";
     }
+    await loadTimerJobs();
   } catch (err) { timerStatus.textContent = "Could not load timer"; }
 }
 
@@ -594,11 +617,17 @@ async function startTimer() {
   const startTime = new Date().toISOString();
   timerBtn.disabled = true;
   try {
-    const data = await apiFetch("/api/time-entries", { method: "POST", body: JSON.stringify({ description: "Extension timer", start_time: startTime, project_name: "Browser work" }) });
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const jobId = timerJobSelect.value || null;
+    const projectName = timerProjectInput.value.trim() ||
+      (jobId ? timerJobSelect.options[timerJobSelect.selectedIndex]?.text?.split(" | ")[0] : "") ||
+      "Browser work";
+    const currentUrl = tab?.url || "";
+    const data = await apiFetch("/api/time-entries", { method: "POST", body: JSON.stringify({ description: currentUrl, start_time: startTime, project_name: projectName, job_id: jobId }) });
     runningEntryId = data.entry.id;
     timerBtn.textContent = "Stop Timer";
     startTimerDisplay(startTime);
-    timerStatus.textContent = "";
+    timerStatus.textContent = currentUrl ? "Tracking: " + currentUrl : "";
     if (screenshotToggle.checked) startScreenshotCapture();
   } catch (err) { timerStatus.textContent = "Failed to start: " + err.message; } finally { timerBtn.disabled = false; }
 }
