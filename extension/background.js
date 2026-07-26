@@ -20,7 +20,8 @@ async function startBackgroundScan(urls, sendResponse) {
 
       const tab = await chrome.tabs.create({ url, active: false });
 
-      await waitForTabLoad(tab.id, 15000);
+      await waitForTabLoad(tab.id, 30000);
+      await waitForContent(tab.id, 25000);
 
       const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
@@ -62,6 +63,26 @@ function waitForTabLoad(tabId, timeoutMs) {
     };
 
     chrome.tabs.onUpdated.addListener(listener);
+  });
+}
+
+function waitForContent(tabId, timeoutMs) {
+  return new Promise((resolve) => {
+    const end = Date.now() + timeoutMs;
+    const poll = () => {
+      if (Date.now() >= end) { resolve(); return; }
+      chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const s = ['section[data-test="JobCard"]','.joblist-item','.job-card-container','div[role="article"]'];
+          return s.some((sel) => document.querySelector(sel));
+        },
+      }).then((r) => {
+        if (r?.[0]?.result) { setTimeout(resolve, 1000); }
+        else { setTimeout(poll, 800); }
+      }).catch(() => setTimeout(poll, 800));
+    };
+    poll();
   });
 }
 

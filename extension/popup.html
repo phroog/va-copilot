@@ -26,228 +26,259 @@
 
     <!-- Main View -->
     <div id="main-view" class="view hidden">
-      <div class="header">
+      <!-- Top bar -->
+      <div class="top-bar">
         <h1 class="logo">🌸 Sari</h1>
-        <div class="header-actions">
+        <div class="top-bar-actions">
+          <span id="credit-balance" class="credit-chip hidden">💎 0</span>
           <button id="dark-toggle" class="btn btn-icon" title="Toggle dark mode">🌙</button>
-          <button id="disconnect-btn" class="btn btn-ghost">Disconnect</button>
-        </div>
-      </div>
-      <div id="credit-bar" class="credit-bar hidden">💎 <span id="credit-balance">0</span> credits</div>
-
-      <div class="tabs">
-        <button class="tab active" data-tab="pitch">Pitch</button>
-        <button class="tab" data-tab="time">Time</button>
-        <button class="tab" data-tab="notes">Notes</button>
-        <button class="tab" data-tab="scanner">🔍 Scanner</button>
-        <button class="tab" data-tab="clients">Clients</button>
-        <button class="tab" data-tab="scam">Scam Check</button>
-        <button class="tab" data-tab="vault">Vault</button>
-        <button class="tab" data-tab="tools">Tools</button>
-      </div>
-
-      <!-- Pitch Tab -->
-      <div id="tab-pitch" class="tab-content">
-        <div id="job-info" class="card">
-          <p id="job-title" class="job-title-text">No job detected</p>
-          <p id="job-platform" class="job-platform-text"></p>
-          <div id="job-enriched" class="job-enriched hidden">
-            <p id="job-budget" class="job-meta"></p>
-            <p id="job-client" class="job-meta"></p>
-            <p id="job-skills" class="job-meta"></p>
-          </div>
-          <p id="job-desc" class="job-desc-text"></p>
-        </div>
-        <button id="extract-btn" class="btn btn-secondary">Re-extract from page</button>
-        <button id="save-job-btn" class="btn btn-secondary hidden">Save to Sari</button>
-        <button id="generate-btn" class="btn btn-primary">Generate Pitch (1 credit)</button>
-        <div id="pitch-loading" class="loading hidden">Generating...</div>
-        <div id="pitch-result" class="card hidden">
-          <div class="pitch-scroll">
-            <p id="pitch-text" class="pitch-text"></p>
-          </div>
-          <div class="btn-row">
-            <button id="copy-btn" class="btn btn-secondary">Copy</button>
-            <button id="polish-btn" class="btn btn-secondary">Polish (1 credit)</button>
-            <button id="retry-btn" class="btn btn-secondary hidden">Retry</button>
-          </div>
-        </div>
-        <p id="pitch-status" class="status-text hidden"></p>
-        <p id="save-status" class="status-text hidden"></p>
-      </div>
-
-      <!-- Time Tab -->
-      <div id="tab-time" class="tab-content hidden">
-        <div class="timer-display" id="timer-display">00:00:00</div>
-        <button id="timer-btn" class="btn btn-primary">Start Timer</button>
-        <p id="timer-status" class="status-text"></p>
-        <div style="margin-top:8px">
-          <label class="toggle-label">
-            <input type="checkbox" id="screenshot-toggle">
-            <span>📸 Random screenshots while tracking</span>
-          </label>
-          <p id="screenshot-status" class="status-text hidden"></p>
-          <div id="screenshot-thumbnails" class="screenshot-thumbs"></div>
+          <button id="disconnect-btn" class="btn btn-ghost">✕</button>
         </div>
       </div>
 
-      <!-- Notes Tab -->
-      <div id="tab-notes" class="tab-content hidden">
-        <textarea id="notes-textarea" placeholder="Write your notes here..." class="notes-input"></textarea>
-        <p id="notes-status" class="status-text">Auto-saves on change</p>
+      <!-- Content area (scrollable) -->
+      <div class="content-area">
+
+        <!-- ═══ JOB TAB ═══ -->
+        <div id="tab-job" class="tab-content">
+          <div id="job-info" class="card">
+            <p id="job-title" class="job-title-text">No job detected</p>
+            <p id="job-platform" class="job-platform-text"></p>
+            <div id="job-enriched" class="job-enriched hidden">
+              <p id="job-budget" class="job-meta"></p>
+              <p id="job-client" class="job-meta"></p>
+              <p id="job-skills" class="job-meta"></p>
+            </div>
+            <p id="job-desc" class="job-desc-text"></p>
+          </div>
+          <button id="extract-btn" class="btn btn-secondary">Re-extract from page</button>
+          <button id="save-job-btn" class="btn btn-secondary hidden">Save to Sari</button>
+          <button id="generate-btn" class="btn btn-primary">Generate Pitch (1 credit)</button>
+          <div id="pitch-loading" class="loading hidden">Generating...</div>
+          <div id="pitch-result" class="card hidden">
+            <div class="pitch-scroll">
+              <p id="pitch-text" class="pitch-text"></p>
+            </div>
+            <div class="btn-row">
+              <button id="copy-btn" class="btn btn-secondary">Copy</button>
+              <button id="polish-btn" class="btn btn-secondary">Polish (1 credit)</button>
+              <button id="retry-btn" class="btn btn-secondary hidden">Retry</button>
+            </div>
+          </div>
+          <p id="pitch-status" class="status-text hidden"></p>
+          <p id="save-status" class="status-text hidden"></p>
+        </div>
+
+        <!-- ═══ TIME TAB ═══ -->
+        <div id="tab-time" class="tab-content hidden">
+          <div class="timer-display" id="timer-display">00:00:00</div>
+          <button id="timer-btn" class="btn btn-primary">Start Timer</button>
+          <p id="timer-status" class="status-text"></p>
+          <div class="timer-extra">
+            <div class="pomodoro-section">
+              <div class="pomodoro-display" id="pomodoro-display">25:00</div>
+              <button id="pomodoro-btn" class="btn btn-secondary">Start Pomodoro</button>
+              <p id="pomodoro-status" class="status-text"></p>
+            </div>
+            <label class="toggle-label">
+              <input type="checkbox" id="screenshot-toggle">
+              <span>📸 Screenshots</span>
+            </label>
+            <p id="screenshot-status" class="status-text hidden"></p>
+            <div id="screenshot-thumbnails" class="screenshot-thumbs"></div>
+          </div>
+        </div>
+
+        <!-- ═══ SCAN TAB ═══ -->
+        <div id="tab-scan" class="tab-content hidden">
+          <button id="scan-current-btn" class="btn btn-primary">🔍 Scan this page for jobs</button>
+          <p id="scan-status" class="status-text hidden"></p>
+
+          <div id="scan-progress" class="card hidden">
+            <p id="scan-progress-text" class="status-text">Scanning progress...</p>
+            <div class="scan-progress-bar"><div id="scan-progress-fill" class="scan-progress-fill"></div></div>
+          </div>
+
+          <div class="scan-toggle-row">
+            <label class="toggle-label">
+              <input type="checkbox" id="scan-score-toggle" checked>
+              <span>🎯 Show matching score</span>
+            </label>
+            <div class="scan-toggle-actions">
+              <button id="scan-rescore-btn" class="btn btn-secondary btn-sm hidden">💡 Re-score</button>
+              <button id="scan-ai-btn" class="btn btn-secondary btn-sm" title="AI Deep Match (1 credit)">🧠 AI</button>
+            </div>
+          </div>
+
+          <div id="scan-results" class="hidden">
+            <div id="scan-list" class="scan-list"></div>
+            <div id="scan-actions" class="hidden">
+              <button id="scan-save-btn" class="btn btn-primary">Save selected jobs to Sari</button>
+              <p id="scan-save-status" class="status-text hidden"></p>
+            </div>
+            <button id="scan-export-btn" class="btn btn-secondary hidden">Copy selected as text</button>
+          </div>
+
+          <hr class="scan-divider">
+
+          <button id="scan-batch-btn" class="btn btn-secondary">🌐 Scan all platforms</button>
+
+          <details class="scan-settings">
+            <summary class="scan-settings-summary">⚙️ Scanner Settings</summary>
+            <p class="status-text">Add search URLs (one per line) for background scanning.</p>
+            <textarea id="scan-urls-input" class="vault-input" rows="3" placeholder="https://www.upwork.com/nx/search/jobs/?q=virtual+assistant"></textarea>
+            <button id="scan-save-urls-btn" class="btn btn-secondary">Save URLs</button>
+            <p id="scan-urls-status" class="status-text"></p>
+            <button id="scan-start-bg-btn" class="btn btn-primary">▶ Start Background Scan</button>
+          </details>
+        </div>
+
+        <!-- ═══ TOOLS TAB ═══ -->
+        <div id="tab-tools" class="tab-content hidden">
+          <!-- Tool grid (default view) -->
+          <div id="tools-grid" class="tools-grid"></div>
+
+          <!-- Tool detail views (shown when a tool is selected) -->
+          <div id="tool-detail" class="hidden">
+            <button id="tool-back-btn" class="btn btn-ghost btn-back">← Back</button>
+            <div id="tool-detail-content"></div>
+          </div>
+
+          <!-- Tool content templates (hidden, cloned into detail view) -->
+          <div id="tool-templates" class="hidden">
+            <!-- Notes -->
+            <div id="template-notes">
+              <p class="tool-heading">📝 Notes</p>
+              <textarea id="notes-textarea" class="notes-input" placeholder="Write your notes here..." rows="6"></textarea>
+              <p id="notes-status" class="status-text">Auto-saves on change</p>
+            </div>
+
+            <!-- Clients -->
+            <div id="template-clients">
+              <div class="tool-header">
+                <p class="tool-heading">📇 Client Links</p>
+                <button id="clients-refresh-btn" class="btn btn-icon" title="Refresh">🔄</button>
+              </div>
+              <div id="clients-content" class="clients-content"><p class="status-text">Loading...</p></div>
+              <button id="clients-view-all" class="btn btn-secondary hidden">View All in Dashboard</button>
+              <div id="clients-quick-add" class="card hidden" style="margin-top:6px">
+                <p style="font-size:12px;font-weight:700;margin-bottom:4px">➕ Save current page as link</p>
+                <input type="text" id="clients-new-name" class="vault-input" placeholder="Client name">
+                <input type="text" id="clients-new-title" class="vault-input" placeholder="Link title (e.g. Website)">
+                <button id="clients-save-btn" class="btn btn-primary" style="margin-top:4px">Save Link</button>
+                <p id="clients-status" class="status-text"></p>
+              </div>
+            </div>
+
+            <!-- Scam Check -->
+            <div id="template-scam">
+              <div id="scam-auto" class="card">
+                <p style="font-size:12px;font-weight:700;margin-bottom:4px">🕵️ Auto-fill from current page</p>
+                <p id="scam-client-name" class="job-meta">No client detected</p>
+                <p id="scam-url" class="job-meta"></p>
+                <button id="scam-check-btn" class="btn btn-primary">Check this client (1🪙)</button>
+              </div>
+              <div class="card" style="margin-top:6px">
+                <p style="font-size:12px;font-weight:700;margin-bottom:4px">✍️ Manual input</p>
+                <input type="text" id="scam-manual-name" class="vault-input" placeholder="Client name">
+                <input type="text" id="scam-manual-url" class="vault-input" placeholder="Website URL">
+                <button id="scam-manual-btn" class="btn btn-secondary">Check (1🪙)</button>
+              </div>
+              <div id="scam-result" class="card hidden" style="margin-top:6px">
+                <div class="scam-gauge">
+                  <div id="scam-score-display" class="scam-score" style="font-size:28px;font-weight:800">--</div>
+                  <div class="status-text">Trust Score</div>
+                </div>
+                <p id="scam-analysis" class="status-text"></p>
+              </div>
+              <p id="scam-status" class="status-text hidden"></p>
+            </div>
+
+            <!-- Vault -->
+            <div id="template-vault">
+              <p class="tool-heading">🔐 Vault</p>
+              <div id="vault-locked">
+                <input type="password" id="vault-password" class="vault-input" placeholder="Enter master password">
+                <button id="vault-unlock-btn" class="btn btn-primary">Unlock</button>
+                <p id="vault-status" class="status-text"></p>
+              </div>
+              <div id="vault-unlocked" class="hidden">
+                <div class="vault-header">
+                  <span style="font-size:13px;font-weight:700">🔓 Vault</span>
+                  <button id="vault-lock-btn" class="btn btn-ghost">Lock</button>
+                </div>
+                <div id="vault-items" class="vault-items"></div>
+                <button id="vault-add-btn" class="btn btn-secondary">+ Add Item</button>
+                <div id="vault-add-form" class="hidden">
+                  <input type="text" id="vault-new-title" class="vault-input" placeholder="Title">
+                  <input type="text" id="vault-new-username" class="vault-input" placeholder="Username">
+                  <input type="text" id="vault-new-url" class="vault-input" placeholder="URL">
+                  <input type="password" id="vault-new-password" class="vault-input" placeholder="Password">
+                  <button id="vault-save-item-btn" class="btn btn-primary">Save</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Follow-ups -->
+            <div id="template-followups">
+              <p class="tool-heading">📅 Follow-ups</p>
+              <div id="follow-ups-content"><p class="status-text">Loading...</p></div>
+            </div>
+
+            <!-- Mochi AI -->
+            <div id="template-mochi">
+              <p class="tool-heading">🤖 Mochi AI</p>
+              <button id="mochi-summarize-btn" class="btn btn-secondary" style="margin-bottom:4px">📊 Summarize my week</button>
+              <button id="mochi-tip-btn" class="btn btn-secondary">🧠 Productivity tip</button>
+              <div id="mochi-result" class="card hidden" style="margin-top:6px">
+                <p id="mochi-text" class="status-text"></p>
+              </div>
+              <p id="mochi-status" class="status-text hidden"></p>
+            </div>
+
+            <!-- Job Search -->
+            <div id="template-search">
+              <p class="tool-heading">🔍 Job Search</p>
+              <input type="text" id="job-search-input" class="search-input" placeholder="Search your jobs...">
+              <div id="job-search-results" class="search-results"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ SETTINGS TAB ═══ -->
+        <div id="tab-settings" class="tab-content hidden">
+          <div id="credit-section" class="card">
+            <p class="settings-heading">💎 Credits</p>
+            <p id="credit-balance-display" class="settings-value">0</p>
+          </div>
+          <div class="card">
+            <p class="settings-heading">🎨 Appearance</p>
+            <button id="dark-toggle-bottom" class="btn btn-secondary">Toggle Dark Mode 🌙</button>
+          </div>
+          <div class="card">
+            <p class="settings-heading">🔌 Connection</p>
+            <p id="settings-connected-as" class="status-text"></p>
+            <button id="disconnect-btn-bottom" class="btn btn-ghost" style="width:100%;margin-top:4px">Disconnect</button>
+          </div>
+          <div class="card">
+            <p class="settings-heading">ℹ️ Sari Extension</p>
+            <p class="status-text">Version 1.1.0</p>
+            <p class="status-text">Your all-in-one freelancing companion for VAs</p>
+          </div>
+        </div>
+
+      </div><!-- /content-area -->
+
+      <!-- Bottom Tab Bar -->
+      <div class="bottom-tabs">
+        <button class="bottom-tab active" data-tab="job">📋<span>Job</span></button>
+        <button class="bottom-tab" data-tab="time">⏱️<span>Time</span></button>
+        <button class="bottom-tab" data-tab="scan">🔍<span>Scan</span></button>
+        <button class="bottom-tab" data-tab="tools">🧰<span>Tools</span></button>
+        <button class="bottom-tab" data-tab="settings">⚙️<span>Settings</span></button>
       </div>
 
-      <!-- Clients Tab -->
-      <div id="tab-clients" class="tab-content hidden">
-        <div class="clients-section">
-          <div class="clients-header">
-            <h3 class="tools-heading">📇 Client Links</h3>
-            <button id="clients-refresh-btn" class="btn btn-icon" title="Refresh">🔄</button>
-          </div>
-          <div id="clients-content" class="clients-content">
-            <p class="status-text">Loading...</p>
-          </div>
-          <button id="clients-view-all" class="btn btn-secondary hidden">View All in Dashboard</button>
-        </div>
-        <div id="clients-quick-add" class="card hidden" style="margin-top:8px">
-          <p class="vault-heading" style="font-size:13px">➕ Save current page as link</p>
-          <input type="text" id="clients-new-name" class="vault-input" placeholder="Client name">
-          <input type="text" id="clients-new-title" class="vault-input" placeholder="Link title (e.g. Website)">
-          <button id="clients-save-btn" class="btn btn-primary" style="margin-top:4px">Save Link</button>
-          <p id="clients-status" class="status-text"></p>
-        </div>
-      </div>
-
-      <!-- Scam Check Tab -->
-      <div id="tab-scam" class="tab-content hidden">
-        <div id="scam-auto" class="card">
-          <p class="vault-heading" style="font-size:13px">🕵️ Auto-fill from current page</p>
-          <p id="scam-client-name" class="job-meta">No client detected</p>
-          <p id="scam-url" class="job-meta"></p>
-          <button id="scam-check-btn" class="btn btn-primary">Check this client (1🪙)</button>
-        </div>
-        <div class="card" style="margin-top:8px">
-          <p class="vault-heading" style="font-size:13px">✍️ Manual input</p>
-          <input type="text" id="scam-manual-name" class="vault-input" placeholder="Client name">
-          <input type="text" id="scam-manual-url" class="vault-input" placeholder="Website URL">
-          <button id="scam-manual-btn" class="btn btn-secondary">Check (1🪙)</button>
-        </div>
-        <div id="scam-result" class="card hidden" style="margin-top:8px">
-          <div class="scam-gauge" style="text-align:center;padding:8px 0">
-            <div id="scam-score-display" class="scam-score" style="font-size:32px;font-weight:800">--</div>
-            <div id="scam-score-label" class="status-text">Trust Score</div>
-          </div>
-          <p id="scam-analysis" class="status-text"></p>
-        </div>
-        <p id="scam-status" class="status-text hidden"></p>
-      </div>
-
-      <!-- Scanner Tab -->
-      <div id="tab-scanner" class="tab-content hidden">
-        <!-- Scan Current Page -->
-        <button id="scan-current-btn" class="btn btn-primary">🔍 Scan this page for jobs</button>
-        <p id="scan-status" class="status-text hidden"></p>
-
-        <!-- Scanning progress (background scan) -->
-        <div id="scan-progress" class="card hidden">
-          <p id="scan-progress-text" class="status-text">Scanning progress...</p>
-          <div class="scan-progress-bar"><div id="scan-progress-fill" class="scan-progress-fill"></div></div>
-        </div>
-
-        <!-- Scoring Toggle -->
-        <div class="scan-toggle-row">
-          <label class="toggle-label">
-            <input type="checkbox" id="scan-score-toggle" checked>
-            <span>🎯 Show matching score</span>
-          </label>
-          <div class="scan-toggle-actions">
-            <button id="scan-rescore-btn" class="btn btn-secondary btn-sm hidden">💡 Re-score</button>
-            <button id="scan-ai-btn" class="btn btn-secondary btn-sm" title="AI Deep Match (1 credit)">🧠 AI</button>
-          </div>
-        </div>
-
-        <!-- Results -->
-        <div id="scan-results" class="hidden">
-          <div id="scan-list" class="scan-list"></div>
-          <div id="scan-actions" class="hidden">
-            <button id="scan-save-btn" class="btn btn-primary">Save selected jobs to Sari</button>
-            <p id="scan-save-status" class="status-text hidden"></p>
-          </div>
-          <button id="scan-export-btn" class="btn btn-secondary hidden">Copy selected as text</button>
-        </div>
-
-        <!-- Divider -->
-        <hr class="scan-divider">
-
-        <!-- Batch Scan All Platforms -->
-        <button id="scan-batch-btn" class="btn btn-secondary">🌐 Scan all platforms</button>
-
-        <!-- Search URLs Settings -->
-        <details class="scan-settings">
-          <summary class="scan-settings-summary">⚙️ Scanner Settings</summary>
-          <p class="status-text">Add search URLs (one per line) for background scanning.</p>
-          <textarea id="scan-urls-input" class="vault-input" rows="4" placeholder="https://www.upwork.com/nx/search/jobs/?q=virtual+assistant&#10;https://www.onlinejobs.ph/jobseekers/joblist"></textarea>
-          <button id="scan-save-urls-btn" class="btn btn-secondary">Save URLs</button>
-          <p id="scan-urls-status" class="status-text"></p>
-          <button id="scan-start-bg-btn" class="btn btn-primary">▶ Start Background Scan</button>
-        </details>
-      </div>
-
-      <!-- Vault Tab -->
-      <div id="tab-vault" class="tab-content hidden">
-        <div id="vault-locked" class="vault-section">
-          <p class="vault-heading">🔐 Vault Locked</p>
-          <input type="password" id="vault-password" class="vault-input" placeholder="Enter master password">
-          <button id="vault-unlock-btn" class="btn btn-primary">Unlock</button>
-          <p id="vault-status" class="status-text"></p>
-        </div>
-        <div id="vault-unlocked" class="vault-section hidden">
-          <div class="vault-header">
-            <p class="vault-heading">🔓 Vault</p>
-            <button id="vault-lock-btn" class="btn btn-ghost">Lock</button>
-          </div>
-          <div id="vault-items" class="vault-items"></div>
-          <button id="vault-add-btn" class="btn btn-secondary">+ Add Item</button>
-          <div id="vault-add-form" class="hidden">
-            <input type="text" id="vault-new-title" class="vault-input" placeholder="Title">
-            <input type="text" id="vault-new-username" class="vault-input" placeholder="Username">
-            <input type="text" id="vault-new-url" class="vault-input" placeholder="URL">
-            <input type="password" id="vault-new-password" class="vault-input" placeholder="Password">
-            <button id="vault-save-item-btn" class="btn btn-primary">Save</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tools Tab -->
-      <div id="tab-tools" class="tab-content hidden">
-        <div class="tools-section">
-          <h3 class="tools-heading">🔍 Quick Job Search</h3>
-          <input type="text" id="job-search-input" class="search-input" placeholder="Search your jobs...">
-          <div id="job-search-results" class="search-results"></div>
-        </div>
-        <div class="tools-section">
-          <h3 class="tools-heading">📅 Follow-ups</h3>
-          <div id="follow-ups-content">
-            <p class="status-text">Loading...</p>
-          </div>
-        </div>
-        <div class="tools-section">
-          <h3 class="tools-heading">🍅 Pomodoro</h3>
-          <div class="pomodoro-display" id="pomodoro-display">25:00</div>
-          <button id="pomodoro-btn" class="btn btn-primary">Start Pomodoro</button>
-          <p id="pomodoro-status" class="status-text"></p>
-        </div>
-        <div class="tools-section">
-          <h3 class="tools-heading">🤖 Mochi AI</h3>
-          <button id="mochi-summarize-btn" class="btn btn-secondary" style="margin-bottom:4px">📊 Summarize my week</button>
-          <button id="mochi-tip-btn" class="btn btn-secondary">🧠 Give me a productivity tip</button>
-          <div id="mochi-result" class="card hidden" style="margin-top:6px">
-            <p id="mochi-text" class="status-text"></p>
-          </div>
-          <p id="mochi-status" class="status-text hidden"></p>
-        </div>
-      </div>
-    </div>
+    </div><!-- /main-view -->
   </div>
   <script src="popup.js"></script>
 </body>

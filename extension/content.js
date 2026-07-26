@@ -162,6 +162,34 @@ function extractJobData() {
   };
 }
 
+/* ── Wait for dynamic content (Cloudflare, JS render) ────────── */
+function waitForJobCards(timeoutMs) {
+  const hostname = window.location.hostname;
+  let selectors = [];
+  if (hostname.includes("upwork.com")) selectors = ['section[data-test="JobCard"]', 'section[class*="job-tile"]', 'div[class*="job-card"]', 'article[class*="job"]'];
+  else if (hostname.includes("onlinejobs.ph")) selectors = ['.joblist-item', '.job-post-item', '#joblist > li', 'div[class*="job-listing"]'];
+  else if (hostname.includes("facebook.com")) selectors = ['div[role="article"]', '.userContentWrapper', 'div[class*="post"]'];
+  else if (hostname.includes("linkedin.com")) selectors = ['.job-card-container', '.job-search-card', '.job-card', 'article[class*="job"]'];
+
+  if (selectors.length === 0) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const poll = () => {
+      if (selectors.some((sel) => document.querySelector(sel))) {
+        setTimeout(resolve, 800);
+        return;
+      }
+      if (Date.now() - start >= timeoutMs) {
+        resolve();
+        return;
+      }
+      setTimeout(poll, 500);
+    };
+    poll();
+  });
+}
+
 /* ── Job Listings Scanner (multi-card) ─────────────────────────── */
 function scanJobListings() {
   const hostname = window.location.hostname;
@@ -351,7 +379,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse(extractJobData());
   }
   if (msg.action === "scanJobListings") {
-    sendResponse(scanJobListings());
+    waitForJobCards(25000).then(() => {
+      sendResponse(scanJobListings());
+    });
+    return true;
   }
   return true;
 });

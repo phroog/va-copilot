@@ -15,6 +15,11 @@ let vaultKey = null;
 let vaultItems = [];
 let vaultDerivedKey = null;
 
+/* ── Scanner state ────────────────────────────────────────────── */
+let scannedJobs = [];
+let scanInProgress = false;
+let scanScoreEnabled = true;
+
 /* ── DOM refs ─────────────────────────────────────────────────── */
 const $ = (id) => document.getElementById(id);
 
@@ -22,10 +27,10 @@ const loginView = $("login-view");
 const mainView = $("main-view");
 const connectBtn = $("connect-btn");
 const disconnectBtn = $("disconnect-btn");
-const connectStatus = $("connect-status");
-
-const creditBar = $("credit-bar");
+const disconnectBtnBottom = $("disconnect-btn-bottom");
 const creditBalance = $("credit-balance");
+const creditBalanceDisplay = $("credit-balance-display");
+const settingsConnectedAs = $("settings-connected-as");
 
 const jobTitle = $("job-title");
 const jobPlatform = $("job-platform");
@@ -50,58 +55,137 @@ const timerDisplay = $("timer-display");
 const timerBtn = $("timer-btn");
 const timerStatus = $("timer-status");
 
-const notesTextarea = $("notes-textarea");
-const notesStatus = $("notes-status");
-
-const darkToggle = $("dark-toggle");
-const jobSearchInput = $("job-search-input");
-const jobSearchResults = $("job-search-results");
-const followUpsContent = $("follow-ups-content");
 const pomodoroDisplay = $("pomodoro-display");
 const pomodoroBtn = $("pomodoro-btn");
 const pomodoroStatus = $("pomodoro-status");
 
-/* ── Clients tab ───────────────────────────────────────────────── */
-const clientsContent = $("clients-content");
-const clientsRefreshBtn = $("clients-refresh-btn");
-const clientsViewAll = $("clients-view-all");
-const clientsQuickAdd = $("clients-quick-add");
-const clientsNewName = $("clients-new-name");
-const clientsNewTitle = $("clients-new-title");
-const clientsSaveBtn = $("clients-save-btn");
-const clientsStatus = $("clients-status");
+const screenshotToggle = $("screenshot-toggle");
+const screenshotStatus = $("screenshot-status");
+const screenshotThumbs = $("screenshot-thumbnails");
+let screenshotInterval = null;
 
-/* ── Scam Check tab ────────────────────────────────────────────── */
-const scamClientName = $("scam-client-name");
-const scamUrl = $("scam-url");
-const scamCheckBtn = $("scam-check-btn");
-const scamManualName = $("scam-manual-name");
-const scamManualUrl = $("scam-manual-url");
-const scamManualBtn = $("scam-manual-btn");
-const scamResult = $("scam-result");
-const scamScoreDisplay = $("scam-score-display");
-const scamAnalysis = $("scam-analysis");
-const scamStatus = $("scam-status");
+const notesTextarea = $("notes-textarea");
+const notesStatus = $("notes-status");
 
-const vaultLocked = $("vault-locked");
-const vaultUnlocked = $("vault-unlocked");
-const vaultPassword = $("vault-password");
-const vaultUnlockBtn = $("vault-unlock-btn");
-const vaultStatus = $("vault-status");
-const vaultLockBtn = $("vault-lock-btn");
-const vaultItemsEl = $("vault-items");
-const vaultAddBtn = $("vault-add-btn");
-const vaultAddForm = $("vault-add-form");
-const vaultNewTitle = $("vault-new-title");
-const vaultNewUsername = $("vault-new-username");
-const vaultNewUrl = $("vault-new-url");
-const vaultNewPassword = $("vault-new-password");
-const vaultSaveItemBtn = $("vault-save-item-btn");
+const darkToggle = $("dark-toggle");
+const darkToggleBottom = $("dark-toggle-bottom");
 
-const tabs = document.querySelectorAll(".tab");
-const tabContents = document.querySelectorAll(".tab-content");
+/* ── Tools grid ───────────────────────────────────────────────── */
+const toolsGrid = $("tools-grid");
+const toolDetail = $("tool-detail");
+const toolDetailContent = $("tool-detail-content");
+const toolBackBtn = $("tool-back-btn");
 
-/* ── Helpers ──────────────────────────────────────────────────── */
+const TOOLS = [
+  { id: "notes", icon: "📝", label: "Notes" },
+  { id: "clients", icon: "📇", label: "Clients" },
+  { id: "scam", icon: "🕵️", label: "Scam Check" },
+  { id: "vault", icon: "🔐", label: "Vault" },
+  { id: "followups", icon: "📅", label: "Follow-ups" },
+  { id: "mochi", icon: "🤖", label: "Mochi AI" },
+  { id: "search", icon: "🔍", label: "Job Search" },
+];
+
+/* ── Scanner DOM refs ─────────────────────────────────────────── */
+const scanCurrentBtn = $("scan-current-btn");
+const scanStatus = $("scan-status");
+const scanResults = $("scan-results");
+const scanList = $("scan-list");
+const scanActions = $("scan-actions");
+const scanSaveBtn = $("scan-save-btn");
+const scanSaveStatus = $("scan-save-status");
+const scanExportBtn = $("scan-export-btn");
+const scanBatchBtn = $("scan-batch-btn");
+const scanProgress = $("scan-progress");
+const scanProgressText = $("scan-progress-text");
+const scanProgressFill = $("scan-progress-fill");
+const scanUrlsInput = $("scan-urls-input");
+const scanSaveUrlsBtn = $("scan-save-urls-btn");
+const scanUrlsStatus = $("scan-urls-status");
+const scanStartBgBtn = $("scan-start-bg-btn");
+const scanScoreToggle = $("scan-score-toggle");
+const scanRescoreBtn = $("scan-rescore-btn");
+const scanAiBtn = $("scan-ai-btn");
+
+/* ══════════════════════════════════════════════════════════════════
+   TAB SWITCHING
+   ══════════════════════════════════════════════════════════════════ */
+
+const bottomTabs = document.querySelectorAll(".bottom-tab");
+const tabContents = {
+  job: $("tab-job"),
+  time: $("tab-time"),
+  scan: $("tab-scan"),
+  tools: $("tab-tools"),
+  settings: $("tab-settings"),
+};
+
+function switchTab(tabId) {
+  bottomTabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === tabId));
+  Object.entries(tabContents).forEach(([id, el]) => el.classList.toggle("hidden", id !== tabId));
+
+  if (tabId === "time") initTimer();
+  if (tabId === "tools") initToolsGrid();
+  if (tabId === "scan") initScanner();
+  if (tabId === "settings") updateSettingsTab();
+}
+
+bottomTabs.forEach((tab) => {
+  tab.addEventListener("click", () => switchTab(tab.dataset.tab));
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   TOOLS GRID
+   ══════════════════════════════════════════════════════════════════ */
+
+function initToolsGrid() {
+  if (toolsGrid.querySelector(".tool-card")) return;
+  toolsGrid.innerHTML = TOOLS.map(
+    (t) => `<button class="tool-card" data-tool="${t.id}">${t.icon}<span>${t.label}</span></button>`
+  ).join("");
+
+  toolsGrid.querySelectorAll(".tool-card").forEach((card) => {
+    card.addEventListener("click", () => openTool(card.dataset.tool));
+  });
+}
+
+function openTool(toolId) {
+  const template = $(`template-${toolId}`);
+  if (!template) return;
+
+  toolsGrid.classList.add("hidden");
+  toolDetail.classList.remove("hidden");
+  toolDetailContent.innerHTML = template.innerHTML;
+
+  // Re-attach event listeners for the tool
+  initToolByName(toolId);
+
+  // Scroll detail to top
+  toolDetailContent.scrollTop = 0;
+}
+
+toolBackBtn.addEventListener("click", () => {
+  toolDetail.classList.add("hidden");
+  toolsGrid.classList.remove("hidden");
+  toolDetailContent.innerHTML = "";
+});
+
+function initToolByName(name) {
+  switch (name) {
+    case "notes": loadNotes(); break;
+    case "clients": initClients(); break;
+    case "scam": initScamCheck(); break;
+    case "vault": initVault(); break;
+    case "followups": loadFollowUps(); break;
+    case "mochi": initMochi(); break;
+    case "search": initJobSearch(); break;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   HELPERS
+   ══════════════════════════════════════════════════════════════════ */
+
 function apiHeaders() {
   return {
     "Content-Type": "application/json",
@@ -121,7 +205,10 @@ async function apiFetch(path, options = {}) {
   return res.json();
 }
 
-/* ── State ────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════════════════════════════ */
+
 async function loadState() {
   const result = await chrome.storage.local.get([
     "sariToken",
@@ -134,7 +221,7 @@ async function loadState() {
   savedJobId = result.savedJobId || null;
   if (result.sariDarkMode) {
     document.body.classList.add("dark");
-    darkToggle.textContent = "☀️";
+    [darkToggle, darkToggleBottom].forEach((b) => { if (b) b.textContent = "☀️"; });
   }
 }
 
@@ -143,7 +230,10 @@ async function clearToken() {
   await chrome.storage.local.remove("sariToken");
 }
 
-/* ── Render ───────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   RENDER
+   ══════════════════════════════════════════════════════════════════ */
+
 function render() {
   if (sariToken) {
     loginView.classList.add("hidden");
@@ -159,10 +249,22 @@ function render() {
 async function fetchCreditBalance() {
   try {
     const data = await apiFetch("/api/ai/credits");
-    creditBalance.textContent = data.balance ?? 0;
-    creditBar.classList.remove("hidden");
+    const bal = data.balance ?? 0;
+    creditBalance.textContent = `💎 ${bal}`;
+    creditBalance.classList.remove("hidden");
+    if (creditBalanceDisplay) creditBalanceDisplay.textContent = bal;
   } catch {
-    creditBar.classList.add("hidden");
+    creditBalance.classList.add("hidden");
+  }
+}
+
+function updateSettingsTab() {
+  if (creditBalanceDisplay) {
+    const bal = creditBalance.textContent.replace("💎 ", "");
+    creditBalanceDisplay.textContent = bal;
+  }
+  if (settingsConnectedAs) {
+    settingsConnectedAs.textContent = sariToken ? "Connected" : "Not connected";
   }
 }
 
@@ -175,7 +277,6 @@ function renderJobInfo() {
       currentJob.description = currentJob.descriptionFull;
     }
 
-    // Enriched fields
     const parts = [];
     if (currentJob.budgetType || currentJob.budgetAmount) {
       parts.push(`💰 ${[currentJob.budgetType, currentJob.budgetAmount].filter(Boolean).join(" ")}`);
@@ -200,11 +301,9 @@ function renderJobInfo() {
     }
 
     jobDesc.textContent = currentJob.description
-      ? currentJob.description.substring(0, 200) +
-        (currentJob.description.length > 200 ? "..." : "")
+      ? currentJob.description.substring(0, 200) + (currentJob.description.length > 200 ? "..." : "")
       : "";
 
-    // Show save button if not already saved
     if (savedJobId) {
       saveJobBtn.classList.add("hidden");
     } else {
@@ -214,264 +313,36 @@ function renderJobInfo() {
     jobTitle.textContent = "No job detected";
     jobPlatform.textContent = "";
     jobEnriched.classList.add("hidden");
-    jobDesc.textContent =
-      'Navigate to a supported job page, then click "Re-extract from page".';
+    jobDesc.textContent = 'Navigate to a supported job page, then click "Re-extract from page".';
     saveJobBtn.classList.add("hidden");
   }
 }
 
-/* ── Tab switching ────────────────────────────────────────────── */
-tabs.forEach((tab) => {
-  tab.addEventListener("click", () => {
-    tabs.forEach((t) => t.classList.remove("active"));
-    tab.classList.add("active");
-    tabContents.forEach((tc) => tc.classList.add("hidden"));
-    const target = $("tab-" + tab.dataset.tab);
-    if (target) target.classList.remove("hidden");
-    if (tab.dataset.tab === "time") initTimer();
-    if (tab.dataset.tab === "notes") loadNotes();
-    if (tab.dataset.tab === "vault") initVault();
-    if (tab.dataset.tab === "tools") initTools();
-    if (tab.dataset.tab === "clients") initClients();
-    if (tab.dataset.tab === "scam") initScamCheck();
-    if (tab.dataset.tab === "scanner") initScanner();
-  });
-});
+/* ══════════════════════════════════════════════════════════════════
+   CONNECT / DISCONNECT
+   ══════════════════════════════════════════════════════════════════ */
 
-/* ── Vault ─────────────────────────────────────────────────────── */
-function vaultDeriveKey(password, salt) {
-  let enc = new TextEncoder();
-  let data = enc.encode(password + salt);
-  for (let i = 0; i < 1000; i++) {
-    let hash = nacl.hash(data);
-    data = hash.slice(0, 32);
-  }
-  return data;
-}
-
-function vaultEncrypt(key, plaintext) {
-  let enc = new TextEncoder();
-  let nonce = nacl.randomBytes(24);
-  let cipher = nacl.secretbox(enc.encode(plaintext), nonce, key);
-  return nacl_util.encodeBase64(nonce) + ":" + nacl_util.encodeBase64(cipher);
-}
-
-function vaultDecrypt(key, ciphertext) {
-  let [nonceB64, cipherB64] = ciphertext.split(":");
-  let nonce = nacl_util.decodeBase64(nonceB64);
-  let cipher = nacl_util.decodeBase64(cipherB64);
-  let plain = nacl.secretbox.open(cipher, nonce, key);
-  if (!plain) throw new Error("Decryption failed");
-  return new TextDecoder().decode(plain);
-}
-
-async function initVault() {
-  if (vaultKey) {
-    vaultLocked.classList.add("hidden");
-    vaultUnlocked.classList.remove("hidden");
-    loadVaultItems();
-    return;
-  }
-
-  // Check if vault is set up
-  try {
-    const data = await apiFetch("/api/vault/setup");
-    if (data.salt && data.keyCheck) {
-      vaultLocked.classList.remove("hidden");
-      vaultUnlocked.classList.add("hidden");
-      vaultStatus.textContent = "";
-    } else {
-      vaultLocked.classList.remove("hidden");
-      vaultUnlocked.classList.add("hidden");
-      vaultStatus.textContent = "Vault not set up. Go to Sari Dashboard to initialize.";
-    }
-  } catch {
-    vaultStatus.textContent = "Could not check vault status";
-  }
-}
-
-async function unlockVault() {
-  const password = vaultPassword.value;
-  if (!password) { vaultStatus.textContent = "Enter your master password"; return; }
-
-  vaultUnlockBtn.disabled = true;
-  vaultStatus.textContent = "Unlocking...";
-
-  try {
-    const setup = await apiFetch("/api/vault/setup");
-    if (!setup.salt || !setup.keyCheck) {
-      vaultStatus.textContent = "Vault not set up yet. Use the Sari Dashboard.";
-      vaultUnlockBtn.disabled = false;
-      return;
-    }
-
-    const key = vaultDeriveKey(password, setup.salt);
-    const [nonceB64, cipherB64] = setup.keyCheck.split(":");
-    const nonce = nacl_util.decodeBase64(nonceB64);
-    const cipher = nacl_util.decodeBase64(cipherB64);
-    const decrypted = nacl.secretbox.open(cipher, nonce, key);
-
-    if (decrypted) {
-      vaultKey = key;
-      vaultLocked.classList.add("hidden");
-      vaultUnlocked.classList.remove("hidden");
-      vaultPassword.value = "";
-      vaultStatus.textContent = "";
-      loadVaultItems();
-    } else {
-      vaultStatus.textContent = "Wrong password";
-    }
-  } catch (err) {
-    vaultStatus.textContent = "Unlock failed: " + err.message;
-  } finally {
-    vaultUnlockBtn.disabled = false;
-  }
-}
-
-function lockVault() {
-  vaultKey = null;
-  vaultLocked.classList.remove("hidden");
-  vaultUnlocked.classList.add("hidden");
-  vaultItems = [];
-}
-
-async function loadVaultItems() {
-  try {
-    const data = await apiFetch("/api/vault");
-    vaultItems = data.items || [];
-    renderVaultItems();
-  } catch (err) {
-    vaultItemsEl.innerHTML = "<p class='status-text'>Failed to load vault items</p>";
-  }
-}
-
-function renderVaultItems() {
-  if (vaultItems.length === 0) {
-    vaultItemsEl.innerHTML = "<p class='status-text'>No vault items yet</p>";
-    return;
-  }
-
-  vaultItemsEl.innerHTML = vaultItems.map((item, idx) => {
-    let uname = "";
-    try { uname = item.username ? vaultDecrypt(vaultKey, item.username) : ""; } catch {}
-    return `<div class="vault-item">
-      <span class="vault-item-title">${item.title}</span>
-      <span class="vault-item-uname">${uname}</span>
-      <div class="vault-item-actions">
-        <button class="vault-reveal-btn" data-idx="${idx}">👁️</button>
-        <button class="vault-copy-btn" data-idx="${idx}">📋</button>
-        <button class="vault-del-btn" data-idx="${idx}">🗑️</button>
-      </div>
-    </div>`;
-  }).join("");
-
-  vaultItemsEl.querySelectorAll(".vault-reveal-btn").forEach((btn) => {
-    btn.addEventListener("click", () => revealVaultItem(parseInt(btn.dataset.idx)));
-  });
-  vaultItemsEl.querySelectorAll(".vault-copy-btn").forEach((btn) => {
-    btn.addEventListener("click", () => copyVaultItem(parseInt(btn.dataset.idx)));
-  });
-  vaultItemsEl.querySelectorAll(".vault-del-btn").forEach((btn) => {
-    btn.addEventListener("click", () => deleteVaultItem(parseInt(btn.dataset.idx)));
-  });
-}
-
-function revealVaultItem(idx) {
-  const item = vaultItems[idx];
-  if (!item) return;
-  try {
-    const pwd = vaultDecrypt(vaultKey, item.encrypted_password);
-    alert("Password: " + pwd);
-  } catch {
-    alert("Could not decrypt password");
-  }
-}
-
-function copyVaultItem(idx) {
-  const item = vaultItems[idx];
-  if (!item) return;
-  try {
-    const pwd = vaultDecrypt(vaultKey, item.encrypted_password);
-    navigator.clipboard.writeText(pwd).catch(() => {});
-  } catch {}
-}
-
-async function deleteVaultItem(idx) {
-  const item = vaultItems[idx];
-  if (!item || !confirm(`Delete "${item.title}"?`)) return;
-  try {
-    await apiFetch(`/api/vault/${item.id}`, { method: "DELETE" });
-    vaultItems.splice(idx, 1);
-    renderVaultItems();
-  } catch {}
-}
-
-vaultUnlockBtn.addEventListener("click", unlockVault);
-vaultPassword.addEventListener("keydown", (e) => { if (e.key === "Enter") unlockVault(); });
-vaultLockBtn.addEventListener("click", lockVault);
-vaultAddBtn.addEventListener("click", () => {
-  vaultAddForm.classList.toggle("hidden");
-});
-vaultSaveItemBtn.addEventListener("click", async () => {
-  const title = vaultNewTitle.value.trim();
-  const username = vaultNewUsername.value.trim();
-  const url = vaultNewUrl.value.trim();
-  const password = vaultNewPassword.value.trim();
-  if (!title || !password) { vaultStatus.textContent = "Title and password required"; return; }
-
-  vaultSaveItemBtn.disabled = true;
-  try {
-    const encPwd = vaultEncrypt(vaultKey, password);
-    const encUname = username ? vaultEncrypt(vaultKey, username) : "";
-    const payload = { title, encrypted_password: encPwd, username: encUname, url, notes: "" };
-    const data = await apiFetch("/api/vault", { method: "POST", body: JSON.stringify(payload) });
-    if (data.item) {
-      vaultItems.unshift(data.item);
-      renderVaultItems();
-      vaultNewTitle.value = "";
-      vaultNewUsername.value = "";
-      vaultNewUrl.value = "";
-      vaultNewPassword.value = "";
-      vaultAddForm.classList.add("hidden");
-    }
-  } catch (err) {
-    vaultStatus.textContent = "Save failed: " + err.message;
-  } finally {
-    vaultSaveItemBtn.disabled = false;
-  }
-});
-
-/* ── Connect / Disconnect ─────────────────────────────────────── */
 connectBtn.addEventListener("click", connectToSari);
-disconnectBtn.addEventListener("click", async () => {
-  await clearToken();
-  render();
+[disconnectBtn, disconnectBtnBottom].forEach((btn) => {
+  if (btn) btn.addEventListener("click", async () => { await clearToken(); render(); });
 });
 
 async function connectToSari() {
   connectBtn.disabled = true;
   connectBtn.textContent = "Opening Sari...";
-  if (connectStatus) connectStatus.classList.remove("hidden");
 
   await chrome.tabs.create({ url: SARI_API + "/extension-auth" });
-  setConnectStatus("Waiting for you to log in and authorize the extension...");
 
   try {
     const token = await pollForToken(30_000);
     sariToken = token;
     render();
-    setConnectStatus("Connected!");
   } catch (err) {
-    setConnectStatus("Timed out. Please try again.");
     alert("Authentication failed: " + err.message);
   } finally {
     connectBtn.disabled = false;
     connectBtn.textContent = "Connect to Sari";
   }
-}
-
-function setConnectStatus(msg) {
-  if (connectStatus) connectStatus.textContent = msg;
 }
 
 function pollForToken(timeoutMs) {
@@ -490,14 +361,24 @@ function pollForToken(timeoutMs) {
   });
 }
 
-/* ── Dark mode toggle ─────────────────────────────────────────── */
-darkToggle.addEventListener("click", async () => {
-  const isDark = document.body.classList.toggle("dark");
-  darkToggle.textContent = isDark ? "☀️" : "🌙";
-  await chrome.storage.local.set({ sariDarkMode: isDark });
+/* ══════════════════════════════════════════════════════════════════
+   DARK MODE
+   ══════════════════════════════════════════════════════════════════ */
+
+[darkToggle, darkToggleBottom].forEach((btn) => {
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    const isDark = document.body.classList.toggle("dark");
+    const text = isDark ? "☀️" : "🌙";
+    [darkToggle, darkToggleBottom].forEach((b) => { if (b) b.textContent = text; });
+    await chrome.storage.local.set({ sariDarkMode: isDark });
+  });
 });
 
-/* ── Extract job from active tab (enriched) ───────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   EXTRACT JOB
+   ══════════════════════════════════════════════════════════════════ */
+
 extractBtn.addEventListener("click", extractJobFromTab);
 
 async function extractJobFromTab() {
@@ -512,10 +393,7 @@ async function extractJobFromTab() {
       target: { tabId: tab.id },
       func: () => {
         function g(sel) {
-          for (const s of sel) {
-            const el = document.querySelector(s);
-            if (el && el.textContent.trim()) return el.textContent.trim();
-          }
+          for (const s of sel) { const el = document.querySelector(s); if (el && el.textContent.trim()) return el.textContent.trim(); }
           return "";
         }
         const hostname = location.hostname;
@@ -524,28 +402,14 @@ async function extractJobFromTab() {
         else if (hostname.includes("onlinejobs.ph")) platform = "OnlineJobs.ph";
         else platform = hostname;
 
-        const title = g([
-          "h1", '[itemprop="title"]', ".job-title",
-          '[data-test="job-title"]', '[data-qa="job-title"]',
-          ".job-details-title", ".t-title", "h2",
-        ]) || document.title || "";
-
-        const descSelectors = [
-          '[itemprop="description"]', ".job-description", ".description",
-          '[data-qa="job-description"]', ".job-details-description",
-          '[data-test="job-description"]', ".break-word", ".TextualDisplay",
-          "article", '[data-test="JobDescription"]', ".job-description-text",
-        ];
+        const title = g(["h1", '[itemprop="title"]', ".job-title", '[data-test="job-title"]', '[data-qa="job-title"]', ".job-details-title", ".t-title", "h2"]) || document.title || "";
+        const descSelectors = ['[itemprop="description"]', ".job-description", ".description", '[data-qa="job-description"]', ".job-details-description", '[data-test="job-description"]', ".break-word", ".TextualDisplay", "article", '[data-test="JobDescription"]', ".job-description-text"];
         const description = (g(descSelectors) || document.body?.textContent?.trim() || "").substring(0, 5000);
         const descriptionFull = (g(descSelectors) || "").substring(0, 10000);
-
         const pageText = document.body?.textContent || "";
         let budgetType = "";
         let budgetAmount = "";
-        const budgetEl = g([
-          '[data-test="budget"]', '[data-qa="budget"]', ".budget",
-          ".job-budget", '[data-test="JobBudget"]',
-        ]);
+        const budgetEl = g(['[data-test="budget"]', '[data-qa="budget"]', ".budget", ".job-budget", '[data-test="JobBudget"]']);
         if (budgetEl) {
           const lower = budgetEl.toLowerCase();
           if (lower.includes("hourly") || lower.includes("/hr")) budgetType = "hourly";
@@ -553,51 +417,18 @@ async function extractJobFromTab() {
           const m = budgetEl.match(/\$[\d,]+(?:\.\d{2})?(?:\s*-\s*\$?[\d,]+(?:\.\d{2})?)?/);
           if (m) budgetAmount = m[0];
         }
-        if (!budgetType) {
-          if (/hourly|\/hr/i.test(pageText)) budgetType = "hourly";
-          else if (/fixed|fixed.price/i.test(pageText)) budgetType = "fixed";
-        }
-        if (!budgetAmount) {
-          const m = pageText.match(/\$[\d,]+(?:\.\d{2})?(?:\s*-\s*\$?[\d,]+(?:\.\d{2})?)?(?:\s*\/hr)?/i);
-          if (m) budgetAmount = m[0];
-        }
-
-        const clientName = g([
-          '[data-test="client-name"]', '[data-qa="client-name"]',
-          ".client-name", '[data-test="ClientName"]',
-          ".freelancer-name", ".buyer-name",
-        ]);
-        const clientCountry = g([
-          '[data-test="client-country"]', '[data-qa="client-country"]',
-          ".client-country", ".location", '[data-test="ClientLocation"]',
-        ]);
+        if (!budgetType) { if (/hourly|\/hr/i.test(pageText)) budgetType = "hourly"; else if (/fixed|fixed.price/i.test(pageText)) budgetType = "fixed"; }
+        if (!budgetAmount) { const m = pageText.match(/\$[\d,]+(?:\.\d{2})?(?:\s*-\s*\$?[\d,]+(?:\.\d{2})?)?(?:\s*\/hr)?/i); if (m) budgetAmount = m[0]; }
+        const clientName = g(['[data-test="client-name"]', '[data-qa="client-name"]', ".client-name", '[data-test="ClientName"]', ".freelancer-name", ".buyer-name"]);
+        const clientCountry = g(['[data-test="client-country"]', '[data-qa="client-country"]', ".client-country", ".location", '[data-test="ClientLocation"]']);
         let clientRating = "";
-        const r = g([
-          '[data-test="client-rating"]', '[data-qa="client-rating"]',
-          ".client-rating", ".rating",
-        ]);
+        const r = g(['[data-test="client-rating"]', '[data-qa="client-rating"]', ".client-rating", ".rating"]);
         if (r) { const rm = r.match(/[\d.]+/); if (rm) clientRating = rm[0]; }
-        const clientTotalSpent = g([
-          '[data-test="total-spent"]', '[data-qa="total-spent"]',
-          ".total-spent", ".client-spent",
-        ]);
-        const skillEls = document.querySelectorAll(
-          '[data-test="skill-tag"], [data-qa="skill"], .skill-tag, .skills span, [data-test="JobSkills"] span, .token'
-        );
+        const clientTotalSpent = g(['[data-test="total-spent"]', '[data-qa="total-spent"]', ".total-spent", ".client-spent"]);
+        const skillEls = document.querySelectorAll('[data-test="skill-tag"], [data-qa="skill"], .skill-tag, .skills span, [data-test="JobSkills"] span, .token');
         const skills = Array.from(skillEls).map((el) => el.textContent?.trim()).filter(Boolean).slice(0, 15);
-
-        const postedDate = g([
-          '[data-test="posted-date"]', '[data-qa="posted-date"]',
-          ".posted-date", '[data-test="JobPosted"]', ".job-posted",
-          '[data-test="date-posted"]', "time",
-        ]);
-
-        return {
-          title, description, descriptionFull, platform,
-          budgetType, budgetAmount,
-          clientName, clientCountry, clientRating, clientTotalSpent,
-          skills, postedDate, url: location.href,
-        };
+        const postedDate = g(['[data-test="posted-date"]', '[data-qa="posted-date"]', ".posted-date", '[data-test="JobPosted"]', ".job-posted", '[data-test="date-posted"]', "time"]);
+        return { title, description, descriptionFull, platform, budgetType, budgetAmount, clientName, clientCountry, clientRating, clientTotalSpent, skills, postedDate, url: location.href };
       },
     });
 
@@ -608,9 +439,7 @@ async function extractJobFromTab() {
       await chrome.storage.local.set({ currentJob: data, savedJobId: null });
       renderJobInfo();
     }
-  } catch (err) {
-    console.error("Extract error:", err);
-  }
+  } catch (err) { console.error("Extract error:", err); }
 }
 
 function supportedSite(url) {
@@ -618,7 +447,10 @@ function supportedSite(url) {
   return url.includes("upwork.com") || url.includes("onlinejobs.ph");
 }
 
-/* ── Save Job to Sari ─────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   SAVE JOB
+   ══════════════════════════════════════════════════════════════════ */
+
 saveJobBtn.addEventListener("click", async () => {
   if (!currentJob || !currentJob.title) return;
   saveJobBtn.disabled = true;
@@ -640,17 +472,11 @@ saveJobBtn.addEventListener("click", async () => {
       skills: currentJob.skills?.length ? currentJob.skills : null,
     };
 
-    const { job } = await apiFetch("/api/jobs", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-
+    const { job } = await apiFetch("/api/jobs", { method: "POST", body: JSON.stringify(payload) });
     savedJobId = job.id;
     await chrome.storage.local.set({ savedJobId: job.id });
     saveStatus.textContent = "Job saved! ✅";
     saveJobBtn.classList.add("hidden");
-
-    // After saving, auto-generate pitch
     await doGeneratePitch(job.id);
   } catch (err) {
     saveStatus.textContent = "Save failed: " + err.message;
@@ -659,21 +485,18 @@ saveJobBtn.addEventListener("click", async () => {
   }
 });
 
-/* ── Generate Pitch ────────────────────────────────────────────── */
-generateBtn.addEventListener("click", async () => {
-  if (!currentJob || !currentJob.title) {
-    alert("No job data available. Extract a job first.");
-    return;
-  }
+/* ══════════════════════════════════════════════════════════════════
+   GENERATE PITCH
+   ══════════════════════════════════════════════════════════════════ */
 
+generateBtn.addEventListener("click", async () => {
+  if (!currentJob || !currentJob.title) { alert("No job data available. Extract a job first."); return; }
   pitchLoading.classList.remove("hidden");
   pitchResult.classList.add("hidden");
   pitchStatus.classList.add("hidden");
   retryBtn.classList.add("hidden");
   generateBtn.disabled = true;
-
   try {
-    // Save job first if not already saved
     let jobId = savedJobId;
     if (!jobId) {
       const payload = {
@@ -694,7 +517,6 @@ generateBtn.addEventListener("click", async () => {
       savedJobId = job.id;
       await chrome.storage.local.set({ savedJobId: job.id });
     }
-
     await doGeneratePitch(jobId);
   } catch (err) {
     pitchStatus.textContent = "Failed: " + err.message;
@@ -711,12 +533,8 @@ async function doGeneratePitch(jobId) {
   pitchResult.classList.add("hidden");
   pitchStatus.classList.add("hidden");
   retryBtn.classList.add("hidden");
-
   try {
-    const data = await apiFetch("/api/generate-pitch", {
-      method: "POST",
-      body: JSON.stringify({ jobId }),
-    });
+    const data = await apiFetch("/api/generate-pitch", { method: "POST", body: JSON.stringify({ jobId }) });
     pitchText.textContent = data.pitch || JSON.stringify(data);
     pitchResult.classList.remove("hidden");
   } catch (err) {
@@ -728,35 +546,27 @@ async function doGeneratePitch(jobId) {
   }
 }
 
-retryBtn.addEventListener("click", () => {
-  if (savedJobId) {
-    doGeneratePitch(savedJobId);
-  }
-});
-
-copyBtn.addEventListener("click", () => {
-  navigator.clipboard.writeText(pitchText.textContent).catch(() => {});
-});
-
+retryBtn.addEventListener("click", () => { if (savedJobId) doGeneratePitch(savedJobId); });
+copyBtn.addEventListener("click", () => { navigator.clipboard.writeText(pitchText.textContent).catch(() => {}); });
 polishBtn.addEventListener("click", async () => {
   const text = pitchText.textContent;
   if (!text) return;
   polishBtn.disabled = true;
-
   try {
-    const data = await apiFetch("/api/polish-text", {
-      method: "POST",
-      body: JSON.stringify({ text }),
-    });
+    const data = await apiFetch("/api/polish-text", { method: "POST", body: JSON.stringify({ text }) });
     pitchText.textContent = data.polished || JSON.stringify(data);
-  } catch (err) {
-    alert("Polish failed: " + err.message);
-  } finally {
-    polishBtn.disabled = false;
-  }
+  } catch (err) { alert("Polish failed: " + err.message); } finally { polishBtn.disabled = false; }
 });
 
-/* ── Time Tracking (PATCH-based) ───────────────────────────────── */
+const origDoGenerate = doGeneratePitch;
+doGeneratePitch = async function (jobId) {
+  await origDoGenerate(jobId);
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   TIME TRACKING
+   ══════════════════════════════════════════════════════════════════ */
+
 async function initTimer() {
   try {
     const data = await apiFetch("/api/time-entries");
@@ -772,41 +582,25 @@ async function initTimer() {
       timerDisplay.textContent = "00:00:00";
       timerStatus.textContent = "";
     }
-  } catch (err) {
-    timerStatus.textContent = "Could not load timer";
-  }
+  } catch (err) { timerStatus.textContent = "Could not load timer"; }
 }
 
 timerBtn.addEventListener("click", async () => {
-  if (timerBtn.textContent === "Start Timer") {
-    await startTimer();
-  } else {
-    await stopTimer();
-  }
+  if (timerBtn.textContent === "Start Timer") { await startTimer(); }
+  else { await stopTimer(); }
 });
 
 async function startTimer() {
   const startTime = new Date().toISOString();
   timerBtn.disabled = true;
   try {
-    const data = await apiFetch("/api/time-entries", {
-      method: "POST",
-      body: JSON.stringify({
-        description: "Extension timer",
-        start_time: startTime,
-        project_name: "Browser work",
-      }),
-    });
+    const data = await apiFetch("/api/time-entries", { method: "POST", body: JSON.stringify({ description: "Extension timer", start_time: startTime, project_name: "Browser work" }) });
     runningEntryId = data.entry.id;
     timerBtn.textContent = "Stop Timer";
     startTimerDisplay(startTime);
     timerStatus.textContent = "";
     if (screenshotToggle.checked) startScreenshotCapture();
-  } catch (err) {
-    timerStatus.textContent = "Failed to start: " + err.message;
-  } finally {
-    timerBtn.disabled = false;
-  }
+  } catch (err) { timerStatus.textContent = "Failed to start: " + err.message; } finally { timerBtn.disabled = false; }
 }
 
 async function stopTimer() {
@@ -814,25 +608,17 @@ async function stopTimer() {
   const endTime = new Date().toISOString();
   timerBtn.disabled = true;
   try {
-    await apiFetch(`/api/time-entries/${runningEntryId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ end_time: endTime }),
-    });
+    await apiFetch(`/api/time-entries/${runningEntryId}`, { method: "PATCH", body: JSON.stringify({ end_time: endTime }) });
     stopScreenshotCapture();
     runningEntryId = null;
     timerBtn.textContent = "Start Timer";
     stopTimerDisplay();
     timerDisplay.textContent = "00:00:00";
     timerStatus.textContent = "";
-  } catch (err) {
-    timerStatus.textContent = "Failed to stop: " + err.message;
-  } finally {
-    timerBtn.disabled = false;
-  }
+  } catch (err) { timerStatus.textContent = "Failed to stop: " + err.message; } finally { timerBtn.disabled = false; }
 }
 
 let timerStartTs = null;
-
 function startTimerDisplay(startTime) {
   timerStartTs = new Date(startTime).getTime();
   if (timerInterval) clearInterval(timerInterval);
@@ -841,25 +627,17 @@ function startTimerDisplay(startTime) {
     const hrs = Math.floor(elapsed / 3600000);
     const mins = Math.floor((elapsed % 3600000) / 60000);
     const secs = Math.floor((elapsed % 60000) / 1000);
-    timerDisplay.textContent =
-      String(hrs).padStart(2, "0") + ":" +
-      String(mins).padStart(2, "0") + ":" +
-      String(secs).padStart(2, "0");
+    timerDisplay.textContent = String(hrs).padStart(2, "0") + ":" + String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
   }, 1000);
 }
 
-function stopTimerDisplay() {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
-}
+function stopTimerDisplay() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
 
-/* ── Screenshots ───────────────────────────────────────────────── */
-const screenshotToggle = $("screenshot-toggle");
-const screenshotStatus = $("screenshot-status");
-const screenshotThumbs = $("screenshot-thumbnails");
-let screenshotInterval = null;
+/* Screenshots */
+screenshotToggle.addEventListener("change", () => {
+  if (screenshotToggle.checked && runningEntryId) startScreenshotCapture();
+  else stopScreenshotCapture();
+});
 
 async function captureScreenshot() {
   try {
@@ -867,19 +645,10 @@ async function captureScreenshot() {
     if (!tab?.id) return;
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
     if (!dataUrl) return;
-
-    const ssRes = await fetch(`${SARI_API}/api/screenshots`, {
-      method: "POST",
-      headers: { ...apiHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ image_data_url: dataUrl, time_entry_id: runningEntryId }),
-    });
+    const ssRes = await fetch(`${SARI_API}/api/screenshots`, { method: "POST", headers: { ...apiHeaders(), "Content-Type": "application/json" }, body: JSON.stringify({ image_data_url: dataUrl, time_entry_id: runningEntryId }) });
     const ssData = await ssRes.json();
-    if (ssData.screenshot) {
-      showScreenshotThumb(ssData.screenshot.image_url);
-    }
-  } catch (err) {
-    console.error("Screenshot capture failed:", err);
-  }
+    if (ssData.screenshot) showScreenshotThumb(ssData.screenshot.image_url);
+  } catch (err) { console.error("Screenshot capture failed:", err); }
 }
 
 function showScreenshotThumb(url) {
@@ -895,73 +664,62 @@ function startScreenshotCapture() {
   if (screenshotInterval) clearInterval(screenshotInterval);
   screenshotStatus.textContent = "📸 Screenshot capture active";
   screenshotStatus.classList.remove("hidden");
-
-  const capture = () => {
-    captureScreenshot();
-    const nextDelay = 300000 + Math.random() * 300000; // 5-10 minutes
-    setTimeout(capture, nextDelay);
-  };
+  const capture = () => { captureScreenshot(); const nextDelay = 300000 + Math.random() * 300000; setTimeout(capture, nextDelay); };
   capture();
 }
 
 function stopScreenshotCapture() {
-  if (screenshotInterval) {
-    clearInterval(screenshotInterval);
-    screenshotInterval = null;
-  }
+  if (screenshotInterval) { clearInterval(screenshotInterval); screenshotInterval = null; }
   screenshotStatus.textContent = "";
   screenshotStatus.classList.add("hidden");
 }
 
-screenshotToggle.addEventListener("change", () => {
-  if (screenshotToggle.checked && runningEntryId) {
-    startScreenshotCapture();
-  } else {
-    stopScreenshotCapture();
-  }
+/* ══════════════════════════════════════════════════════════════════
+   POMODORO
+   ══════════════════════════════════════════════════════════════════ */
+
+pomodoroBtn.addEventListener("click", () => {
+  if (!pomodoroRunning) startPomodoro();
+  else stopPomodoro();
 });
 
-/* ── Mochi AI Quick Actions ───────────────────────────────────── */
-const mochiSummarizeBtn = $("mochi-summarize-btn");
-const mochiTipBtn = $("mochi-tip-btn");
-const mochiResult = $("mochi-result");
-const mochiText = $("mochi-text");
-const mochiStatus = $("mochi-status");
-
-async function askMochi(prompt) {
-  mochiResult.classList.add("hidden");
-  mochiStatus.classList.remove("hidden");
-  mochiStatus.textContent = "Asking Mochi...";
-  try {
-    const data = await apiFetch("/api/mochi/chat", {
-      method: "POST",
-      body: JSON.stringify({ message: prompt }),
-    });
-    mochiText.textContent = data.reply || "🤔 Mochi is thinking...";
-    mochiResult.classList.remove("hidden");
-    mochiStatus.classList.add("hidden");
-  } catch (err) {
-    mochiStatus.textContent = "Mochi error: " + (err.message || "Try again later");
-  }
+function startPomodoro() {
+  pomodoroRunning = true;
+  pomodoroRemaining = 25 * 60;
+  pomodoroBtn.textContent = "Stop";
+  pomodoroStatus.textContent = "Focus time! 🍅";
+  if (pomodoroInterval) clearInterval(pomodoroInterval);
+  pomodoroInterval = setInterval(() => {
+    pomodoroRemaining--;
+    const mins = Math.floor(pomodoroRemaining / 60);
+    const secs = pomodoroRemaining % 60;
+    pomodoroDisplay.textContent = String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
+    if (pomodoroRemaining <= 0) {
+      stopPomodoro();
+      pomodoroStatus.textContent = "Time's up! 🎉";
+      if (Notification.permission === "granted") new Notification("Sari Pomodoro", { body: "Pomodoro complete! Take a break." });
+    }
+  }, 1000);
 }
 
-mochiSummarizeBtn.addEventListener("click", () => {
-  askMochi("Please summarize my week.");
-});
+function stopPomodoro() {
+  pomodoroRunning = false;
+  pomodoroRemaining = 0;
+  pomodoroBtn.textContent = "Start Pomodoro";
+  if (pomodoroInterval) { clearInterval(pomodoroInterval); pomodoroInterval = null; }
+  pomodoroDisplay.textContent = "25:00";
+}
 
-mochiTipBtn.addEventListener("click", () => {
-  askMochi("Give me a productivity tip based on my recent activity.");
-});
+/* ══════════════════════════════════════════════════════════════════
+   NOTES
+   ══════════════════════════════════════════════════════════════════ */
 
-/* ── Notes ────────────────────────────────────────────────────── */
 async function loadNotes() {
   try {
     const data = await apiFetch("/api/notes");
     notesTextarea.value = data.notes || "";
     notesStatus.textContent = "Auto-saves on change";
-  } catch (err) {
-    notesStatus.textContent = "Could not load notes";
-  }
+  } catch (err) { notesStatus.textContent = "Could not load notes"; }
 }
 
 notesTextarea.addEventListener("input", () => {
@@ -973,146 +731,36 @@ notesTextarea.addEventListener("input", () => {
 async function saveNotes() {
   const text = notesTextarea.value;
   notesStatus.textContent = "Saving...";
-  try {
-    await apiFetch("/api/notes", {
-      method: "PUT",
-      body: JSON.stringify({ notes: text }),
-    });
-    notesStatus.textContent = "Saved";
-  } catch {
-    notesStatus.textContent = "Save failed";
-  }
+  try { await apiFetch("/api/notes", { method: "PUT", body: JSON.stringify({ notes: text }) }); notesStatus.textContent = "Saved"; }
+  catch { notesStatus.textContent = "Save failed"; }
 }
 
-/* ── Tools Tab ────────────────────────────────────────────────── */
-function initTools() {
-  loadFollowUps();
-}
+/* ══════════════════════════════════════════════════════════════════
+   CLIENTS
+   ══════════════════════════════════════════════════════════════════ */
 
-jobSearchInput.addEventListener("input", () => {
-  const q = jobSearchInput.value.trim();
-  if (q.length < 2) {
-    jobSearchResults.innerHTML = "";
-    return;
-  }
-  clearTimeout(jobSearchInput._timer);
-  jobSearchInput._timer = setTimeout(() => searchJobs(q), 400);
-});
-
-async function searchJobs(query) {
-  jobSearchResults.innerHTML = "<p class='status-text'>Searching...</p>";
-  try {
-    const data = await apiFetch(`/api/jobs?search=${encodeURIComponent(query)}`);
-    const jobs = data.jobs || [];
-    if (jobs.length === 0) {
-      jobSearchResults.innerHTML = "<p class='status-text'>No matches found</p>";
-      return;
+function maybeShowQuickAdd() {
+  if (currentJob && currentJob.clientName) {
+    const el = $("clients-quick-add");
+    if (el) {
+      el.classList.remove("hidden");
+      $("clients-new-name").value = currentJob.clientName;
+      $("clients-new-title").value = "Website";
     }
-    jobSearchResults.innerHTML = jobs
-      .slice(0, 5)
-      .map((j) =>
-        `<div class="search-result-item" data-id="${j.id}">${j.title}</div>`
-      )
-      .join("");
-  } catch {
-    jobSearchResults.innerHTML = "<p class='status-text'>Search failed</p>";
   }
 }
 
-async function loadFollowUps() {
-  try {
-    const data = await apiFetch("/api/follow-ups");
-    const items = data.followUps || [];
-    const pending = items.filter((f) => f.status === "pending");
-
-    if (pending.length === 0) {
-      followUpsContent.innerHTML = "<p class='status-text'>No pending follow-ups ✨</p>";
-      return;
-    }
-
-    followUpsContent.innerHTML = pending
-      .slice(0, 5)
-      .map(
-        (f) =>
-          `<div class="follow-up-item" data-id="${f.id}">
-            <span class="follow-up-title">${f.jobs?.title || "Job"}</span>
-            <span class="follow-up-due">${f.due_date}</span>
-            <button class="follow-up-done-btn" data-id="${f.id}">Done</button>
-          </div>`
-      )
-      .join("");
-
-    followUpsContent.querySelectorAll(".follow-up-done-btn").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        try {
-          await apiFetch("/api/follow-ups", {
-            method: "PATCH",
-            body: JSON.stringify({ id: btn.dataset.id, status: "completed" }),
-          });
-          loadFollowUps();
-        } catch (err) {
-          alert("Failed to update: " + err.message);
-        }
-      });
-    });
-  } catch {
-    followUpsContent.innerHTML = "<p class='status-text'>Could not load follow-ups</p>";
-  }
-}
-
-/* Pomodoro */
-pomodoroBtn.addEventListener("click", () => {
-  if (!pomodoroRunning) {
-    startPomodoro();
-  } else {
-    stopPomodoro();
-  }
-});
-
-function startPomodoro() {
-  pomodoroRunning = true;
-  pomodoroRemaining = 25 * 60;
-  pomodoroBtn.textContent = "Stop";
-  pomodoroStatus.textContent = "Focus time! 🍅";
-
-  if (pomodoroInterval) clearInterval(pomodoroInterval);
-  pomodoroInterval = setInterval(() => {
-    pomodoroRemaining--;
-    const mins = Math.floor(pomodoroRemaining / 60);
-    const secs = pomodoroRemaining % 60;
-    pomodoroDisplay.textContent =
-      String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
-
-    if (pomodoroRemaining <= 0) {
-      stopPomodoro();
-      pomodoroStatus.textContent = "Time's up! 🎉";
-      if (Notification.permission === "granted") {
-        new Notification("Sari Pomodoro", { body: "Pomodoro complete! Take a break." });
-      }
-    }
-  }, 1000);
-}
-
-function stopPomodoro() {
-  pomodoroRunning = false;
-  pomodoroRemaining = 0;
-  pomodoroBtn.textContent = "Start Pomodoro";
-  if (pomodoroInterval) {
-    clearInterval(pomodoroInterval);
-    pomodoroInterval = null;
-  }
-  pomodoroDisplay.textContent = "25:00";
-}
-
-/* ── Clients Tab ───────────────────────────────────────────────── */
 async function initClients() {
-  clientsContent.innerHTML = "<p class='status-text'>Loading...</p>";
+  const content = $("clients-content");
+  const viewAll = $("clients-view-all");
+  if (!content) return;
+  content.innerHTML = "<p class='status-text'>Loading...</p>";
   try {
     const data = await apiFetch("/api/client-links");
     const links = data.links || [];
     if (links.length === 0) {
-      clientsContent.innerHTML = "<p class='status-text'>No client links yet</p>";
-      clientsViewAll.classList.add("hidden");
+      content.innerHTML = "<p class='status-text'>No client links yet</p>";
+      if (viewAll) viewAll.classList.add("hidden");
       maybeShowQuickAdd();
       return;
     }
@@ -1124,174 +772,347 @@ async function initClients() {
     let html = "";
     Object.entries(grouped).forEach(([name, items]) => {
       html += `<div class="client-group"><div class="client-group-name">👤 ${name}</div>`;
-      items.forEach(item => {
-        html += `<a href="${item.url}" target="_blank" class="client-link-btn">${item.title}</a>`;
-      });
+      items.forEach(item => { html += `<a href="${item.url}" target="_blank" class="client-link-btn">${item.title}</a>`; });
       html += "</div>";
     });
-    clientsContent.innerHTML = html;
-    if (links.length > 10) {
-      clientsViewAll.classList.remove("hidden");
-      clientsViewAll.onclick = () => chrome.tabs.create({ url: SARI_API + "/dashboard/clients" });
-    } else {
-      clientsViewAll.classList.add("hidden");
+    content.innerHTML = html;
+    if (viewAll) {
+      if (links.length > 10) { viewAll.classList.remove("hidden"); viewAll.onclick = () => chrome.tabs.create({ url: SARI_API + "/dashboard/clients" }); }
+      else { viewAll.classList.add("hidden"); }
     }
     maybeShowQuickAdd();
-  } catch {
-    clientsContent.innerHTML = "<p class='status-text'>Could not load client links</p>";
-  }
+  } catch { content.innerHTML = "<p class='status-text'>Could not load client links</p>"; }
 }
 
-function maybeShowQuickAdd() {
-  if (currentJob && currentJob.clientName) {
-    clientsQuickAdd.classList.remove("hidden");
-    clientsNewName.value = currentJob.clientName;
-    clientsNewTitle.value = "Website";
-  } else {
-    clientsQuickAdd.classList.add("hidden");
-  }
+const clientsRefreshBtn = $("clients-refresh-btn");
+if (clientsRefreshBtn) clientsRefreshBtn.addEventListener("click", initClients);
+
+const clientsSaveBtn = $("clients-save-btn");
+if (clientsSaveBtn) {
+  clientsSaveBtn.addEventListener("click", async () => {
+    const name = $("clients-new-name")?.value?.trim();
+    const title = $("clients-new-title")?.value?.trim() || "Website";
+    const status = $("clients-status");
+    if (!name) { if (status) status.textContent = "Client name required"; return; }
+    if (clientsSaveBtn) clientsSaveBtn.disabled = true;
+    if (status) status.textContent = "Saving...";
+    try {
+      await apiFetch("/api/client-links", { method: "POST", body: JSON.stringify({ client_name: name, title, url: currentJob?.url || location.href, link_type: "website" }) });
+      if (status) status.textContent = "Saved! ✅";
+      initClients();
+    } catch (err) { if (status) status.textContent = "Save failed: " + err.message; } finally { if (clientsSaveBtn) clientsSaveBtn.disabled = false; }
+  });
 }
 
-clientsRefreshBtn.addEventListener("click", initClients);
+/* ══════════════════════════════════════════════════════════════════
+   SCAM CHECK
+   ══════════════════════════════════════════════════════════════════ */
 
-clientsSaveBtn.addEventListener("click", async () => {
-  const name = clientsNewName.value.trim();
-  const title = clientsNewTitle.value.trim() || "Website";
-  if (!name) { clientsStatus.textContent = "Client name required"; return; }
-  clientsSaveBtn.disabled = true;
-  clientsStatus.textContent = "Saving...";
-  try {
-    await apiFetch("/api/client-links", {
-      method: "POST",
-      body: JSON.stringify({
-        client_name: name,
-        title: title,
-        url: currentJob?.url || location.href,
-        link_type: "website",
-      }),
-    });
-    clientsStatus.textContent = "Saved! ✅";
-    initClients();
-  } catch (err) {
-    clientsStatus.textContent = "Save failed: " + err.message;
-  } finally {
-    clientsSaveBtn.disabled = false;
-  }
-});
-
-/* ── Scam Check Tab ────────────────────────────────────────────── */
 function initScamCheck() {
+  const clientNameEl = $("scam-client-name");
+  const urlEl = $("scam-url");
+  const checkBtn = $("scam-check-btn");
+  const resultEl = $("scam-result");
+  const statusEl = $("scam-status");
+  if (!clientNameEl) return;
   if (currentJob) {
-    scamClientName.textContent = "👤 " + (currentJob.clientName || "Unknown client");
-    scamUrl.textContent = currentJob.url ? "🔗 " + currentJob.url : "";
-    scamCheckBtn.classList.remove("hidden");
+    clientNameEl.textContent = "👤 " + (currentJob.clientName || "Unknown client");
+    if (urlEl) urlEl.textContent = currentJob.url ? "🔗 " + currentJob.url : "";
+    if (checkBtn) checkBtn.classList.remove("hidden");
   } else {
-    scamClientName.textContent = "No client detected on current page";
-    scamUrl.textContent = "";
-    scamCheckBtn.classList.add("hidden");
+    clientNameEl.textContent = "No client detected on current page";
+    if (urlEl) urlEl.textContent = "";
+    if (checkBtn) checkBtn.classList.add("hidden");
   }
-  scamResult.classList.add("hidden");
-  scamStatus.classList.add("hidden");
+  if (resultEl) resultEl.classList.add("hidden");
+  if (statusEl) statusEl.classList.add("hidden");
 }
 
 async function runScamCheck(clientName, url) {
-  scamStatus.classList.remove("hidden");
-  scamStatus.textContent = "Checking...";
-  scamResult.classList.add("hidden");
+  const statusEl = $("scam-status");
+  const resultEl = $("scam-result");
+  const scoreEl = $("scam-score-display");
+  const analysisEl = $("scam-analysis");
+  if (!statusEl) return;
+  statusEl.classList.remove("hidden");
+  statusEl.textContent = "Checking...";
+  if (resultEl) resultEl.classList.add("hidden");
   try {
-    const data = await apiFetch("/api/ai/scam-check", {
-      method: "POST",
-      body: JSON.stringify({
-        client_name: clientName || undefined,
-        website_url: url || undefined,
-      }),
-    });
-    scamScoreDisplay.textContent = data.score;
-    scamScoreDisplay.className = "scam-score " + (
-      data.score >= 70 ? "scam-score-high" : data.score >= 40 ? "scam-score-med" : "scam-score-low"
-    );
-    scamAnalysis.textContent = data.analysis;
-    scamResult.classList.remove("hidden");
-    scamStatus.classList.add("hidden");
-  } catch (err) {
-    scamStatus.textContent = "Check failed: " + err.message;
-  }
+    const data = await apiFetch("/api/ai/scam-check", { method: "POST", body: JSON.stringify({ client_name: clientName || undefined, website_url: url || undefined }) });
+    if (scoreEl) { scoreEl.textContent = data.score; scoreEl.className = "scam-score " + (data.score >= 70 ? "scam-score-high" : data.score >= 40 ? "scam-score-med" : "scam-score-low"); }
+    if (analysisEl) analysisEl.textContent = data.analysis;
+    if (resultEl) resultEl.classList.remove("hidden");
+    statusEl.classList.add("hidden");
+  } catch (err) { statusEl.textContent = "Check failed: " + err.message; }
 }
 
-scamCheckBtn.addEventListener("click", () => {
-  const name = currentJob?.clientName || "";
-  const url = currentJob?.url || "";
+const scamCheckBtn = $("scam-check-btn");
+if (scamCheckBtn) scamCheckBtn.addEventListener("click", () => { runScamCheck(currentJob?.clientName || "", currentJob?.url || ""); });
+
+const scamManualBtn = $("scam-manual-btn");
+if (scamManualBtn) scamManualBtn.addEventListener("click", () => {
+  const name = $("scam-manual-name")?.value?.trim() || "";
+  const url = $("scam-manual-url")?.value?.trim() || "";
+  if (!name && !url) { const s = $("scam-status"); if (s) { s.textContent = "Enter a name or URL"; s.classList.remove("hidden"); } return; }
   runScamCheck(name, url);
 });
 
-scamManualBtn.addEventListener("click", () => {
-  const name = scamManualName.value.trim();
-  const url = scamManualUrl.value.trim();
-  if (!name && !url) { scamStatus.textContent = "Enter a name or URL"; scamStatus.classList.remove("hidden"); return; }
-  runScamCheck(name, url);
-});
+const scamManualUrl = $("scam-manual-url");
+if (scamManualUrl) scamManualUrl.addEventListener("keydown", (e) => { if (e.key === "Enter") $("scam-manual-btn")?.click(); });
 
-scamManualUrl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") scamManualBtn.click();
-});
+/* ══════════════════════════════════════════════════════════════════
+   VAULT
+   ══════════════════════════════════════════════════════════════════ */
 
-/* ── Pitch tab: scam warning ───────────────────────────────────── */
-// After generating a pitch, show scam hint if not checked
-const origDoGenerate = doGeneratePitch;
-doGeneratePitch = async function(jobId) {
-  await origDoGenerate(jobId);
-  // Scam hint: after pitch generation, if no scam check has run, show subtle hint
-  const pitchTab = $("tab-pitch");
-  const existingHint = pitchTab.querySelector(".scam-hint");
-  if (!existingHint && currentJob && currentJob.clientName) {
-    const hint = document.createElement("p");
-    hint.className = "scam-hint status-text";
-    hint.style.marginTop = "6px";
-    hint.style.fontSize = "10px";
-    hint.innerHTML = 'Not sure about this client? <a href="#" id="scam-hint-link" style="color:#7c4dff;font-weight:600">Run a Scam Check (1🪙)</a>';
-    pitchTab.appendChild(hint);
-    hint.querySelector("#scam-hint-link").addEventListener("click", (e) => {
-      e.preventDefault();
-      document.querySelector('.tab[data-tab="scam"]')?.click();
-    });
-  }
-};
-
-/* ── Scanner Tab ──────────────────────────────────────────────── */
-
-/* ── Scanner UI refs ──────────────────────────────────────────── */
-const scanCurrentBtn = $("scan-current-btn");
-const scanStatus = $("scan-status");
-const scanResults = $("scan-results");
-const scanList = $("scan-list");
-const scanActions = $("scan-actions");
-const scanSaveBtn = $("scan-save-btn");
-const scanSaveStatus = $("scan-save-status");
-const scanExportBtn = $("scan-export-btn");
-const scanBatchBtn = $("scan-batch-btn");
-const scanProgress = $("scan-progress");
-const scanProgressText = $("scan-progress-text");
-const scanProgressFill = $("scan-progress-fill");
-const scanUrlsInput = $("scan-urls-input");
-const scanSaveUrlsBtn = $("scan-save-urls-btn");
-const scanUrlsStatus = $("scan-urls-status");
-const scanStartBgBtn = $("scan-start-bg-btn");
-
-let scannedJobs = [];
-let scanInProgress = false;
-let scanScoreEnabled = true;
-
-const scanScoreToggle = $("scan-score-toggle");
-const scanRescoreBtn = $("scan-rescore-btn");
-const scanAiBtn = $("scan-ai-btn");
-
-/* ── Load saved search URLs ──────────────────────────────────── */
-async function loadScanUrls() {
-  const result = await chrome.storage.local.get("scanUrls");
-  if (result.scanUrls) {
-    scanUrlsInput.value = result.scanUrls.join("\n");
-  }
+function vaultDeriveKey(password, salt) {
+  let enc = new TextEncoder();
+  let data = enc.encode(password + salt);
+  for (let i = 0; i < 1000; i++) { let hash = nacl.hash(data); data = hash.slice(0, 32); }
+  return data;
 }
+
+function vaultEncrypt(key, plaintext) {
+  let enc = new TextEncoder();
+  let nonce = nacl.randomBytes(24);
+  let cipher = nacl.secretbox(enc.encode(plaintext), nonce, key);
+  return nacl_util.encodeBase64(nonce) + ":" + nacl_util.encodeBase64(cipher);
+}
+
+function vaultDecrypt(key, ciphertext) {
+  let [nonceB64, cipherB64] = ciphertext.split(":");
+  let nonce = nacl_util.decodeBase64(nonceB64);
+  let cipher = nacl_util.decodeBase64(cipherB64);
+  let plain = nacl.secretbox.open(cipher, nonce, key);
+  if (!plain) throw new Error("Decryption failed");
+  return new TextDecoder().decode(plain);
+}
+
+async function initVault() {
+  const locked = $("vault-locked");
+  const unlocked = $("vault-unlocked");
+  const status = $("vault-status");
+  if (!locked || !unlocked) return;
+  if (vaultKey) {
+    locked.classList.add("hidden");
+    unlocked.classList.remove("hidden");
+    loadVaultItems();
+    return;
+  }
+  try {
+    const data = await apiFetch("/api/vault/setup");
+    if (data.salt && data.keyCheck) {
+      locked.classList.remove("hidden");
+      unlocked.classList.add("hidden");
+      if (status) status.textContent = "";
+    } else {
+      locked.classList.remove("hidden");
+      unlocked.classList.add("hidden");
+      if (status) status.textContent = "Vault not set up. Go to Sari Dashboard to initialize.";
+    }
+  } catch { if (status) status.textContent = "Could not check vault status"; }
+}
+
+const vaultUnlockBtn = $("vault-unlock-btn");
+const vaultPassword = $("vault-password");
+if (vaultUnlockBtn) vaultUnlockBtn.addEventListener("click", unlockVault);
+if (vaultPassword) vaultPassword.addEventListener("keydown", (e) => { if (e.key === "Enter") unlockVault(); });
+
+async function unlockVault() {
+  const password = vaultPassword?.value;
+  const status = $("vault-status");
+  if (!password) { if (status) status.textContent = "Enter your master password"; return; }
+  if (vaultUnlockBtn) vaultUnlockBtn.disabled = true;
+  if (status) status.textContent = "Unlocking...";
+  try {
+    const setup = await apiFetch("/api/vault/setup");
+    if (!setup.salt || !setup.keyCheck) { if (status) status.textContent = "Vault not set up yet. Use the Sari Dashboard."; return; }
+    const key = vaultDeriveKey(password, setup.salt);
+    const [nonceB64, cipherB64] = setup.keyCheck.split(":");
+    const nonce = nacl_util.decodeBase64(nonceB64);
+    const cipher = nacl_util.decodeBase64(cipherB64);
+    const decrypted = nacl.secretbox.open(cipher, nonce, key);
+    if (decrypted) {
+      vaultKey = key;
+      const locked = $("vault-locked");
+      const unlocked = $("vault-unlocked");
+      if (locked) locked.classList.add("hidden");
+      if (unlocked) unlocked.classList.remove("hidden");
+      if (vaultPassword) vaultPassword.value = "";
+      if (status) status.textContent = "";
+      loadVaultItems();
+    } else { if (status) status.textContent = "Wrong password"; }
+  } catch (err) { if (status) status.textContent = "Unlock failed: " + err.message; } finally { if (vaultUnlockBtn) vaultUnlockBtn.disabled = false; }
+}
+
+const vaultLockBtn = $("vault-lock-btn");
+if (vaultLockBtn) vaultLockBtn.addEventListener("click", () => { vaultKey = null; const l = $("vault-locked"); const u = $("vault-unlocked"); if (l) l.classList.remove("hidden"); if (u) u.classList.add("hidden"); vaultItems = []; });
+
+async function loadVaultItems() {
+  const container = $("vault-items");
+  if (!container) return;
+  try { const data = await apiFetch("/api/vault"); vaultItems = data.items || []; renderVaultItems(); }
+  catch { container.innerHTML = "<p class='status-text'>Failed to load vault items</p>"; }
+}
+
+function renderVaultItems() {
+  const container = $("vault-items");
+  if (!container) return;
+  if (vaultItems.length === 0) { container.innerHTML = "<p class='status-text'>No vault items yet</p>"; return; }
+  container.innerHTML = vaultItems.map((item, idx) => {
+    let uname = "";
+    try { uname = item.username ? vaultDecrypt(vaultKey, item.username) : ""; } catch {}
+    return `<div class="vault-item"><span class="vault-item-title">${item.title}</span><span class="vault-item-uname">${uname}</span><div class="vault-item-actions"><button class="vault-reveal-btn" data-idx="${idx}">👁️</button><button class="vault-copy-btn" data-idx="${idx}">📋</button><button class="vault-del-btn" data-idx="${idx}">🗑️</button></div></div>`;
+  }).join("");
+  container.querySelectorAll(".vault-reveal-btn").forEach((btn) => btn.addEventListener("click", () => { const item = vaultItems[parseInt(btn.dataset.idx)]; if (!item) return; try { alert("Password: " + vaultDecrypt(vaultKey, item.encrypted_password)); } catch { alert("Could not decrypt password"); } }));
+  container.querySelectorAll(".vault-copy-btn").forEach((btn) => btn.addEventListener("click", () => { const item = vaultItems[parseInt(btn.dataset.idx)]; if (!item) return; try { navigator.clipboard.writeText(vaultDecrypt(vaultKey, item.encrypted_password)).catch(() => {}); } catch {} }));
+  container.querySelectorAll(".vault-del-btn").forEach((btn) => btn.addEventListener("click", async () => { const item = vaultItems[parseInt(btn.dataset.idx)]; if (!item || !confirm(`Delete "${item.title}"?`)) return; try { await apiFetch(`/api/vault/${item.id}`, { method: "DELETE" }); vaultItems.splice(parseInt(btn.dataset.idx), 1); renderVaultItems(); } catch {} }));
+}
+
+const vaultAddBtn = $("vault-add-btn");
+if (vaultAddBtn) vaultAddBtn.addEventListener("click", () => { const f = $("vault-add-form"); if (f) f.classList.toggle("hidden"); });
+
+const vaultSaveItemBtn = $("vault-save-item-btn");
+if (vaultSaveItemBtn) vaultSaveItemBtn.addEventListener("click", async () => {
+  const title = $("vault-new-title")?.value?.trim();
+  const username = $("vault-new-username")?.value?.trim();
+  const url = $("vault-new-url")?.value?.trim();
+  const password = $("vault-new-password")?.value?.trim();
+  const status = $("vault-status");
+  if (!title || !password) { if (status) status.textContent = "Title and password required"; return; }
+  if (vaultSaveItemBtn) vaultSaveItemBtn.disabled = true;
+  try {
+    const encPwd = vaultEncrypt(vaultKey, password);
+    const encUname = username ? vaultEncrypt(vaultKey, username) : "";
+    const data = await apiFetch("/api/vault", { method: "POST", body: JSON.stringify({ title, encrypted_password: encPwd, username: encUname, url, notes: "" }) });
+    if (data.item) { vaultItems.unshift(data.item); renderVaultItems(); if ($("vault-new-title")) $("vault-new-title").value = ""; if ($("vault-new-username")) $("vault-new-username").value = ""; if ($("vault-new-url")) $("vault-new-url").value = ""; if ($("vault-new-password")) $("vault-new-password").value = ""; const f = $("vault-add-form"); if (f) f.classList.add("hidden"); }
+  } catch (err) { if (status) status.textContent = "Save failed: " + err.message; } finally { if (vaultSaveItemBtn) vaultSaveItemBtn.disabled = false; }
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   FOLLOW-UPS
+   ══════════════════════════════════════════════════════════════════ */
+
+async function loadFollowUps() {
+  const content = $("follow-ups-content");
+  if (!content) return;
+  try {
+    const data = await apiFetch("/api/follow-ups");
+    const items = data.followUps || [];
+    const pending = items.filter((f) => f.status === "pending");
+    if (pending.length === 0) { content.innerHTML = "<p class='status-text'>No pending follow-ups ✨</p>"; return; }
+    content.innerHTML = pending.slice(0, 5).map((f) => `<div class="follow-up-item" data-id="${f.id}"><span class="follow-up-title">${f.jobs?.title || "Job"}</span><span class="follow-up-due">${f.due_date}</span><button class="follow-up-done-btn" data-id="${f.id}">Done</button></div>`).join("");
+    content.querySelectorAll(".follow-up-done-btn").forEach((btn) => btn.addEventListener("click", async () => { try { await apiFetch("/api/follow-ups", { method: "PATCH", body: JSON.stringify({ id: btn.dataset.id, status: "completed" }) }); loadFollowUps(); } catch (err) { alert("Failed to update: " + err.message); } }));
+  } catch { content.innerHTML = "<p class='status-text'>Could not load follow-ups</p>"; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MOCHI AI
+   ══════════════════════════════════════════════════════════════════ */
+
+function initMochi() {
+  const mochiStatus = $("mochi-status");
+  const mochiResult = $("mochi-result");
+  const mochiText = $("mochi-text");
+  if (mochiStatus) mochiStatus.classList.add("hidden");
+  if (mochiResult) mochiResult.classList.add("hidden");
+}
+
+async function askMochi(prompt) {
+  const resultEl = $("mochi-result");
+  const textEl = $("mochi-text");
+  const statusEl = $("mochi-status");
+  if (resultEl) resultEl.classList.add("hidden");
+  if (statusEl) { statusEl.classList.remove("hidden"); statusEl.textContent = "Asking Mochi..."; }
+  try {
+    const data = await apiFetch("/api/mochi/chat", { method: "POST", body: JSON.stringify({ message: prompt }) });
+    if (textEl) textEl.textContent = data.reply || "🤔 Mochi is thinking...";
+    if (resultEl) resultEl.classList.remove("hidden");
+    if (statusEl) statusEl.classList.add("hidden");
+  } catch (err) { if (statusEl) statusEl.textContent = "Mochi error: " + (err.message || "Try again later"); }
+}
+
+const mochiSummarizeBtn = $("mochi-summarize-btn");
+if (mochiSummarizeBtn) mochiSummarizeBtn.addEventListener("click", () => askMochi("Please summarize my week."));
+
+const mochiTipBtn = $("mochi-tip-btn");
+if (mochiTipBtn) mochiTipBtn.addEventListener("click", () => askMochi("Give me a productivity tip based on my recent activity."));
+
+/* ══════════════════════════════════════════════════════════════════
+   JOB SEARCH
+   ══════════════════════════════════════════════════════════════════ */
+
+function initJobSearch() {
+  const input = $("job-search-input");
+  const results = $("job-search-results");
+  if (input) input.value = "";
+  if (results) results.innerHTML = "";
+}
+
+const jobSearchInput = $("job-search-input");
+if (jobSearchInput) {
+  jobSearchInput.addEventListener("input", () => {
+    const q = jobSearchInput.value.trim();
+    const results = $("job-search-results");
+    if (!results) return;
+    if (q.length < 2) { results.innerHTML = ""; return; }
+    clearTimeout(jobSearchInput._timer);
+    jobSearchInput._timer = setTimeout(() => searchJobs(q), 400);
+  });
+}
+
+async function searchJobs(query) {
+  const results = $("job-search-results");
+  if (!results) return;
+  results.innerHTML = "<p class='status-text'>Searching...</p>";
+  try {
+    const data = await apiFetch(`/api/jobs?search=${encodeURIComponent(query)}`);
+    const jobs = data.jobs || [];
+    if (jobs.length === 0) { results.innerHTML = "<p class='status-text'>No matches found</p>"; return; }
+    results.innerHTML = jobs.slice(0, 5).map((j) => `<div class="search-result-item" data-id="${j.id}">${j.title}</div>`).join("");
+  } catch { results.innerHTML = "<p class='status-text'>Search failed</p>"; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SCANNER
+   ══════════════════════════════════════════════════════════════════ */
+
+scanCurrentBtn.addEventListener("click", scanCurrentPage);
+scanSaveBtn.addEventListener("click", saveSelectedJobs);
+scanExportBtn.addEventListener("click", () => {
+  const selected = scannedJobs.filter((j) => j._selected);
+  if (selected.length === 0) return;
+  const text = selected.map((j) => `${j.title} [${j.platform}]${j.budgetAmount ? " " + j.budgetAmount : ""}\n  ${j.url}`).join("\n\n");
+  navigator.clipboard.writeText(text).catch(() => {});
+  scanSaveStatus.textContent = "📋 Copied to clipboard";
+  scanSaveStatus.classList.remove("hidden");
+  setTimeout(() => { scanSaveStatus.classList.add("hidden"); }, 2000);
+});
+
+scanSaveUrlsBtn.addEventListener("click", saveScanUrls);
+scanStartBgBtn.addEventListener("click", startBackgroundScan);
+scanBatchBtn.addEventListener("click", startBackgroundScan);
+scanScoreToggle.addEventListener("change", () => {
+  scanScoreEnabled = scanScoreToggle.checked;
+  renderScanList();
+  scanRescoreBtn.classList.toggle("hidden", !scanScoreEnabled);
+});
+scanRescoreBtn.addEventListener("click", async () => {
+  if (scannedJobs.length === 0) return;
+  scanRescoreBtn.disabled = true;
+  scanRescoreBtn.textContent = "Scoring...";
+  const scored = await fetchScoresForJobs(scannedJobs);
+  if (scored.length > 0) {
+    scannedJobs = scored.map((sj, i) => ({ ...(scannedJobs[i] || sj), ...sj, _selected: scannedJobs[i]?._selected !== false, _idx: i }));
+    renderScanList();
+  }
+  scanRescoreBtn.disabled = false;
+  scanRescoreBtn.textContent = "💡 Re-score";
+});
+scanAiBtn.addEventListener("click", () => {
+  scanStatus.textContent = "🧠 AI Deep Match coming soon!";
+  scanStatus.classList.remove("hidden");
+  setTimeout(() => { scanStatus.classList.add("hidden"); }, 2500);
+});
 
 async function saveScanUrls() {
   const raw = scanUrlsInput.value.trim();
@@ -1301,9 +1122,6 @@ async function saveScanUrls() {
   setTimeout(() => { scanUrlsStatus.textContent = ""; }, 2000);
 }
 
-scanSaveUrlsBtn.addEventListener("click", saveScanUrls);
-
-/* ── Detect platform from URL ─────────────────────────────────── */
 function detectPlatform(url) {
   if (!url) return "";
   if (url.includes("upwork.com")) return "Upwork";
@@ -1313,12 +1131,7 @@ function detectPlatform(url) {
   return "";
 }
 
-function supportedScanSite(url) {
-  return !!detectPlatform(url);
-}
-
-/* ── Scan Current Page ────────────────────────────────────────── */
-scanCurrentBtn.addEventListener("click", scanCurrentPage);
+function supportedScanSite(url) { return !!detectPlatform(url); }
 
 async function scanCurrentPage() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -1327,7 +1140,6 @@ async function scanCurrentPage() {
     scanStatus.classList.remove("hidden");
     return;
   }
-
   scanStatus.textContent = "🔍 Scanning page for job listings...";
   scanStatus.className = "status-text";
   scanStatus.classList.remove("hidden");
@@ -1336,252 +1148,114 @@ async function scanCurrentPage() {
   scanActions.classList.add("hidden");
 
   try {
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => {
-        const hostname = window.location.hostname;
-        const url = window.location.href;
-        let platform = "";
-        if (hostname.includes("upwork.com")) platform = "Upwork";
-        else if (hostname.includes("onlinejobs.ph")) platform = "OnlineJobs.ph";
-        else if (hostname.includes("facebook.com")) platform = "Facebook";
-        else if (hostname.includes("linkedin.com")) platform = "LinkedIn";
-        else platform = hostname;
-
-        const jobs = [];
-
-        /* Upwork */
-        if (platform === "Upwork") {
-          const cards = document.querySelectorAll(
-            'section[data-test="JobCard"], section[class*="job-tile"], div[class*="job-card"], article[class*="job"]'
-          );
-          cards.forEach((card) => {
-            const titleEl = card.querySelector(
-              '[data-test="job-title"], .job-title-link, h2 a, h3 a, a[class*="job-title"]'
-            );
-            const title = titleEl?.textContent?.trim() || "";
-            if (!title) return;
-
-            const descEl = card.querySelector(
-              '[data-test="job-description"], .job-description, .break-word, p[class*="description"]'
-            );
-            const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
-
-            const budgetEl = card.querySelector(
-              '[data-test="budget"], [data-test="JobBudget"], .job-budget, [class*="budget"]'
-            );
-            const budgetText = budgetEl?.textContent?.trim() || "";
-            let budgetAmount = "";
-            let budgetType = "";
-            if (budgetText) {
-              const m = budgetText.match(/\$[\d,]+(?:\.\d{2})?(?:\s*-\s*\$?[\d,]+(?:\.\d{2})?)?/);
-              if (m) budgetAmount = m[0];
-              if (/hourly|\/hr/i.test(budgetText)) budgetType = "hourly";
-              else if (/fixed/i.test(budgetText)) budgetType = "fixed";
-            }
-
-            const linkEl = titleEl?.closest("a") || card.querySelector("a[href*='/job/']");
-            const jobUrl = linkEl?.href
-              ? (linkEl.href.startsWith("http") ? linkEl.href : "https://www.upwork.com" + linkEl.getAttribute("href"))
-              : url;
-
-            const skills = [];
-            const skillEls = card.querySelectorAll('[data-test="skill-tag"], .skill-tag, [class*="skill"]');
-            skillEls.forEach((el) => {
-              const t = el.textContent?.trim();
-              if (t) skills.push(t);
-            });
-
-            const postedEl = card.querySelector('[data-test="posted-date"], time, [class*="posted"]');
-            const postedDate = postedEl?.textContent?.trim() || "";
-
-            jobs.push({ title, description, budgetAmount, budgetType, url: jobUrl, platform, skills, postedDate, clientName: "" });
-          });
-        }
-
-        /* OnlineJobs.ph */
-        else if (platform === "OnlineJobs.ph") {
-          const items = document.querySelectorAll(
-            '.joblist-item, .job-post-item, #joblist > li, div[class*="job-listing"], tr[class*="job"]'
-          );
-          items.forEach((item) => {
-            const titleEl = item.querySelector(
-              '.joblist-item-title a, .job-title a, h4 a, h3 a, a[class*="title"], a[href*="/jobseekers/job/"]'
-            );
-            const title = titleEl?.textContent?.trim() || "";
-            if (!title) return;
-
-            const descEl = item.querySelector(
-              '.joblist-item-description, .job-description, p[class*="desc"]'
-            );
-            const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
-
-            const salaryEl = item.querySelector(
-              '.joblist-item-salary, .salary, [class*="salary"], [class*="budget"]'
-            );
-            const budgetAmount = salaryEl?.textContent?.trim() || "";
-
-            const linkHref = titleEl?.getAttribute("href") || "";
-            const jobUrl = linkHref.startsWith("http")
-              ? linkHref
-              : "https://www.onlinejobs.ph" + (linkHref.startsWith("/") ? "" : "/") + linkHref;
-
-            const companyEl = item.querySelector(
-              '.joblist-item-company, .company, [class*="company"]'
-            );
-            const clientName = companyEl?.textContent?.trim() || "";
-
-            const postedEl = item.querySelector(
-              '.joblist-item-date, .date, time, [class*="posted"]'
-            );
-            const postedDate = postedEl?.textContent?.trim() || "";
-
-            jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName });
-          });
-        }
-
-        /* Facebook */
-        else if (platform === "Facebook") {
-          const postSelectors = [
-            'div[data-pagelet] div[role="article"]',
-            'div[role="article"]',
-            '.userContentWrapper',
-            'div[class*="post"]',
-          ];
-          let posts = [];
-          for (const sel of postSelectors) {
-            posts = document.querySelectorAll(sel);
-            if (posts.length > 0) break;
-          }
-
-          const keywords = /\b(looking for|hiring|need a|job|vacancy|open position|freelancer|virtual assistant|va)\b/i;
-          posts.forEach((post) => {
-            const text = post.textContent || "";
-            if (!keywords.test(text)) return;
-
-            const title = text.split("\n").find((l) => keywords.test(l))?.trim()?.substring(0, 200) || text.substring(0, 120).trim();
-            const description = text.substring(0, 2000).trim();
-
-            const linkEl = post.querySelector('a[href*="/posts/"], a[href*="story"], a[href*="permalink"]');
-            const jobUrl = linkEl?.href || url;
-
-            const budgetMatch = text.match(/\$\s*[\d,]+(?:\s*-\s*\$?\s*[\d,]+)?(?:\s*\/\s*hr)?/i);
-            const budgetAmount = budgetMatch ? budgetMatch[0] : "";
-
-            jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate: "", clientName: "" });
-          });
-        }
-
-        /* LinkedIn */
-        else if (platform === "LinkedIn") {
-          const cards = document.querySelectorAll(
-            '.job-card-container, .job-search-card, .job-card, article[class*="job"], li[class*="job"]'
-          );
-          cards.forEach((card) => {
-            const titleEl = card.querySelector(
-              '.job-card-list__title, .job-card-container__link, artdeco-entity-lockup__title a, a[class*="job-title"], h3 a, a[class*="job-card"]'
-            );
-            const title = titleEl?.textContent?.trim() || "";
-            if (!title) return;
-
-            const companyEl = card.querySelector(
-              '.job-card-container__company-name, .job-search-card__subtitle, [class*="company"]'
-            );
-            const clientName = companyEl?.textContent?.trim() || "";
-
-            const locationEl = card.querySelector(
-              '.job-card-container__metadata-item, .job-search-card__location, [class*="location"]'
-            );
-            const location = locationEl?.textContent?.trim() || "";
-
-            const linkHref = titleEl?.getAttribute("href") || "";
-            const jobUrl = linkHref.startsWith("http")
-              ? linkHref
-              : "https://www.linkedin.com" + (linkHref.startsWith("/") ? "" : "/") + linkHref;
-
-            const descEl = card.querySelector(
-              '.job-card-container__description, .job-search-card__snippet, [class*="description"], [class*="snippet"]'
-            );
-            const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
-
-            const budgetEl = card.querySelector('[class*="salary"], [class*="pay"], [class*="compensation"]');
-            const budgetAmount = budgetEl?.textContent?.trim() || "";
-
-            const postedEl = card.querySelector('time, [class*="posted"], [class*="date"]');
-            const postedDate = postedEl?.textContent?.trim() || "";
-
-            jobs.push({ title, description: description || location, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName });
-          });
-        }
-
-        return { platform, count: jobs.length, jobs };
-      },
-    });
+    const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => {
+      const hostname = window.location.hostname, url = window.location.href;
+      let platform = "";
+      if (hostname.includes("upwork.com")) platform = "Upwork";
+      else if (hostname.includes("onlinejobs.ph")) platform = "OnlineJobs.ph";
+      else if (hostname.includes("facebook.com")) platform = "Facebook";
+      else if (hostname.includes("linkedin.com")) platform = "LinkedIn";
+      else platform = hostname;
+      const jobs = [];
+      if (platform === "Upwork") {
+        const cards = document.querySelectorAll('section[data-test="JobCard"], section[class*="job-tile"], div[class*="job-card"], article[class*="job"]');
+        cards.forEach((card) => {
+          const titleEl = card.querySelector('[data-test="job-title"], .job-title-link, h2 a, h3 a, a[class*="job-title"]');
+          const title = titleEl?.textContent?.trim() || ""; if (!title) return;
+          const descEl = card.querySelector('[data-test="job-description"], .job-description, .break-word, p[class*="description"]');
+          const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
+          const budgetEl = card.querySelector('[data-test="budget"], [data-test="JobBudget"], .job-budget, [class*="budget"]');
+          const budgetText = budgetEl?.textContent?.trim() || "";
+          let budgetAmount = "", budgetType = "";
+          if (budgetText) { const m = budgetText.match(/\$[\d,]+(?:\.\d{2})?(?:\s*-\s*\$?[\d,]+(?:\.\d{2})?)?/); if (m) budgetAmount = m[0]; if (/hourly|\/hr/i.test(budgetText)) budgetType = "hourly"; else if (/fixed/i.test(budgetText)) budgetType = "fixed"; }
+          const linkEl = titleEl?.closest("a") || card.querySelector("a[href*='/job/']");
+          const jobUrl = linkEl?.href ? (linkEl.href.startsWith("http") ? linkEl.href : "https://www.upwork.com" + linkEl.getAttribute("href")) : url;
+          const skills = []; card.querySelectorAll('[data-test="skill-tag"], .skill-tag, [class*="skill"]').forEach((el) => { const t = el.textContent?.trim(); if (t) skills.push(t); });
+          const postedEl = card.querySelector('[data-test="posted-date"], time, [class*="posted"]');
+          const postedDate = postedEl?.textContent?.trim() || "";
+          jobs.push({ title, description, budgetAmount, budgetType, url: jobUrl, platform, skills, postedDate, clientName: "" });
+        });
+      } else if (platform === "OnlineJobs.ph") {
+        const items = document.querySelectorAll('.joblist-item, .job-post-item, #joblist > li, div[class*="job-listing"], tr[class*="job"]');
+        items.forEach((item) => {
+          const titleEl = item.querySelector('.joblist-item-title a, .job-title a, h4 a, h3 a, a[class*="title"], a[href*="/jobseekers/job/"]');
+          const title = titleEl?.textContent?.trim() || ""; if (!title) return;
+          const descEl = item.querySelector('.joblist-item-description, .job-description, p[class*="desc"]');
+          const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
+          const salaryEl = item.querySelector('.joblist-item-salary, .salary, [class*="salary"], [class*="budget"]');
+          const budgetAmount = salaryEl?.textContent?.trim() || "";
+          const linkHref = titleEl?.getAttribute("href") || "";
+          const jobUrl = linkHref.startsWith("http") ? linkHref : "https://www.onlinejobs.ph" + (linkHref.startsWith("/") ? "" : "/") + linkHref;
+          const companyEl = item.querySelector('.joblist-item-company, .company, [class*="company"]');
+          const clientName = companyEl?.textContent?.trim() || "";
+          const postedEl = item.querySelector('.joblist-item-date, .date, time, [class*="posted"]');
+          const postedDate = postedEl?.textContent?.trim() || "";
+          jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName });
+        });
+      } else if (platform === "Facebook") {
+        const postSelectors = ['div[data-pagelet] div[role="article"]', 'div[role="article"]', '.userContentWrapper', 'div[class*="post"]'];
+        let posts = []; for (const sel of postSelectors) { posts = document.querySelectorAll(sel); if (posts.length > 0) break; }
+        const keywords = /\b(looking for|hiring|need a|job|vacancy|open position|freelancer|virtual assistant|va)\b/i;
+        posts.forEach((post) => {
+          const text = post.textContent || ""; if (!keywords.test(text)) return;
+          const title = text.split("\n").find((l) => keywords.test(l))?.trim()?.substring(0, 200) || text.substring(0, 120).trim();
+          const description = text.substring(0, 2000).trim();
+          const linkEl = post.querySelector('a[href*="/posts/"], a[href*="story"], a[href*="permalink"]');
+          const jobUrl = linkEl?.href || url;
+          const budgetMatch = text.match(/\$\s*[\d,]+(?:\s*-\s*\$?\s*[\d,]+)?(?:\s*\/\s*hr)?/i);
+          const budgetAmount = budgetMatch ? budgetMatch[0] : "";
+          jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate: "", clientName: "" });
+        });
+      } else if (platform === "LinkedIn") {
+        const cards = document.querySelectorAll('.job-card-container, .job-search-card, .job-card, article[class*="job"], li[class*="job"]');
+        cards.forEach((card) => {
+          const titleEl = card.querySelector('.job-card-list__title, .job-card-container__link, artdeco-entity-lockup__title a, a[class*="job-title"], h3 a, a[class*="job-card"]');
+          const title = titleEl?.textContent?.trim() || ""; if (!title) return;
+          const companyEl = card.querySelector('.job-card-container__company-name, .job-search-card__subtitle, [class*="company"]');
+          const clientName = companyEl?.textContent?.trim() || "";
+          const locationEl = card.querySelector('.job-card-container__metadata-item, .job-search-card__location, [class*="location"]');
+          const location = locationEl?.textContent?.trim() || "";
+          const linkHref = titleEl?.getAttribute("href") || "";
+          const jobUrl = linkHref.startsWith("http") ? linkHref : "https://www.linkedin.com" + (linkHref.startsWith("/") ? "" : "/") + linkHref;
+          const descEl = card.querySelector('.job-card-container__description, .job-search-card__snippet, [class*="description"], [class*="snippet"]');
+          const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
+          const budgetEl = card.querySelector('[class*="salary"], [class*="pay"], [class*="compensation"]');
+          const budgetAmount = budgetEl?.textContent?.trim() || "";
+          const postedEl = card.querySelector('time, [class*="posted"], [class*="date"]');
+          const postedDate = postedEl?.textContent?.trim() || "";
+          jobs.push({ title, description: description || location, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName });
+        });
+      }
+      return { platform, count: jobs.length, jobs };
+    }});
 
     const data = results?.[0]?.result;
     if (!data || !data.jobs || data.jobs.length === 0) {
-      scanStatus.textContent =
-        "No job listings found on this page. The page structure may have changed. Try manual import.";
+      scanStatus.textContent = "No job listings found on this page. The page structure may have changed. Try manual import.";
       return;
     }
-
     scanStatus.textContent = `Found ${data.jobs.length} job(s) on ${data.platform}`;
     scanResults.classList.remove("hidden");
-    renderScanResults(data.jobs);
-  } catch (err) {
-    scanStatus.textContent = "Scan failed: " + err.message;
-    console.error("Scan error:", err);
-  } finally {
-    scanCurrentBtn.disabled = false;
-  }
+    await renderScanResults(data.jobs);
+  } catch (err) { scanStatus.textContent = "Scan failed: " + err.message; console.error("Scan error:", err); }
+  finally { scanCurrentBtn.disabled = false; }
 }
 
-/* ── Score toggle ─────────────────────────────────────────────── */
-scanScoreToggle.addEventListener("change", () => {
-  scanScoreEnabled = scanScoreToggle.checked;
-  renderScanList();
-  scanRescoreBtn.classList.toggle("hidden", !scanScoreEnabled);
-});
-
-/* ── Fetch scores from API ────────────────────────────────────── */
 async function fetchScoresForJobs(jobs) {
   if (!jobs || jobs.length === 0) return [];
   try {
-    const payload = jobs.map((j) => ({
-      title: j.title,
-      description: j.description || "",
-      budget: j.budget || j.budgetAmount || "",
-      budget_amount: j.budgetAmount || "",
-      skills: j.skills || [],
-      platform: j.platform || "",
-    }));
-    const data = await apiFetch("/api/jobs/score-batch", {
-      method: "POST",
-      body: JSON.stringify({ jobs: payload }),
-    });
+    const payload = jobs.map((j) => ({ title: j.title, description: j.description || "", budget: j.budget || j.budgetAmount || "", budget_amount: j.budgetAmount || "", skills: j.skills || [], platform: j.platform || "" }));
+    const data = await apiFetch("/api/jobs/score-batch", { method: "POST", body: JSON.stringify({ jobs: payload }) });
     return data.jobs || [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
-/* ── Render scan results ──────────────────────────────────────── */
 async function renderScanResults(jobs) {
   scannedJobs = jobs.map((j, i) => ({ ...j, _selected: true, _idx: i }));
-
-  // Fetch scores if toggle is on
   if (scanScoreEnabled && jobs.length > 0) {
     const scored = await fetchScoresForJobs(jobs);
-    if (scored.length > 0) {
-      scannedJobs = scored.map((sj, i) => ({
-        ...(scannedJobs[i] || sj),
-        ...sj,
-        _selected: true,
-        _idx: i,
-      }));
-    }
+    if (scored.length > 0) scannedJobs = scored.map((sj, i) => ({ ...(scannedJobs[i] || sj), ...sj, _selected: true, _idx: i }));
   }
-
   renderScanList();
   scanActions.classList.remove("hidden");
   scanSaveBtn.textContent = `Save ${jobs.length} jobs to Sari`;
@@ -1589,57 +1263,12 @@ async function renderScanResults(jobs) {
   scanRescoreBtn.classList.toggle("hidden", !scanScoreEnabled);
 }
 
-/* ── AI Deep Match (placeholder) ──────────────────────────────── */
-scanAiBtn.addEventListener("click", () => {
-  scanStatus.textContent = "🧠 AI Deep Match coming soon!";
-  scanStatus.classList.remove("hidden");
-  setTimeout(() => { scanStatus.classList.add("hidden"); }, 2500);
-});
-
-/* ── Re-score ─────────────────────────────────────────────────── */
-scanRescoreBtn.addEventListener("click", async () => {
-  if (scannedJobs.length === 0) return;
-  scanRescoreBtn.disabled = true;
-  scanRescoreBtn.textContent = "Scoring...";
-  const scored = await fetchScoresForJobs(scannedJobs);
-  if (scored.length > 0) {
-    scannedJobs = scored.map((sj, i) => ({
-      ...(scannedJobs[i] || sj),
-      ...sj,
-      _selected: scannedJobs[i]?._selected !== false,
-      _idx: i,
-    }));
-    renderScanList();
-  }
-  scanRescoreBtn.disabled = false;
-  scanRescoreBtn.textContent = "💡 Re-score";
-});
-
 function renderScanList() {
-  if (scannedJobs.length === 0) {
-    scanList.innerHTML = "<p class='status-text'>No jobs found</p>";
-    return;
-  }
-
-  scanList.innerHTML = scannedJobs
-    .map(
-      (j, i) => {
-        const scoreHtml = scanScoreEnabled && j.score != null
-          ? `<span class="scan-score scan-score-${j.score >= 70 ? "high" : j.score >= 40 ? "med" : "low"}">${j.score}</span>`
-          : "";
-        return `<label class="scan-item ${j._selected ? "" : "scan-item-deselected"}">
-          <input type="checkbox" class="scan-checkbox" data-idx="${i}" ${j._selected ? "checked" : ""}>
-          ${scoreHtml}
-          <div class="scan-item-body">
-            <span class="scan-item-title">${j.title}</span>
-            <span class="scan-item-meta">${j.platform}${j.budgetAmount ? " | " + j.budgetAmount : ""}${j.clientName ? " | " + j.clientName : ""}</span>
-            <span class="scan-item-desc">${(j.description || "").substring(0, 150)}${j.match_reason ? " — " + j.match_reason : ""}</span>
-          </div>
-        </label>`;
-      }
-    )
-    .join("");
-
+  if (scannedJobs.length === 0) { scanList.innerHTML = "<p class='status-text'>No jobs found</p>"; return; }
+  scanList.innerHTML = scannedJobs.map((j, i) => {
+    const scoreHtml = scanScoreEnabled && j.score != null ? `<span class="scan-score scan-score-${j.score >= 70 ? "high" : j.score >= 40 ? "med" : "low"}">${j.score}</span>` : "";
+    return `<label class="scan-item ${j._selected ? "" : "scan-item-deselected"}"><input type="checkbox" class="scan-checkbox" data-idx="${i}" ${j._selected ? "checked" : ""}>${scoreHtml}<div class="scan-item-body"><span class="scan-item-title">${j.title}</span><span class="scan-item-meta">${j.platform}${j.budgetAmount ? " | " + j.budgetAmount : ""}${j.clientName ? " | " + j.clientName : ""}</span><span class="scan-item-desc">${(j.description || "").substring(0, 150)}${j.match_reason ? " — " + j.match_reason : ""}</span></div></label>`;
+  }).join("");
   scanList.querySelectorAll(".scan-checkbox").forEach((cb) => {
     cb.addEventListener("change", () => {
       const idx = parseInt(cb.dataset.idx);
@@ -1653,82 +1282,46 @@ function renderScanList() {
   });
 }
 
-/* ── Save selected jobs ───────────────────────────────────────── */
-scanSaveBtn.addEventListener("click", saveSelectedJobs);
-
 async function saveSelectedJobs() {
   const selected = scannedJobs.filter((j) => j._selected);
-  if (selected.length === 0) {
-    scanSaveStatus.textContent = "No jobs selected";
-    scanSaveStatus.classList.remove("hidden");
-    return;
-  }
-
+  if (selected.length === 0) { scanSaveStatus.textContent = "No jobs selected"; scanSaveStatus.classList.remove("hidden"); return; }
   scanSaveBtn.disabled = true;
   scanSaveStatus.textContent = `Saving ${selected.length} job(s)...`;
   scanSaveStatus.className = "status-text";
   scanSaveStatus.classList.remove("hidden");
-
   try {
-    const payload = selected.map((j) => ({
-      title: j.title,
-      description: j.description || "",
-      platform: j.platform || "Unknown",
-      url: j.url || "",
-      budget_type: j.budgetType || null,
-      budget_amount: j.budgetAmount || null,
-      client_name: j.clientName || null,
-      skills: j.skills?.length ? j.skills : null,
-    }));
-
-    const data = await apiFetch("/api/jobs/bulk", {
-      method: "POST",
-      body: JSON.stringify({ jobs: payload }),
-    });
-
+    const payload = selected.map((j) => ({ title: j.title, description: j.description || "", platform: j.platform || "Unknown", url: j.url || "", budget_type: j.budgetType || null, budget_amount: j.budgetAmount || null, client_name: j.clientName || null, skills: j.skills?.length ? j.skills : null, score: j.score ?? null, match_reason: j.match_reason ?? null }));
+    const data = await apiFetch("/api/jobs/bulk", { method: "POST", body: JSON.stringify({ jobs: payload }) });
     scanSaveStatus.textContent = `✅ Saved ${data.count || selected.length} job(s) to Sari!`;
     scanSaveStatus.className = "status-text";
     scanSaveBtn.classList.add("hidden");
-
-    setTimeout(() => {
-      scanSaveStatus.textContent = "";
-      scanSaveStatus.classList.add("hidden");
-    }, 4000);
-  } catch (err) {
-    scanSaveStatus.textContent = "Save failed: " + err.message;
-    scanSaveBtn.disabled = false;
-  }
+    setTimeout(() => { scanSaveStatus.textContent = ""; scanSaveStatus.classList.add("hidden"); }, 4000);
+  } catch (err) { scanSaveStatus.textContent = "Save failed: " + err.message; scanSaveBtn.disabled = false; }
 }
 
-/* ── Copy selected as text ────────────────────────────────────── */
-scanExportBtn.addEventListener("click", () => {
-  const selected = scannedJobs.filter((j) => j._selected);
-  if (selected.length === 0) return;
-  const text = selected
-    .map((j) => `${j.title} [${j.platform}]${j.budgetAmount ? " " + j.budgetAmount : ""}\n  ${j.url}`)
-    .join("\n\n");
-  navigator.clipboard.writeText(text).catch(() => {});
-  scanSaveStatus.textContent = "📋 Copied to clipboard";
-  scanSaveStatus.classList.remove("hidden");
-  setTimeout(() => { scanSaveStatus.classList.add("hidden"); }, 2000);
-});
+function initScanner() {
+  loadScanUrls();
+  scannedJobs = [];
+  scanResults.classList.add("hidden");
+  scanActions.classList.add("hidden");
+  scanProgress.classList.add("hidden");
+  scanSaveBtn.classList.remove("hidden");
+}
 
-/* ── Background Scanner ───────────────────────────────────────── */
-scanStartBgBtn.addEventListener("click", startBackgroundScan);
-scanBatchBtn.addEventListener("click", startBackgroundScan);
+async function loadScanUrls() {
+  const result = await chrome.storage.local.get("scanUrls");
+  if (result.scanUrls) scanUrlsInput.value = result.scanUrls.join("\n");
+}
 
 async function startBackgroundScan() {
   const result = await chrome.storage.local.get("scanUrls");
   let urls = result.scanUrls || [];
-
-  // If no saved URLs and triggered from batch button, use defaults
   if (urls.length === 0) {
     scanStatus.textContent = "⚠️ No search URLs saved. Add URLs in Scanner Settings.";
     scanStatus.classList.remove("hidden");
     setTimeout(() => { scanStatus.classList.add("hidden"); }, 3000);
     return;
   }
-
   scanStatus.textContent = "Starting background scan...";
   scanStatus.classList.remove("hidden");
   scanProgress.classList.remove("hidden");
@@ -1737,41 +1330,25 @@ async function startBackgroundScan() {
   scanInProgress = true;
   scanStartBgBtn.disabled = true;
   scanBatchBtn.disabled = true;
-
   pollScanProgress();
-
   try {
     const data = await new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage(
-        { action: "startBackgroundScan", urls },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-          } else {
-            resolve(response);
-          }
-        }
-      );
+      chrome.runtime.sendMessage({ action: "startBackgroundScan", urls }, (response) => {
+        if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+        else resolve(response);
+      });
     });
-
     if (data && data.jobs && data.jobs.length > 0) {
       scanStatus.textContent = `Background scan complete: ${data.jobs.length} job(s) found across ${data.sources} source(s)`;
       scanResults.classList.remove("hidden");
-      renderScanResults(data.jobs);
+      await renderScanResults(data.jobs);
     } else {
       scanStatus.textContent = "Background scan complete. No jobs found on the scanned pages.";
     }
-  } catch (err) {
-    scanStatus.textContent = "Background scan failed: " + err.message;
-  } finally {
-    scanProgress.classList.add("hidden");
-    scanInProgress = false;
-    scanStartBgBtn.disabled = false;
-    scanBatchBtn.disabled = false;
-  }
+  } catch (err) { scanStatus.textContent = "Background scan failed: " + err.message; }
+  finally { scanProgress.classList.add("hidden"); scanInProgress = false; scanStartBgBtn.disabled = false; scanBatchBtn.disabled = false; }
 }
 
-/* ── Poll background scan progress ────────────────────────────── */
 async function pollScanProgress() {
   while (scanInProgress) {
     const result = await chrome.storage.session?.get(["scanProgress"]) || {};
@@ -1784,17 +1361,10 @@ async function pollScanProgress() {
   }
 }
 
-/* ── Init scanner tab ─────────────────────────────────────────── */
-function initScanner() {
-  loadScanUrls();
-  scannedJobs = [];
-  scanResults.classList.add("hidden");
-  scanActions.classList.add("hidden");
-  scanProgress.classList.add("hidden");
-  scanSaveBtn.classList.remove("hidden");
-}
+/* ══════════════════════════════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════════════════════════════ */
 
-/* ── Init ─────────────────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", async () => {
   await loadState();
   render();
