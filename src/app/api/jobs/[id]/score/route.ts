@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { computeScore } from "../../score-batch/route";
+import { computeScore } from "@/lib/jobs/scoring";
 
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
   const supabase = createClient();
