@@ -194,6 +194,7 @@ Respond conversationally based on the context provided (if any). If the question
       systemPrompt,
       temperature: 0.7,
       maxTokens: 1024,
+      history: historyMessages,
     });
 
     await supabase.from("mochi_chats").insert({

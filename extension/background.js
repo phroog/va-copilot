@@ -1,3 +1,24 @@
+/* ── Credit Balance Poller ──────────────────────────────────────── */
+const SARI_API = "https://va-copilot-theta.vercel.app";
+
+async function pollCredits() {
+  try {
+    const { sariToken } = await chrome.storage.local.get("sariToken");
+    if (!sariToken) return;
+    const res = await fetch(`${SARI_API}/api/ai/credits`, {
+      headers: { Authorization: `Bearer ${sariToken}` },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    await chrome.storage.local.set({ cachedCredits: data.balance ?? 0, cachedCreditsTs: Date.now() });
+  } catch { /* background poll fails silently */ }
+}
+
+chrome.runtime.onStartup.addListener(() => { pollCredits(); setInterval(pollCredits, 30000); });
+chrome.runtime.onInstalled.addListener(() => { pollCredits(); setInterval(pollCredits, 30000); });
+setInterval(pollCredits, 30000);
+pollCredits();
+
 /* ── Background Scanner ────────────────────────────────────────── */
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === "startBackgroundScan") {

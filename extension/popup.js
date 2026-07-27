@@ -248,17 +248,34 @@ function render() {
   }
 }
 
+function setCreditDisplay(bal) {
+  const num = typeof bal === "number" ? bal : parseInt(bal, 10) || 0;
+  creditBalance.textContent = `💎 ${num}`;
+  creditBalance.classList.remove("hidden");
+  if (creditBalanceDisplay) creditBalanceDisplay.textContent = num;
+}
+
 async function fetchCreditBalance() {
   try {
+    // Read cached balance instantly for display
+    const cached = await chrome.storage.local.get("cachedCredits");
+    if (cached.cachedCredits != null) setCreditDisplay(cached.cachedCredits);
+    // Then fetch fresh from API
     const data = await apiFetch("/api/ai/credits");
     const bal = data.balance ?? 0;
-    creditBalance.textContent = `💎 ${bal}`;
-    creditBalance.classList.remove("hidden");
-    if (creditBalanceDisplay) creditBalanceDisplay.textContent = bal;
+    setCreditDisplay(bal);
+    await chrome.storage.local.set({ cachedCredits: bal, cachedCreditsTs: Date.now() });
   } catch {
     creditBalance.classList.add("hidden");
   }
 }
+
+// Listen for background credit polling updates
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.cachedCredits) {
+    setCreditDisplay(changes.cachedCredits.newValue);
+  }
+});
 
 function updateSettingsTab() {
   if (creditBalanceDisplay) {
@@ -539,6 +556,7 @@ async function doGeneratePitch(jobId) {
     const data = await apiFetch("/api/generate-pitch", { method: "POST", body: JSON.stringify({ jobId }) });
     pitchText.textContent = data.pitch || JSON.stringify(data);
     pitchResult.classList.remove("hidden");
+    syncCachedCredits();
   } catch (err) {
     pitchStatus.textContent = "AI failed: " + err.message;
     pitchStatus.classList.remove("hidden");
@@ -557,6 +575,7 @@ polishBtn.addEventListener("click", async () => {
   try {
     const data = await apiFetch("/api/polish-text", { method: "POST", body: JSON.stringify({ text }) });
     pitchText.textContent = data.polished || JSON.stringify(data);
+    syncCachedCredits();
   } catch (err) { alert("Polish failed: " + err.message); } finally { polishBtn.disabled = false; }
 });
 
@@ -872,6 +891,7 @@ async function runScamCheck(clientName, url) {
     if (analysisEl) analysisEl.textContent = data.analysis;
     if (resultEl) resultEl.classList.remove("hidden");
     statusEl.classList.add("hidden");
+    syncCachedCredits();
   } catch (err) { statusEl.textContent = "Check failed: " + err.message; }
 }
 
@@ -1038,17 +1058,19 @@ async function loadFollowUps() {
    MOCHI AI CHAT
    ══════════════════════════════════════════════════════════════════ */
 
-const MOCHI_STORAGE_KEY = "mochiMessages";
+function mochiStorageKey() {
+  return "mochiMessages_" + (sariToken ? sariToken.substring(0, 12) : "anon");
+}
 
 function loadMochiMessages() {
   try {
-    const raw = localStorage.getItem(MOCHI_STORAGE_KEY);
+    const raw = localStorage.getItem(mochiStorageKey());
     return raw ? JSON.parse(raw) : [];
   } catch { return []; }
 }
 
 function saveMochiMessages(msgs) {
-  try { localStorage.setItem(MOCHI_STORAGE_KEY, JSON.stringify(msgs)); } catch {}
+  try { localStorage.setItem(mochiStorageKey(), JSON.stringify(msgs)); } catch {}
 }
 
 function renderMochiMessages() {
@@ -1079,6 +1101,10 @@ async function initMochi() {
   const statusEl = $("mochi-status");
   if (statusEl) statusEl.classList.add("hidden");
   renderMochiMessages();
+  const input = $("mochi-input");
+  const sendBtn = $("mochi-send-btn");
+  if (input) { input.onkeydown = (e) => { if (e.key === "Enter") sendMochiMessage(); }; }
+  if (sendBtn) { sendBtn.onclick = sendMochiMessage; }
   try {
     const data = await apiFetch("/api/ai/credits");
     const balanceEl = $("mochi-balance");
@@ -1086,31 +1112,37 @@ async function initMochi() {
   } catch {}
 }
 
+async function syncCachedCredits() {
+  try {
+    const data = await apiFetch("/api/ai/credits");
+    const bal = data.balance ?? 0;
+    setCreditDisplay(bal);
+    await chrome.storage.local.set({ cachedCredits: bal, cachedCreditsTs: Date.now() });
+  } catch {}
+}
+
 async function sendMochiMessage() {
   const input = $("mochi-input");
   const statusEl = $("mochi-status");
-  const text = input?.value.trim();
+  if (!input) return;
+  const text = input.value.trim();
   if (!text) return;
   input.value = "";
   if (statusEl) statusEl.classList.add("hidden");
   addMochiMessage("user", text);
   const msgs = loadMochiMessages();
-  const lastAiIdx = msgs.map((m) => m.role).lastIndexOf("ai");
-  const recent = lastAiIdx >= 0 ? msgs.slice(lastAiIdx) : msgs;
+  const history = msgs.slice(0, -1).slice(-6).map((m) => ({ role: m.role === "ai" ? "assistant" : "user", content: m.text }));
   try {
-    const data = await apiFetch("/api/mochi/chat", { method: "POST", body: JSON.stringify({ message: text, history: recent }) });
+    const data = await apiFetch("/api/mochi/chat", { method: "POST", body: JSON.stringify({ message: text, history }) });
     addMochiMessage("ai", data.reply || "🤔 Mochi is thinking...");
     const balanceEl = $("mochi-balance");
     if (balanceEl && data.balance != null) balanceEl.textContent = `${data.balance} 🪙`;
+    setCreditDisplay(data.balance);
+    await chrome.storage.local.set({ cachedCredits: data.balance, cachedCreditsTs: Date.now() });
   } catch (err) {
     addMochiMessage("ai", "⚠️ Error: " + (err.message || "Try again later"));
   }
 }
-
-const mochiInput = $("mochi-input");
-const mochiSendBtn = $("mochi-send-btn");
-if (mochiInput) mochiInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendMochiMessage(); });
-if (mochiSendBtn) mochiSendBtn.addEventListener("click", sendMochiMessage);
 
 /* ══════════════════════════════════════════════════════════════════
    JOB SEARCH

@@ -13,6 +13,7 @@ interface CallOptions {
   systemPrompt?: string;
   temperature?: number;
   maxTokens?: number;
+  history?: { role: string; content: string }[];
 }
 
 interface CallResult {
@@ -102,6 +103,14 @@ export async function callDeepSeek(
 
   if (options.systemPrompt) {
     messages.push({ role: "system", content: options.systemPrompt });
+  }
+
+  if (options.history) {
+    for (const h of options.history) {
+      if (h.role === "assistant" || h.role === "user") {
+        messages.push({ role: h.role, content: h.content });
+      }
+    }
   }
 
   messages.push({ role: "user", content: prompt });
