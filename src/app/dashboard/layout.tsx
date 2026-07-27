@@ -10,11 +10,9 @@ import { useLocale } from "@/lib/i18n/context";
 import { useState, useEffect, useCallback } from "react";
 import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Inbox, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3 } from "lucide-react";
 import dynamic from "next/dynamic";
-const VirtualPet = dynamic(() => import("@/components/virtual-pet"), { ssr: false });
-const MochiChat = dynamic(() => import("@/components/mochi-chat"), { ssr: false });
+const MochiHub = dynamic(() => import("@/components/mochi-hub"), { ssr: false });
 import { ToastProvider } from "@/components/toast";
 import { FocusTimerProvider } from "@/components/focus-timer-provider";
-import Soundscapes from "@/components/soundscapes";
 
 const sidebarGroups = [
   {
@@ -27,7 +25,6 @@ const sidebarGroups = [
       { href: "/dashboard/pipeline", labelKey: "pipeline", icon: GitBranch },
       { href: "/dashboard/vault", labelKey: "vault", icon: Shield },
       { href: "/academy/dashboard", labelKey: "academy", icon: BookOpen },
-      { href: "/academy", labelKey: "academyLanding", icon: BookOpen },
       { href: "/dashboard/agency", labelKey: "agency", icon: Shield },
       { href: "/dashboard/agency/reporting", labelKey: "agencyReporting", icon: BarChart3 },
       { href: "/dashboard/clients", labelKey: "clients", icon: Users },
@@ -220,9 +217,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
 
-      <MochiChat />
-      <VirtualPet />
-      <Soundscapes />
+      <MochiHub />
     </div>
     </FocusTimerProvider>
   );

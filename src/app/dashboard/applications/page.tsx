@@ -151,7 +151,7 @@ export default function ApplicationsPage() {
                       ⋮
                     </Button>
                     {menuOpen === app.id && (
-                      <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-dark-card border border-kawaii-lavender/30 dark:border-dark-surface rounded-2xl shadow-xl p-1 w-36">
+                      <div className="absolute right-0 bottom-full mb-1 z-50 bg-white dark:bg-dark-card border border-kawaii-lavender/30 dark:border-dark-surface rounded-2xl shadow-xl p-1 w-36">
                         {statuses.filter((s) => s !== "all" && s !== app.status).map((s) => (
                           <button
                             key={s}
