@@ -229,13 +229,18 @@
               <div id="follow-ups-content"><p class="status-text">Loading...</p></div>
             </div>
 
-            <!-- Mochi AI -->
+            <!-- Mochi AI Chat -->
             <div id="template-mochi">
-              <p class="tool-heading">🤖 Mochi AI</p>
-              <button id="mochi-summarize-btn" class="btn btn-secondary" style="margin-bottom:4px">📊 Summarize my week</button>
-              <button id="mochi-tip-btn" class="btn btn-secondary">🧠 Productivity tip</button>
-              <div id="mochi-result" class="card hidden" style="margin-top:6px">
-                <p id="mochi-text" class="status-text"></p>
+              <p class="tool-heading">🤖 Mochi AI <span id="mochi-balance" class="mochi-balance"></span></p>
+              <div id="mochi-messages" class="mochi-messages">
+                <div class="mochi-msg ai">
+                  <span class="mochi-msg-icon">🤖</span>
+                  <div class="mochi-msg-bubble">Hi! I'm Mochi, your AI assistant. Ask me anything about your jobs, invoices, time tracking, or freelancing! 🚀</div>
+                </div>
+              </div>
+              <div class="mochi-input-area">
+                <input id="mochi-input" class="mochi-input" type="text" placeholder="Ask Mochi something..." />
+                <button id="mochi-send-btn" class="mochi-send-btn">Send</button>
               </div>
               <p id="mochi-status" class="status-text hidden"></p>
             </div>

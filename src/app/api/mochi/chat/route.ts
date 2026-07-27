@@ -2,118 +2,200 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { callDeepSeek, checkCredits } from "@/lib/ai-client";
 
+const INTENT_MAP: Record<string, RegExp[]> = {
+  jobs: [/job\b/i, /project\b/i, /client\b/i, /gig\b/i, /contract\b/i, /freelance/i, /hire/i, /hired/i, /proposal/i],
+  invoices: [/invoice/i, /payment/i, /paid\b/i, /due\b/i, /bill/i, /outstanding/i, /overdue/i],
+  finances: [/money/i, /earn/i, /income/i, /revenue/i, /profit/i, /finance/i, /budget/i, /made/i, /total\b/i],
+  time: [/time\b/i, /track/i, /hour/i, /worked/i, /logged/i, /timesheet/i, /session/i],
+  pitches: [/pitch/i, /win\b/i, /won\b/i, /success.rate/i, /conversion/i],
+  followups: [/follow.up/i, /remind/i, /pending/i, /to.do/i, /followup/i],
+  notes: [/note/i, /remember/i, /memo/i, /remind\b/i],
+  milestones: [/milestone/i, /progress/i, /completed/i, /achieved/i, /done\b/i],
+};
+
+function detectIntents(text: string): string[] {
+  const matched = new Set<string>();
+  const lower = text.toLowerCase();
+  if (lower.includes("week") || lower.includes("summary") || lower.includes("overview") || lower.includes("how am i") || lower.includes("status")) {
+    return ["jobs", "invoices", "finances", "time", "pitches", "followups", "milestones"];
+  }
+  for (const [key, patterns] of Object.entries(INTENT_MAP)) {
+    for (const re of patterns) {
+      if (re.test(text)) { matched.add(key); break; }
+    }
+  }
+  return Array.from(matched);
+}
+
+function buildContextBlock(label: string, data: any, formatter: (item: any) => string): string {
+  if (!data || (Array.isArray(data) && data.length === 0)) return "";
+  const items = Array.isArray(data) ? data.map(formatter).join("\n") : formatter(data);
+  return `${label}:\n${items}\n`;
+}
+
 export async function POST(request: Request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { message } = body;
+  const { message, history } = body;
   if (!message?.trim()) {
     return NextResponse.json({ error: "Message is required" }, { status: 400 });
   }
 
-  // Check credits
   const { ok, balance } = await checkCredits(user.id);
   if (!ok) {
     return NextResponse.json({ error: "Insufficient AI credits", balance, code: "INSUFFICIENT_CREDITS" }, { status: 402 });
   }
 
-  // Gather context
-  const [recentEntries, upcomingFollowUps, recentPitches, academyProgress, mood, pet, completedMilestones] = await Promise.all([
-    supabase
+  // Profile always included (tiny)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, desired_rate, bio, skills, experience_level, job_categories")
+    .eq("id", user.id)
+    .single();
+
+  // Detect what data the user needs
+  const intents = detectIntents(message);
+  const contextSections: string[] = [];
+
+  if (profile) {
+    const parts: string[] = [];
+    if (profile.full_name) parts.push(`Name: ${profile.full_name}`);
+    if (profile.desired_rate) parts.push(`Desired rate: $${profile.desired_rate}/hr`);
+    if (profile.skills?.length) parts.push(`Skills: ${profile.skills.join(", ")}`);
+    if (profile.experience_level) parts.push(`Experience: ${profile.experience_level}`);
+    if (profile.job_categories?.length) parts.push(`Categories: ${profile.job_categories.join(", ")}`);
+    if (parts.length) contextSections.push(`--- Profile ---\n${parts.join("\n")}`);
+  }
+
+  // Fetch data for matched intents
+  if (intents.includes("jobs")) {
+    const { data: jobs } = await supabase
+      .from("jobs")
+      .select("id, title, platform, status, budget_amount, budget_type, posted_at")
+      .eq("user_id", user.id)
+      .order("posted_at", { ascending: false })
+      .limit(15);
+    const block = buildContextBlock("--- Recent Jobs ---", jobs, (j) =>
+      `- ${j.title} (${j.platform || "Unknown"}) [${j.status || "open"}]${j.budget_amount ? ` Budget: ${j.budget_amount}` : ""}`
+    );
+    if (block) contextSections.push(block);
+  }
+
+  if (intents.includes("invoices")) {
+    const { data: invoices } = await supabase
+      .from("invoices")
+      .select("id, title, status, total_amount, due_date")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    const block = buildContextBlock("--- Invoices ---", invoices, (i) =>
+      `- ${i.title}: $${i.total_amount ?? 0} [${i.status}] ${i.due_date ? `due ${i.due_date}` : ""}`
+    );
+    if (block) contextSections.push(block);
+  }
+
+  if (intents.includes("finances")) {
+    const now = new Date();
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const { data: monthIncome } = await supabase
+      .from("income_log")
+      .select("amount")
+      .eq("user_id", user.id)
+      .gte("earned_at", `${monthStr}-01`)
+      .lte("earned_at", `${monthStr}-31`);
+    const { data: yearIncome } = await supabase
+      .from("income_log")
+      .select("amount")
+      .eq("user_id", user.id)
+      .gte("earned_at", `${now.getFullYear()}-01-01`)
+      .lte("earned_at", `${now.getFullYear()}-12-31`);
+    const totalMonth = (monthIncome ?? []).reduce((s, r) => s + parseFloat(String(r.amount)), 0);
+    const totalYear = (yearIncome ?? []).reduce((s, r) => s + parseFloat(String(r.amount)), 0);
+    contextSections.push(`--- Finances ---\nThis month: $${totalMonth.toFixed(2)}\nThis year: $${totalYear.toFixed(2)}`);
+  }
+
+  if (intents.includes("time")) {
+    const { data: entries } = await supabase
       .from("time_entries")
-      .select("*")
+      .select("description, project_name, start_time, end_time, hourly_rate")
       .eq("user_id", user.id)
       .order("start_time", { ascending: false })
-      .limit(5)
-      .then(r => r.data ?? []),
-    supabase
+      .limit(10);
+    const block = buildContextBlock("--- Recent Time Entries ---", entries, (e) =>
+      `- "${e.description || "No description"}" for ${e.project_name || "No project"}${e.hourly_rate ? ` at $${e.hourly_rate}/hr` : ""} (${e.start_time?.substring(0, 10) || "?"})`
+    );
+    if (block) contextSections.push(block);
+  }
+
+  if (intents.includes("pitches")) {
+    const { data: pitches } = await supabase
+      .from("pitches")
+      .select("status")
+      .eq("user_id", user.id);
+    const total = pitches?.length ?? 0;
+    const won = (pitches ?? []).filter((p: any) => p.status === "won").length;
+    const rate = total > 0 ? Math.round((won / total) * 100) : 0;
+    contextSections.push(`--- Pitch Stats ---\n${total} total, ${won} won (${rate}% success rate)`);
+  }
+
+  if (intents.includes("followups")) {
+    const { data: fups } = await supabase
       .from("follow_ups")
       .select("*, jobs(title)")
       .eq("user_id", user.id)
       .eq("status", "pending")
       .order("due_date", { ascending: true })
-      .limit(5)
-      .then(r => r.data ?? []),
-    supabase
-      .from("pitches")
-      .select("status")
-      .eq("user_id", user.id)
-      .then(r => r.data ?? []),
-    supabase
-      .from("academy_progress")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(r => r.data),
-    supabase
-      .from("moods")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(r => r.data),
-    supabase
-      .from("pets")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(r => r.data),
-    supabase
+      .limit(10);
+    const block = buildContextBlock("--- Pending Follow-ups ---", fups, (f) =>
+      `- "${f.jobs?.title || "Job"}" due ${f.due_date || "no date"}`
+    );
+    if (block) contextSections.push(block);
+  }
+
+  if (intents.includes("milestones")) {
+    const { data: mstones } = await supabase
       .from("job_milestones")
       .select("*, jobs(title)")
       .eq("user_id", user.id)
-      .eq("status", "done")
       .order("created_at", { ascending: false })
-      .limit(5)
-      .then(r => r.data ?? []),
-  ]);
+      .limit(10);
+    const block = buildContextBlock("--- Recent Milestones ---", mstones, (m) =>
+      `- "${m.title}" for ${m.jobs?.title || "Unknown job"}`
+    );
+    if (block) contextSections.push(block);
+  }
 
-  // Calculate pitch success rate
-  const totalPitches = recentPitches.length;
-  const wonPitches = recentPitches.filter((p: any) => p.status === "won").length;
-  const pitchRate = totalPitches > 0 ? Math.round((wonPitches / totalPitches) * 100) : 0;
+  // Build conversation history for DeepSeek
+  const historyMessages: { role: string; content: string }[] = [];
+  if (Array.isArray(history)) {
+    for (const h of history) {
+      if (h.role === "user" || h.role === "ai") {
+        historyMessages.push({ role: h.role === "ai" ? "assistant" : "user", content: h.text || "" });
+      }
+    }
+  }
 
-  const contextParts = [
-    `User's recent time entries (last 5): ${recentEntries.map((e: any) =>
-      `"${e.description || 'No description'}" for ${e.project_name || 'No project'} (${e.hourly_rate ? '$' + e.hourly_rate + '/hr' : 'no rate'})`
-    ).join('; ') || 'No recent entries'}.`,
-    `Upcoming follow-ups: ${upcomingFollowUps.map((f: any) =>
-      `"${f.jobs?.title || 'Job'}" due ${f.due_date}`
-    ).join('; ') || 'None'}.`,
-    `Pitch stats: ${totalPitches} total, ${wonPitches} won (${pitchRate}% success rate).`,
-    `Academy progress: ${academyProgress ? `Completed ${academyProgress.completed_lessons ?? 0} lessons, streak ${academyProgress.streak ?? 0}` : 'Not started'}.`,
-    `Current mood: ${mood?.mood ?? 'Not recorded'}.`,
-    `Pet status: ${pet?.name ? `Has pet "${pet.name}" (happiness: ${pet.happiness ?? 50}, hunger: ${pet.hunger ?? 50})` : 'No pet'}.`,
-    `Recently completed milestones: ${completedMilestones.length > 0 ? completedMilestones.map((m: any) => `"${m.title}" for job "${m.jobs?.title || 'Unknown'}"`).join('; ') : 'None'}.`,
-  ];
+  const systemPrompt = `You are Mochi, an AI assistant built into Sari — a productivity platform for Virtual Assistants and freelancers. The user you're talking to is a VA who uses Sari to manage their freelance work.
 
-  const systemPrompt = `You are Mochi, a cute and helpful AI assistant for the Sari productivity platform. You speak in a kawaii, encouraging tone with occasional emojis. You help users manage their freelancing work.
+Your role: Help them run their VA business more efficiently. You can answer questions about their data, give advice, and have friendly conversations.
 
-Context about this user:
-${contextParts.join('\n')}
+Tone: Warm, encouraging, professional but friendly. Use occasional emojis. Keep responses concise.
 
-You can:
-- Summarize the user's week based on their time entries and activity
-- Give productivity tips tailored to their workload
-- Answer questions about how to use Sari features
-- Help with freelancing best practices
-- Celebrate wins and milestones with confetti vibes 🎉
+About their data${contextSections.length > 0 ? "\n\n" + contextSections.join("\n\n") : "."}
 
-Keep responses concise, warm, and helpful. Use the context above to personalize your answers. If asked to summarize the week, use the time entries data. If asked for a productivity tip, tailor it to their workload.
-
-Important: Each message costs 1 credit. Be helpful but concise.`;
+You were asked: "${message}"
+Respond conversationally based on the context provided (if any). If the question is general ("hello", "what can you do"), no context is needed — just chat normally. If you don't have enough data to answer well, say so and suggest what the user could check in their Sari dashboard.`;
 
   try {
     const result = await callDeepSeek(user.id, message, {
       systemPrompt,
-      temperature: 0.8,
+      temperature: 0.7,
       maxTokens: 1024,
     });
 
-    // Save to mochi chats
     await supabase.from("mochi_chats").insert({
       user_id: user.id,
       user_message: message,

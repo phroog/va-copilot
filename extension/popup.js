@@ -1035,36 +1035,82 @@ async function loadFollowUps() {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   MOCHI AI
+   MOCHI AI CHAT
    ══════════════════════════════════════════════════════════════════ */
 
-function initMochi() {
-  const mochiStatus = $("mochi-status");
-  const mochiResult = $("mochi-result");
-  const mochiText = $("mochi-text");
-  if (mochiStatus) mochiStatus.classList.add("hidden");
-  if (mochiResult) mochiResult.classList.add("hidden");
-}
+const MOCHI_STORAGE_KEY = "mochiMessages";
 
-async function askMochi(prompt) {
-  const resultEl = $("mochi-result");
-  const textEl = $("mochi-text");
-  const statusEl = $("mochi-status");
-  if (resultEl) resultEl.classList.add("hidden");
-  if (statusEl) { statusEl.classList.remove("hidden"); statusEl.textContent = "Asking Mochi..."; }
+function loadMochiMessages() {
   try {
-    const data = await apiFetch("/api/mochi/chat", { method: "POST", body: JSON.stringify({ message: prompt }) });
-    if (textEl) textEl.textContent = data.reply || "🤔 Mochi is thinking...";
-    if (resultEl) resultEl.classList.remove("hidden");
-    if (statusEl) statusEl.classList.add("hidden");
-  } catch (err) { if (statusEl) statusEl.textContent = "Mochi error: " + (err.message || "Try again later"); }
+    const raw = localStorage.getItem(MOCHI_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
 }
 
-const mochiSummarizeBtn = $("mochi-summarize-btn");
-if (mochiSummarizeBtn) mochiSummarizeBtn.addEventListener("click", () => askMochi("Please summarize my week."));
+function saveMochiMessages(msgs) {
+  try { localStorage.setItem(MOCHI_STORAGE_KEY, JSON.stringify(msgs)); } catch {}
+}
 
-const mochiTipBtn = $("mochi-tip-btn");
-if (mochiTipBtn) mochiTipBtn.addEventListener("click", () => askMochi("Give me a productivity tip based on my recent activity."));
+function renderMochiMessages() {
+  const container = $("mochi-messages");
+  if (!container) return;
+  const msgs = loadMochiMessages();
+  container.innerHTML = msgs.map((m) =>
+    `<div class="mochi-msg ${m.role}"><span class="mochi-msg-icon">${m.role === "user" ? "👤" : "🤖"}</span><div class="mochi-msg-bubble">${escapeHtml(m.text)}</div></div>`
+  ).join("");
+  container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function addMochiMessage(role, text) {
+  const msgs = loadMochiMessages();
+  msgs.push({ role, text, ts: Date.now() });
+  if (msgs.length > 50) msgs.splice(0, msgs.length - 50);
+  saveMochiMessages(msgs);
+  renderMochiMessages();
+}
+
+async function initMochi() {
+  const statusEl = $("mochi-status");
+  if (statusEl) statusEl.classList.add("hidden");
+  renderMochiMessages();
+  try {
+    const data = await apiFetch("/api/ai/credits");
+    const balanceEl = $("mochi-balance");
+    if (balanceEl) balanceEl.textContent = `${data.balance ?? "?"} 🪙`;
+  } catch {}
+}
+
+async function sendMochiMessage() {
+  const input = $("mochi-input");
+  const statusEl = $("mochi-status");
+  const text = input?.value.trim();
+  if (!text) return;
+  input.value = "";
+  if (statusEl) statusEl.classList.add("hidden");
+  addMochiMessage("user", text);
+  const msgs = loadMochiMessages();
+  const lastAiIdx = msgs.map((m) => m.role).lastIndexOf("ai");
+  const recent = lastAiIdx >= 0 ? msgs.slice(lastAiIdx) : msgs;
+  try {
+    const data = await apiFetch("/api/mochi/chat", { method: "POST", body: JSON.stringify({ message: text, history: recent }) });
+    addMochiMessage("ai", data.reply || "🤔 Mochi is thinking...");
+    const balanceEl = $("mochi-balance");
+    if (balanceEl && data.balance != null) balanceEl.textContent = `${data.balance} 🪙`;
+  } catch (err) {
+    addMochiMessage("ai", "⚠️ Error: " + (err.message || "Try again later"));
+  }
+}
+
+const mochiInput = $("mochi-input");
+const mochiSendBtn = $("mochi-send-btn");
+if (mochiInput) mochiInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendMochiMessage(); });
+if (mochiSendBtn) mochiSendBtn.addEventListener("click", sendMochiMessage);
 
 /* ══════════════════════════════════════════════════════════════════
    JOB SEARCH

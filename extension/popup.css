@@ -203,6 +203,122 @@ body.dark .tool-card span {
   margin-bottom: 8px;
 }
 
+.mochi-balance {
+  font-size: 12px;
+  font-weight: 400;
+  color: #999;
+  margin-left: 6px;
+}
+
+.mochi-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+  padding: 4px 0;
+}
+
+.mochi-msg {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.mochi-msg.user {
+  flex-direction: row-reverse;
+}
+
+.mochi-msg-icon {
+  font-size: 18px;
+  line-height: 1;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.mochi-msg-bubble {
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 280px;
+  word-wrap: break-word;
+  background: #f0ebf8;
+  color: #333;
+}
+
+body.dark .mochi-msg-bubble {
+  background: #2e2a45;
+  color: #e0d8f0;
+}
+
+.mochi-msg.user .mochi-msg-bubble {
+  background: #6c4e8f;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+body.dark .mochi-msg.user .mochi-msg-bubble {
+  background: #7e5fa0;
+}
+
+.mochi-msg.ai .mochi-msg-bubble {
+  background: #f0ebf8;
+  border-bottom-left-radius: 4px;
+}
+
+body.dark .mochi-msg.ai .mochi-msg-bubble {
+  background: #2e2a45;
+}
+
+.mochi-input-area {
+  display: flex;
+  gap: 6px;
+}
+
+.mochi-input {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 13px;
+  border-radius: 8px;
+  border: 1.5px solid #d8c8e8;
+  background: #fff;
+  color: #333;
+  outline: none;
+  box-sizing: border-box;
+}
+
+body.dark .mochi-input {
+  background: #2a2a3e;
+  border-color: #4a3f6a;
+  color: #e0d8f0;
+}
+
+.mochi-send-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  background: #6c4e8f;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mochi-send-btn:hover {
+  background: #5a3f7a;
+}
+
+body.dark .mochi-send-btn {
+  background: #7e5fa0;
+}
+
+body.dark .mochi-send-btn:hover {
+  background: #6c4e8f;
+}
+
 body.dark .tool-heading {
   color: #b39ddb;
 }
