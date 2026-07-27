@@ -2,6 +2,7 @@
   "dashboard": "Dashboard",
   "jobs": "Jobs",
   "applications": "Applications",
+  "milestones": "Milestones",
   "pipeline": "Pipeline",
   "inbox": "Inbox",
   "timeTracker": "Time Tracker",

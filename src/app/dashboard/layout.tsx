@@ -21,7 +21,7 @@ const sidebarGroups = [
     links: [
       { href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard },
       { href: "/dashboard/jobs", labelKey: "jobs", icon: Briefcase },
-      { href: "/dashboard/applications", labelKey: "applications", icon: FileText },
+      { href: "/dashboard/milestones", labelKey: "milestones", icon: GitBranch },
       { href: "/dashboard/pipeline", labelKey: "pipeline", icon: GitBranch },
       { href: "/dashboard/vault", labelKey: "vault", icon: Shield },
       { href: "/academy/dashboard", labelKey: "academy", icon: BookOpen },

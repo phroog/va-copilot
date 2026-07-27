@@ -71,6 +71,7 @@ export default function JobsPage() {
   const [savingPitch, setSavingPitch] = useState(false);
   const [pitchDialogOpen, setPitchDialogOpen] = useState(false);
   const [creditSuckJobId, setCreditSuckJobId] = useState<string | null>(null);
+  const [scorePopover, setScorePopover] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<Tab>("manual");
 
@@ -735,6 +736,8 @@ interface Milestone {
 }
 
 function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId }: { job: any; generating: string | null; generatePitch: (id: string, title: string, hasExisting: boolean) => void; deleteJob: (id: string, title: string) => void; t: any; creditSuckJobId: string | null }) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
   const [tokenLink, setTokenLink] = useState("");
@@ -748,6 +751,9 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
   const [scamAnalysis, setScamAnalysis] = useState("");
   const [scamChecking, setScamChecking] = useState(false);
   const [scamDialogOpen, setScamDialogOpen] = useState(false);
+  const [scoreBreakdown, setScoreBreakdown] = useState<{ label: string; score: number; max: number }[] | null>(null);
+  const [scoreBreakdownOpen, setScoreBreakdownOpen] = useState(false);
+  const [fetchingBreakdown, setFetchingBreakdown] = useState(false);
 
   // Milestones
   const [milestones, setMilestones] = useState<Milestone[]>([]);
@@ -756,6 +762,27 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
   const [newMilestoneTitle, setNewMilestoneTitle] = useState("");
   const [newMilestoneDesc, setNewMilestoneDesc] = useState("");
   const [newMilestoneDate, setNewMilestoneDate] = useState("");
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const toggleScoreBreakdown = async () => {
+    if (scoreBreakdown) { setScoreBreakdownOpen(!scoreBreakdownOpen); return; }
+    setFetchingBreakdown(true);
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/score`, { method: "POST" });
+      const data = await res.json();
+      if (data.breakdown) {
+        setScoreBreakdown(data.breakdown);
+        setScoreBreakdownOpen(true);
+      }
+    } catch {} finally { setFetchingBreakdown(false); }
+  };
 
   const fetchMilestones = async () => {
     setMilestonesLoading(true);
@@ -821,14 +848,38 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-lg flex-1">{job.title}</CardTitle>
           {job.score != null ? (
-            <div className="flex items-center gap-1 shrink-0">
-              <span className={`text-sm font-extrabold px-2.5 py-0.5 rounded-lg ${
-                job.score >= 70 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" :
-                job.score >= 40 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" :
-                "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-              }`}>
+            <div className="flex items-center gap-1 shrink-0 relative">
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleScoreBreakdown(); }}
+                className={`text-sm font-extrabold px-2.5 py-0.5 rounded-lg cursor-pointer squishy ${
+                  job.score >= 70 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" :
+                  job.score >= 40 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" :
+                  "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                }`}
+              >
                 {job.score}
-              </span>
+              </button>
+              {scoreBreakdownOpen && scoreBreakdown && (
+                <div className="absolute top-full right-0 mt-1 z-50 w-56 p-3 bg-white dark:bg-dark-card border border-kawaii-lavender/30 dark:border-dark-surface rounded-xl shadow-lg animate-slide-up">
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">Score Breakdown</p>
+                  {scoreBreakdown.map((item) => (
+                    <div key={item.label} className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="text-xs text-slate-500">{item.label}</span>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-slate-600 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              item.score >= item.max ? "bg-green-400" : item.score >= item.max * 0.5 ? "bg-yellow-400" : "bg-red-400"
+                            }`}
+                            style={{ width: `${(item.score / (item.max || 1)) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono text-slate-600 dark:text-slate-400">{item.score}/{item.max}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               <button
                 onClick={(e) => { e.stopPropagation(); alert("🧠 AI Deep Match coming soon! 🚀"); }}
                 className="text-xs px-1.5 py-0.5 rounded-full bg-kawaii-lavender/10 text-kawaii-purple/60 dark:text-kawaii-lavender/60 hover:bg-kawaii-lavender/30 squishy"
@@ -886,43 +937,55 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
               </>
             )}
           </div>
-          <Button size="sm" variant="outline" onClick={() => setDetailOpen(!detailOpen)}>
-            {detailOpen ? "▲ Details" : "▼ Details"}
-          </Button>
-          {job.url && (
-            <Button size="sm" variant="outline" asChild>
-              <a href={job.url} target="_blank" rel="noopener noreferrer">View Job ↗</a>
+          <div className="relative" ref={dropdownRef}>
+            <Button size="sm" variant="outline" onClick={() => setDropdownOpen(!dropdownOpen)} className="flex items-center gap-1">
+              <span>Actions</span>
+              <svg className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </Button>
-          )}
-          <Button size="sm" variant="outline" onClick={() => setPortalOpen(!portalOpen)}>
-            🔗 {t("clientPortal")}
-          </Button>
-          <Button size="sm" variant="outline" onClick={async () => {
-            setScamChecking(true);
-            try {
-              const res = await fetch("/api/ai/scam-check", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ client_name: job.client_name || "", website_url: job.url || "", job_description: job.description || "" }),
-              });
-              const data = await res.json();
-              if (res.status === 402) { alert(data.error); return; }
-              setScamScore(data.score);
-              setScamAnalysis(data.analysis);
-              setScamDialogOpen(true);
-            } catch {} finally { setScamChecking(false); }
-          }} disabled={scamChecking}>
-            {scamChecking ? "⏳" : "🕵️"} Scam Check (1🪙)
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setReviewOpen(!reviewOpen)}>
-            ⭐ Request Review
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setMilestonesOpen(!milestonesOpen)}>
-            📋 Milestones {milestones.filter(m => m.status !== "done").length > 0 && `(${milestones.filter(m => m.status !== "done").length})`}
-          </Button>
-          <button onClick={() => deleteJob(job.id, job.title)} className="ml-auto text-slate-400 hover:text-red-500 transition-colors squishy" title="Delete job">
-            🗑️
-          </button>
+            {dropdownOpen && (
+              <div className="absolute left-0 top-full mt-1 z-50 min-w-[190px] bg-white dark:bg-dark-card border border-kawaii-lavender/20 dark:border-dark-surface rounded-xl shadow-xl py-1 animate-slide-up">
+                <button onClick={() => { setDropdownOpen(false); setDetailOpen(!detailOpen); }} className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
+                  {detailOpen ? "▲" : "▼"} Details
+                </button>
+                {job.url && (
+                  <a href={job.url} target="_blank" rel="noopener noreferrer" className="block px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
+                    ↗ View Job
+                  </a>
+                )}
+                <button onClick={() => { setDropdownOpen(false); setPortalOpen(!portalOpen); }} className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
+                  🔗 {t("clientPortal")}
+                </button>
+                <button onClick={async () => {
+                  setDropdownOpen(false);
+                  setScamChecking(true);
+                  try {
+                    const res = await fetch("/api/ai/scam-check", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ client_name: job.client_name || "", website_url: job.url || "", job_description: job.description || "" }),
+                    });
+                    const data = await res.json();
+                    if (res.status === 402) { alert(data.error); return; }
+                    setScamScore(data.score);
+                    setScamAnalysis(data.analysis);
+                    setScamDialogOpen(true);
+                  } catch {} finally { setScamChecking(false); }
+                }} disabled={scamChecking} className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
+                  {scamChecking ? "⏳" : "🕵️"} Scam Check (1🪙)
+                </button>
+                <button onClick={() => { setDropdownOpen(false); setReviewOpen(!reviewOpen); }} className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
+                  ⭐ Request Review
+                </button>
+                <button onClick={() => { setDropdownOpen(false); setMilestonesOpen(!milestonesOpen); }} className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
+                  📋 Milestones {milestones.filter(m => m.status !== "done").length > 0 && `(${milestones.filter(m => m.status !== "done").length})`}
+                </button>
+                <hr className="my-1 border-kawaii-lavender/20 dark:border-dark-surface" />
+                <button onClick={() => { setDropdownOpen(false); deleteJob(job.id, job.title); }} className="w-full text-left px-3.5 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                  🗑️ Delete
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {detailOpen && (

@@ -25,7 +25,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: "Profile not found. Set up your skills in Settings first." }, { status: 404 });
   }
 
-  const { score, match_reason } = computeScore(job, profile);
+  const { score, match_reason, breakdown } = computeScore(job, profile);
 
   const { data: updated, error } = await supabase
     .from("jobs")
@@ -36,5 +36,5 @@ export async function POST(_request: Request, { params }: { params: { id: string
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ job: updated });
+  return NextResponse.json({ job: updated, breakdown });
 }

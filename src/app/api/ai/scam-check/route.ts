@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   const prompt = parts.join("\n");
 
   const systemPrompt =
-    "You are a fraud detection expert for freelancers. Based on the provided client information, assess the trustworthiness of this client on a scale of 1 to 100. Consider: professionalism of website, online presence, red flags in payment terms or communication, and typical scam patterns. Output a JSON object with exactly two keys: 'score' (number) and 'analysis' (string, max 150 words).";
+    "You are a fraud detection expert for freelancers. Based ONLY on the provided client information, assess the trustworthiness of this client on a scale of 1 to 100. Be critical — default to lower scores when data is missing or suspicious.\n\nScoring guidelines:\n- 90-100: Verifiable real business with strong online footprint and clear professional communication\n- 70-89: Likely legitimate but limited verifiable info\n- 40-69: Mixed signals, some red flags or very sparse data\n- 1-39: Clear scam patterns or virtually no verifiable information provided\n\nIf the client_name is empty or generic, website_url is a job board URL (not a company site), and no payment_info is given, score below 40.\nOutput a JSON object with exactly two keys: 'score' (number) and 'analysis' (string, max 150 words).";
 
   let score = 50;
   let analysis = "Unable to analyze at this time. Please try again.";
