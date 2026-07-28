@@ -30,7 +30,7 @@ export default function CreditsPage() {
       if (credRes.ok) setCredits(await credRes.json());
       if (logRes?.ok) setLogs(await logRes.json());
     } catch (e) {
-      showToast(e?.message ?? "Failed to load credits", "error");
+      showToast((e as any)?.message ?? "Failed to load credits", "error");
     }
 
     setLoading(false);

@@ -77,7 +77,7 @@ export default function ClientsPage() {
       const data = await res.json();
       setLinks(data.links || []);
     } catch (e) {
-      showToast(e?.message ?? "Failed to load client links", "error");
+      showToast((e as any)?.message ?? "Failed to load client links", "error");
     } finally {
       setLoading(false);
     }

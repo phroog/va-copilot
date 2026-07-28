@@ -90,7 +90,7 @@ export default function SettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
-      showToast(e?.message ?? "Failed to save profile", "error");
+      showToast((e as any)?.message ?? "Failed to save profile", "error");
     } finally {
       setSaving(false);
     }
@@ -107,7 +107,7 @@ export default function SettingsPage() {
       setRateSaved(true);
       setTimeout(() => setRateSaved(false), 2000);
     } catch (e) {
-      showToast(e?.message ?? "Failed to save rate", "error");
+      showToast((e as any)?.message ?? "Failed to save rate", "error");
     } finally {
       setRateSaving(false);
     }

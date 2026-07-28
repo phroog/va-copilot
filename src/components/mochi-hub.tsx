@@ -57,7 +57,7 @@ export default function MochiHub() {
       const data = await res.json();
       setPet(data.pet);
     } catch (e) {
-      showToast(e?.message ?? "Failed to load pet", "error");
+      showToast((e as any)?.message ?? "Failed to load pet", "error");
     } finally { setPetLoading(false); }
   }, []);
 
@@ -69,7 +69,7 @@ export default function MochiHub() {
 
   const fetchBalance = async () => {
     try { const r = await fetch("/api/ai/credits"); if (r.ok) { const d = await r.json(); setBalance(d.balance); } } catch (e) {
-      showToast(e?.message ?? "Failed to load balance", "error");
+      showToast((e as any)?.message ?? "Failed to load balance", "error");
     }
   };
 

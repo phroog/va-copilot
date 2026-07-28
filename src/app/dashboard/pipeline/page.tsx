@@ -70,7 +70,7 @@ export default function PipelinePage() {
       });
       setApps((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
     } catch (e) {
-      showToast(e?.message ?? "Failed to move application", "error");
+      showToast((e as any)?.message ?? "Failed to move application", "error");
     }
   };
 

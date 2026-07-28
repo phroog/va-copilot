@@ -73,7 +73,7 @@ export default function InvoicesPage() {
       const data = await res.json();
       setInvoices(data.invoices ?? []);
     } catch (e) {
-      showToast(e?.message ?? "Failed to load invoices", "error");
+      showToast((e as any)?.message ?? "Failed to load invoices", "error");
     } finally {
       setLoading(false);
     }

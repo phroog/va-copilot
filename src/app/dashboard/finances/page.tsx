@@ -44,7 +44,7 @@ export default function FinancesPage() {
       setMonthlyBreakdown(data.monthlyBreakdown ?? []);
       setRecent(data.recent ?? []);
     } catch (e) {
-      showToast(e?.message ?? "Failed to load finances", "error");
+      showToast((e as any)?.message ?? "Failed to load finances", "error");
     } finally {
       setLoading(false);
     }

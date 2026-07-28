@@ -117,7 +117,7 @@ export default function JobsPage() {
       const data = await res.json();
       setJobs(data.jobs ?? []);
     } catch (e) {
-      showToast(e?.message ?? "Failed to fetch jobs", "error");
+      showToast((e as any)?.message ?? "Failed to fetch jobs", "error");
     } finally {
       setLoading(false);
     }
@@ -259,7 +259,7 @@ export default function JobsPage() {
         showToast(t("jobSavedSuccess"));
       }
     } catch (e) {
-      showToast(e?.message ?? "Failed to save job", "error");
+      showToast((e as any)?.message ?? "Failed to save job", "error");
     } finally {
       setSavingExtracted(false);
     }
@@ -281,7 +281,7 @@ export default function JobsPage() {
         showToast("Job deleted");
       }
     } catch (e) {
-      showToast(e?.message ?? "Failed to delete job", "error");
+      showToast((e as any)?.message ?? "Failed to delete job", "error");
     }
   };
 
@@ -323,7 +323,7 @@ export default function JobsPage() {
         setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, has_pitch: true } : j)));
       }
     } catch (e) {
-      showToast(e?.message ?? "Failed to generate pitch", "error");
+      showToast((e as any)?.message ?? "Failed to generate pitch", "error");
     } finally {
       setRegenerating(false);
       setGenerating(null);
@@ -363,7 +363,7 @@ export default function JobsPage() {
       const data = await res.json();
       if (data.polished) setPitchResult(data.polished);
     } catch (e) {
-      showToast(e?.message ?? "Failed to polish text", "error");
+      showToast((e as any)?.message ?? "Failed to polish text", "error");
     } finally {
       setPolishing(false);
     }
@@ -804,7 +804,7 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
         setScoreBreakdownOpen(true);
       }
     } catch (e) {
-      showToast(e?.message ?? "Failed to fetch score breakdown", "error");
+      showToast((e as any)?.message ?? "Failed to fetch score breakdown", "error");
     } finally { setFetchingBreakdown(false); }
   };
 
@@ -824,7 +824,7 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
         fetchMilestones();
       }
     } catch (e) {
-      showToast(e?.message ?? "Failed to generate milestones", "error");
+      showToast((e as any)?.message ?? "Failed to generate milestones", "error");
     } finally {
       setGeneratingMilestones(false);
     }
@@ -837,7 +837,7 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
       const data = await res.json();
       setMilestones(data.milestones ?? []);
     } catch (e) {
-      showToast(e?.message ?? "Failed to fetch milestones", "error");
+      showToast((e as any)?.message ?? "Failed to fetch milestones", "error");
     } finally { setMilestonesLoading(false); }
   };
 
@@ -886,7 +886,7 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
         setTokenLink(`${window.location.origin}/portal/${data.token.token}`);
       }
     } catch (e) {
-      showToast(e?.message ?? "Failed to generate token", "error");
+      showToast((e as any)?.message ?? "Failed to generate token", "error");
     } finally { setGeneratingToken(false); }
   };
 
@@ -1017,7 +1017,7 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
                     setScamAnalysis(data.analysis);
                     setScamDialogOpen(true);
                   } catch (e) {
-                    showToast(e?.message ?? "Scam check failed", "error");
+                    showToast((e as any)?.message ?? "Scam check failed", "error");
                   } finally { setScamChecking(false); }
                 }} disabled={scamChecking} className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
                   {scamChecking ? "⏳" : "🕵️"} Scam Check (1🪙)
@@ -1122,7 +1122,7 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
                     setReviewLink(`${window.location.origin}/review/${data.token.token}`);
                   }
                 } catch (e) {
-                  showToast(e?.message ?? "Failed to generate review link", "error");
+                  showToast((e as any)?.message ?? "Failed to generate review link", "error");
                 } finally { setGenReview(false); }
               }} disabled={genReview}>
                 {genReview ? "Generating..." : "⭐ Generate Review Link"}

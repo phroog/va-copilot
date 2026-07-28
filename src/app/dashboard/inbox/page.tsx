@@ -61,7 +61,7 @@ export default function InboxPage() {
       const data = await res.json();
       setMessages(data.messages ?? []);
     } catch (e) {
-      showToast(e?.message ?? "Failed to load messages", "error");
+      showToast((e as any)?.message ?? "Failed to load messages", "error");
     } finally {
       setLoading(false);
     }
@@ -98,7 +98,7 @@ export default function InboxPage() {
         setMessages((prev) => [data.message, ...prev]);
       }
     } catch (e) {
-      showToast(e?.message ?? "Failed to insert test message", "error");
+      showToast((e as any)?.message ?? "Failed to insert test message", "error");
     } finally {
       setInserting(false);
     }
@@ -127,7 +127,7 @@ export default function InboxPage() {
                 await fetch("/api/inbox/messages", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ markAllRead: true }) });
                 setMessages((prev) => prev.map((m) => ({ ...m, read: true })));
                 showToast("All marked as read");
-              } catch (e) { showToast(e?.message ?? "Failed", "error"); }
+              } catch (e) {               showToast((e as any)?.message ?? "Failed", "error"); }
             }}>
               ✅ Mark all read
             </Button>

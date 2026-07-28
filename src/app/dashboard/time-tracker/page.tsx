@@ -300,7 +300,7 @@ function isSameDay(a: string, b: string): boolean {
       });
       fetchData();
     } catch (e) {
-      showToast(e?.message ?? "Failed to toggle verification", "error");
+      showToast((e as any)?.message ?? "Failed to toggle verification", "error");
     }
   };
 

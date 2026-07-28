@@ -52,7 +52,7 @@ export default function ApplicationsPage() {
       const data = await res.json();
       setApps(data.applications ?? []);
     } catch (e) {
-      showToast(e?.message ?? "Failed to load applications", "error");
+      showToast((e as any)?.message ?? "Failed to load applications", "error");
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ export default function ApplicationsPage() {
       });
       fetchApps();
     } catch (e) {
-      showToast(e?.message ?? "Failed to update status", "error");
+      showToast((e as any)?.message ?? "Failed to update status", "error");
     }
     setMenuOpen(null);
   };
@@ -81,7 +81,7 @@ export default function ApplicationsPage() {
       });
       fetchApps();
     } catch (e) {
-      showToast(e?.message ?? "Failed to delete application", "error");
+      showToast((e as any)?.message ?? "Failed to delete application", "error");
     }
   };
 

@@ -68,7 +68,7 @@ export default function MilestonesPage() {
       const data = await res.json();
       setMilestones(data.milestones ?? []);
     } catch (e) {
-      showToast(e?.message ?? "Failed to load milestones", "error");
+      showToast((e as any)?.message ?? "Failed to load milestones", "error");
     } finally { setLoading(false); }
   };
 
@@ -88,7 +88,7 @@ export default function MilestonesPage() {
         fetchMilestones();
       }
     } catch (e) {
-      showToast(e?.message ?? "Failed to create milestone", "error");
+      showToast((e as any)?.message ?? "Failed to create milestone", "error");
     } finally { setCreating(false); }
   };
 

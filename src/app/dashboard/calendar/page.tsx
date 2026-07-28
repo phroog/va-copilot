@@ -70,7 +70,7 @@ export default function CalendarPage() {
       const data = await res.json();
       setEvents(data.events ?? []);
     } catch (e) {
-      showToast(e?.message ?? "Failed to load events", "error");
+      showToast((e as any)?.message ?? "Failed to load events", "error");
     } finally {
       setLoading(false);
     }

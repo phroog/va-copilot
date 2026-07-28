@@ -132,7 +132,7 @@ export default function DashboardHome() {
       const allInvoices: InvoiceSummary[] = invoicesData.invoices ?? [];
       setRecentInvoices(allInvoices.slice(0, 3));
     } catch (e) {
-      showToast(e?.message ?? "Failed to load dashboard data", "error");
+      showToast((e as any)?.message ?? "Failed to load dashboard data", "error");
     }
   };
 
