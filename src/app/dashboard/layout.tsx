@@ -109,6 +109,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <FocusTimerProvider>
+    <ToastProvider>
     <div className="flex h-screen bg-[#FFF0F5] dark:bg-dark-bg">
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/30 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -213,12 +214,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <main className="flex-1 overflow-auto p-4 lg:p-6 relative">
           <div className="blob w-72 h-72 bg-kawaii-pink top-[-5%] left-[-10%] -z-0" />
           <div className="blob w-64 h-64 bg-kawaii-lavender bottom-[-5%] right-[-10%] -z-0" />
-          <div className="relative z-10"><ToastProvider>{children}</ToastProvider></div>
+          <div className="relative z-10">{children}</div>
         </main>
       </div>
 
       <MochiHub />
     </div>
+    </ToastProvider>
     </FocusTimerProvider>
   );
 }
