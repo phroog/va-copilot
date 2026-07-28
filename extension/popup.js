@@ -225,6 +225,9 @@ async function loadState() {
     document.body.classList.add("dark");
     [darkToggle, darkToggleBottom].forEach((b) => { if (b) b.textContent = "☀️"; });
   }
+  if (!result.sariDarkMode) {
+    [darkToggle, darkToggleBottom].forEach((b) => { if (b) b.textContent = "🌙"; });
+  }
 }
 
 async function clearToken() {
@@ -578,11 +581,6 @@ polishBtn.addEventListener("click", async () => {
     syncCachedCredits();
   } catch (err) { alert("Polish failed: " + err.message); } finally { polishBtn.disabled = false; }
 });
-
-const origDoGenerate = doGeneratePitch;
-doGeneratePitch = async function (jobId) {
-  await origDoGenerate(jobId);
-};
 
 /* ══════════════════════════════════════════════════════════════════
    TIME TRACKING
@@ -1475,4 +1473,9 @@ async function pollScanProgress() {
 document.addEventListener("DOMContentLoaded", async () => {
   await loadState();
   render();
+});
+
+// Refresh credits when popup regains focus
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && sariToken) fetchCreditBalance();
 });

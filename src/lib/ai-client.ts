@@ -30,33 +30,30 @@ async function sleep(ms: number) {
 async function deductCredit(userId: string): Promise<boolean> {
   const supabase = createClient();
 
-  const { data: row } = await supabase
-    .from("ai_credits")
-    .select("balance, total_used")
-    .eq("user_id", userId)
-    .single();
-
-  if (!row || row.balance <= 0) return false;
-
-  const { error } = await supabase
-    .from("ai_credits")
-    .update({
-      balance: row.balance - 1,
-      total_used: (row.total_used ?? 0) + 1,
-    })
-    .eq("user_id", userId)
-    .eq("balance", row.balance);
-
-  if (error) {
-    const { error: fallbackErr } = await supabase
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: row } = await supabase
       .from("ai_credits")
-      .update({ balance: row.balance - 1 })
-      .eq("user_id", userId);
+      .select("balance, total_used")
+      .eq("user_id", userId)
+      .single();
 
-    if (fallbackErr) return false;
+    if (!row || row.balance <= 0) return false;
+
+    const { error } = await supabase
+      .from("ai_credits")
+      .update({
+        balance: row.balance - 1,
+        total_used: (row.total_used ?? 0) + 1,
+      })
+      .eq("user_id", userId)
+      .eq("balance", row.balance);
+
+    if (!error) return true;
+
+    await sleep(200 * (attempt + 1));
   }
 
-  return true;
+  return false;
 }
 
 export async function checkCredits(userId: string): Promise<{ ok: boolean; balance: number }> {

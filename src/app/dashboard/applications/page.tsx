@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLocale } from "@/lib/i18n/context";
+import { useToast } from "@/components/toast";
 
 interface Application {
   id: string;
@@ -35,6 +36,7 @@ const statuses = ["all", "draft", "sent", "interview", "offer", "won", "lost"];
 
 export default function ApplicationsPage() {
   const { t } = useLocale();
+  const { showToast } = useToast();
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -49,8 +51,8 @@ export default function ApplicationsPage() {
       const res = await fetch("/api/applications");
       const data = await res.json();
       setApps(data.applications ?? []);
-    } catch {
-      // silent
+    } catch (e) {
+      showToast(e?.message ?? "Failed to load applications", "error");
     } finally {
       setLoading(false);
     }
@@ -64,8 +66,8 @@ export default function ApplicationsPage() {
         body: JSON.stringify({ id, status }),
       });
       fetchApps();
-    } catch {
-      // silent
+    } catch (e) {
+      showToast(e?.message ?? "Failed to update status", "error");
     }
     setMenuOpen(null);
   };
@@ -78,8 +80,8 @@ export default function ApplicationsPage() {
         body: JSON.stringify({ id }),
       });
       fetchApps();
-    } catch {
-      // silent
+    } catch (e) {
+      showToast(e?.message ?? "Failed to delete application", "error");
     }
   };
 

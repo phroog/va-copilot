@@ -43,7 +43,8 @@ export default function FinancesPage() {
       setTotalYear(data.totalYear ?? 0);
       setMonthlyBreakdown(data.monthlyBreakdown ?? []);
       setRecent(data.recent ?? []);
-    } catch {
+    } catch (e) {
+      showToast(e?.message ?? "Failed to load finances", "error");
     } finally {
       setLoading(false);
     }

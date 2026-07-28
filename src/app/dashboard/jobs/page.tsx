@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { ScamGauge } from "@/components/scam-gauge";
 
 type Tab = "manual" | "screenshot";
 
@@ -107,7 +108,7 @@ export default function JobsPage() {
         const list = (data.orgs ?? []).map((o: any) => ({ id: o.id, name: o.name }));
         setOrgs(list);
       })
-      .catch(() => {});
+      .catch(() => showToast("Failed to load orgs", "error"));
   }, []);
 
   const fetchJobs = async () => {
@@ -115,7 +116,8 @@ export default function JobsPage() {
       const res = await fetch("/api/jobs");
       const data = await res.json();
       setJobs(data.jobs ?? []);
-    } catch {
+    } catch (e) {
+      showToast(e?.message ?? "Failed to fetch jobs", "error");
     } finally {
       setLoading(false);
     }
@@ -256,7 +258,8 @@ export default function JobsPage() {
         setSelectedOrgId("");
         showToast(t("jobSavedSuccess"));
       }
-    } catch {
+    } catch (e) {
+      showToast(e?.message ?? "Failed to save job", "error");
     } finally {
       setSavingExtracted(false);
     }
@@ -277,13 +280,17 @@ export default function JobsPage() {
         setJobs((prev) => prev.filter((j) => j.id !== id));
         showToast("Job deleted");
       }
-    } catch {}
+    } catch (e) {
+      showToast(e?.message ?? "Failed to delete job", "error");
+    }
   };
 
   // --- Pitch ---
 
-  const generatePitch = async (jobId: string, title: string, hasExisting: boolean) => {
-    if (hasExisting) {
+  const [regenerating, setRegenerating] = useState(false);
+
+  const generatePitch = async (jobId: string, title: string, hasExisting: boolean, force = false) => {
+    if (hasExisting && !force) {
       const res = await fetch("/api/generate-pitch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -298,6 +305,7 @@ export default function JobsPage() {
       return;
     }
 
+    if (force) setRegenerating(true);
     setGenerating(jobId);
     setCreditSuckJobId(jobId);
     setTimeout(() => setCreditSuckJobId(null), 1200);
@@ -305,7 +313,7 @@ export default function JobsPage() {
       const res = await fetch("/api/generate-pitch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId, jobTitle: title }),
+        body: JSON.stringify({ jobId, jobTitle: title, force }),
       });
       const data = await res.json();
       if (data.pitch) {
@@ -314,8 +322,10 @@ export default function JobsPage() {
         setPitchDialogOpen(true);
         setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, has_pitch: true } : j)));
       }
-    } catch {
+    } catch (e) {
+      showToast(e?.message ?? "Failed to generate pitch", "error");
     } finally {
+      setRegenerating(false);
       setGenerating(null);
     }
   };
@@ -352,7 +362,8 @@ export default function JobsPage() {
       });
       const data = await res.json();
       if (data.polished) setPitchResult(data.polished);
-    } catch {
+    } catch (e) {
+      showToast(e?.message ?? "Failed to polish text", "error");
     } finally {
       setPolishing(false);
     }
@@ -696,6 +707,14 @@ export default function JobsPage() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => pitchJobId && generatePitch(pitchJobId, "", true, true)}
+              disabled={regenerating}
+            >
+              {regenerating ? "Regenerating..." : "🔄 Regenerate (1🪙)"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={polishText}
               disabled={polishing}
             >
@@ -735,7 +754,8 @@ interface Milestone {
   created_at: string;
 }
 
-function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId }: { job: any; generating: string | null; generatePitch: (id: string, title: string, hasExisting: boolean) => void; deleteJob: (id: string, title: string) => void; t: any; creditSuckJobId: string | null }) {
+function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId }: { job: any; generating: string | null; generatePitch: (id: string, title: string, hasExisting: boolean, force?: boolean) => void; deleteJob: (id: string, title: string) => void; t: any; creditSuckJobId: string | null }) {
+  const { showToast } = useToast();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -754,11 +774,13 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
   const [scoreBreakdown, setScoreBreakdown] = useState<{ label: string; score: number; max: number }[] | null>(null);
   const [scoreBreakdownOpen, setScoreBreakdownOpen] = useState(false);
   const [fetchingBreakdown, setFetchingBreakdown] = useState(false);
+  const [scoringJob, setScoringJob] = useState(false);
 
   // Milestones
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [milestonesOpen, setMilestonesOpen] = useState(false);
   const [milestonesLoading, setMilestonesLoading] = useState(false);
+  const [generatingMilestones, setGeneratingMilestones] = useState(false);
   const [newMilestoneTitle, setNewMilestoneTitle] = useState("");
   const [newMilestoneDesc, setNewMilestoneDesc] = useState("");
   const [newMilestoneDate, setNewMilestoneDate] = useState("");
@@ -781,7 +803,31 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
         setScoreBreakdown(data.breakdown);
         setScoreBreakdownOpen(true);
       }
-    } catch {} finally { setFetchingBreakdown(false); }
+    } catch (e) {
+      showToast(e?.message ?? "Failed to fetch score breakdown", "error");
+    } finally { setFetchingBreakdown(false); }
+  };
+
+  const autoGenerateMilestones = async () => {
+    if (!job.description && !job.title) { showToast("Job has no description to analyze", "error"); return; }
+    setGeneratingMilestones(true);
+    try {
+      const res = await fetch("/api/generate-milestones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id, title: job.title, description: job.description }),
+      });
+      const data = await res.json();
+      if (res.status === 402) { showToast(data.error, "error"); return; }
+      if (data.milestones) {
+        showToast(`Generated ${data.milestones.length} milestones!`);
+        fetchMilestones();
+      }
+    } catch (e) {
+      showToast(e?.message ?? "Failed to generate milestones", "error");
+    } finally {
+      setGeneratingMilestones(false);
+    }
   };
 
   const fetchMilestones = async () => {
@@ -790,7 +836,9 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
       const res = await fetch(`/api/jobs/${job.id}/milestones`);
       const data = await res.json();
       setMilestones(data.milestones ?? []);
-    } catch {} finally { setMilestonesLoading(false); }
+    } catch (e) {
+      showToast(e?.message ?? "Failed to fetch milestones", "error");
+    } finally { setMilestonesLoading(false); }
   };
 
   useEffect(() => {
@@ -837,7 +885,9 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
       if (data.token) {
         setTokenLink(`${window.location.origin}/portal/${data.token.token}`);
       }
-    } catch {} finally { setGeneratingToken(false); }
+    } catch (e) {
+      showToast(e?.message ?? "Failed to generate token", "error");
+    } finally { setGeneratingToken(false); }
   };
 
   const statusMilestones = (status: string) => milestones.filter(m => m.status === status);
@@ -891,11 +941,8 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
           ) : (
             <div className="flex items-center gap-1 shrink-0">
               <button
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  const btn = e.currentTarget;
-                  btn.textContent = "...";
-                  btn.disabled = true;
+                onClick={async () => {
+                  setScoringJob(true);
                   try {
                     const res = await fetch(`/api/jobs/${job.id}/score`, { method: "POST" });
                     const data = await res.json();
@@ -903,13 +950,13 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
                       window.location.reload();
                     }
                   } catch {
-                    btn.textContent = "Score now";
-                    btn.disabled = false;
+                    setScoringJob(false);
                   }
                 }}
+                disabled={scoringJob}
                 className="text-xs px-2 py-0.5 rounded-full bg-kawaii-lavender/20 text-kawaii-purple dark:text-kawaii-lavender hover:bg-kawaii-lavender/40 squishy"
               >
-                Score now
+                {scoringJob ? "..." : "Score now"}
               </button>
             </div>
           )}
@@ -969,7 +1016,9 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
                     setScamScore(data.score);
                     setScamAnalysis(data.analysis);
                     setScamDialogOpen(true);
-                  } catch {} finally { setScamChecking(false); }
+                  } catch (e) {
+                    showToast(e?.message ?? "Scam check failed", "error");
+                  } finally { setScamChecking(false); }
                 }} disabled={scamChecking} className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
                   {scamChecking ? "⏳" : "🕵️"} Scam Check (1🪙)
                 </button>
@@ -1040,23 +1089,7 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
             </DialogHeader>
             {scamScore !== null && (
               <div className="flex flex-col items-center gap-4 py-4">
-                <div className="relative w-32 h-32">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-                    <circle
-                      cx="18" cy="18" r="15.9" fill="none"
-                      stroke={scamScore >= 70 ? "#22c55e" : scamScore >= 40 ? "#eab308" : "#ef4444"}
-                      strokeWidth="3"
-                      strokeDasharray={`${(scamScore / 100) * 100} 100`}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className={`text-3xl font-extrabold ${scamScore >= 70 ? "text-green-500" : scamScore >= 40 ? "text-yellow-500" : "text-red-500"}`}>
-                      {scamScore}
-                    </span>
-                  </div>
-                </div>
+                <ScamGauge score={scamScore} />
                 {scamScore < 50 && (
                   <div className="w-full p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300 font-medium">
                     ⚠️ Scam warning — this client has a low trust score
@@ -1088,7 +1121,9 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
                   if (data.token) {
                     setReviewLink(`${window.location.origin}/review/${data.token.token}`);
                   }
-                } catch {} finally { setGenReview(false); }
+                } catch (e) {
+                  showToast(e?.message ?? "Failed to generate review link", "error");
+                } finally { setGenReview(false); }
               }} disabled={genReview}>
                 {genReview ? "Generating..." : "⭐ Generate Review Link"}
               </Button>
@@ -1114,6 +1149,9 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
               <Input value={newMilestoneDesc} onChange={(e) => setNewMilestoneDesc(e.target.value)} placeholder="Description (optional)" className="flex-1" />
               <Input type="date" value={newMilestoneDate} onChange={(e) => setNewMilestoneDate(e.target.value)} className="w-40" />
               <Button size="sm" variant="primary" onClick={addMilestone} disabled={!newMilestoneTitle.trim()}>➕ Add</Button>
+              <Button size="sm" variant="outline" onClick={autoGenerateMilestones} disabled={generatingMilestones} title="Auto-generate milestones from job description (1 credit)">
+                {generatingMilestones ? "⏳" : "🤖"} Auto
+              </Button>
             </div>
 
             {milestonesLoading ? (

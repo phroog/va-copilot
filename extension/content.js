@@ -387,7 +387,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
-const jobData = extractJobData();
-if (jobData.title) {
-  chrome.storage.local.set({ currentJob: jobData });
-}
+// Only auto-extract if no currentJob is already stored (first visit)
+chrome.storage.local.get("currentJob", (result) => {
+  if (!result.currentJob) {
+    const jobData = extractJobData();
+    if (jobData.title) {
+      chrome.storage.local.set({ currentJob: jobData });
+    }
+  }
+});

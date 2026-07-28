@@ -69,8 +69,8 @@ export default function CalendarPage() {
       const res = await fetch(`/api/events?start=${startStr}&end=${endStr}`);
       const data = await res.json();
       setEvents(data.events ?? []);
-    } catch {
-      // silent
+    } catch (e) {
+      showToast(e?.message ?? "Failed to load events", "error");
     } finally {
       setLoading(false);
     }

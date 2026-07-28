@@ -18,17 +18,19 @@ interface FocusTimerContextType {
 
 const FocusTimerContext = createContext<FocusTimerContextType>(null!);
 
+let beepCtx: AudioContext | null = null;
 function playBeep() {
   try {
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    if (!beepCtx) beepCtx = new AudioContext();
+    const osc = beepCtx.createOscillator();
+    const gain = beepCtx.createGain();
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(beepCtx.destination);
     osc.frequency.value = 800;
     gain.gain.value = 0.3;
     osc.start();
-    osc.stop(ctx.currentTime + 0.5);
+    osc.stop(beepCtx.currentTime + 0.5);
+    osc.onended = () => { if (beepCtx) { beepCtx.close().catch(() => {}); beepCtx = null; } };
   } catch {}
 }
 
@@ -46,9 +48,13 @@ export function FocusTimerProvider({ children }: { children: ReactNode }) {
   const [breakDuration, setBreakDuration] = useState(5 * 60);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const modeRef = useRef(mode);
+  const focusDurationRef = useRef(focusDuration);
+  const breakDurationRef = useRef(breakDuration);
   const pausedFrom = useRef<"focus" | "break">("focus");
 
   useEffect(() => { modeRef.current = mode; }, [mode]);
+  useEffect(() => { focusDurationRef.current = focusDuration; }, [focusDuration]);
+  useEffect(() => { breakDurationRef.current = breakDuration; }, [breakDuration]);
 
   useEffect(() => {
     try {
@@ -106,11 +112,11 @@ export function FocusTimerProvider({ children }: { children: ReactNode }) {
           clearTimer();
           if (modeRef.current === "focus") {
             setMode("break");
-            setTimeRemaining(breakDuration);
+            setTimeRemaining(breakDurationRef.current);
             notify("🍅 Focus Complete!", "Time for a break! 5 minutes rest.");
           } else {
             setMode("idle");
-            setTimeRemaining(focusDuration);
+            setTimeRemaining(focusDurationRef.current);
             notify("☕ Break Over!", "Ready to focus again?");
           }
           return 0;
@@ -120,7 +126,7 @@ export function FocusTimerProvider({ children }: { children: ReactNode }) {
     }, 1000);
 
     return () => clearTimer();
-  }, [mode, focusDuration, breakDuration, clearTimer]);
+  }, [mode, clearTimer]);
 
   useEffect(() => {
     if (typeof Notification !== "undefined" && Notification.permission === "default") {

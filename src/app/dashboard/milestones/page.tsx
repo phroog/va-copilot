@@ -58,7 +58,7 @@ export default function MilestonesPage() {
 
   useEffect(() => {
     fetchMilestones();
-    fetch("/api/jobs").then(r => r.ok && r.json()).then(d => setJobs(d.jobs ?? [])).catch(() => {});
+    fetch("/api/jobs").then(r => r.ok && r.json()).then(d => setJobs(d.jobs ?? [])).catch(() => showToast("Failed to load jobs", "error"));
   }, []);
 
   const fetchMilestones = async () => {
@@ -67,7 +67,9 @@ export default function MilestonesPage() {
       const res = await fetch("/api/milestones");
       const data = await res.json();
       setMilestones(data.milestones ?? []);
-    } catch {} finally { setLoading(false); }
+    } catch (e) {
+      showToast(e?.message ?? "Failed to load milestones", "error");
+    } finally { setLoading(false); }
   };
 
   const createMilestone = async () => {
@@ -85,7 +87,9 @@ export default function MilestonesPage() {
         showToast("Milestone created!");
         fetchMilestones();
       }
-    } catch {} finally { setCreating(false); }
+    } catch (e) {
+      showToast(e?.message ?? "Failed to create milestone", "error");
+    } finally { setCreating(false); }
   };
 
   const updateStatus = async (id: string, status: string) => {

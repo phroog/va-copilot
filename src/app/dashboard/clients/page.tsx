@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { ScamGauge } from "@/components/scam-gauge";
 
 interface ClientLink {
   id: string;
@@ -67,7 +68,7 @@ export default function ClientsPage() {
 
   useEffect(() => {
     fetchLinks();
-    fetch("/api/jobs").then(r => r.json()).then(d => setJobs(d.jobs || [])).catch(() => {});
+    fetch("/api/jobs").then(r => r.json()).then(d => setJobs(d.jobs || [])).catch(() => showToast("Failed to load jobs", "error"));
   }, []);
 
   const fetchLinks = async () => {
@@ -75,7 +76,8 @@ export default function ClientsPage() {
       const res = await fetch("/api/client-links");
       const data = await res.json();
       setLinks(data.links || []);
-    } catch {
+    } catch (e) {
+      showToast(e?.message ?? "Failed to load client links", "error");
     } finally {
       setLoading(false);
     }
@@ -321,23 +323,7 @@ export default function ClientsPage() {
           </DialogHeader>
           {scamResult && (
             <div className="flex flex-col items-center gap-4 py-4">
-              <div className="relative w-32 h-32">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-                  <circle
-                    cx="18" cy="18" r="15.9" fill="none"
-                    stroke={scamResult.score >= 70 ? "#22c55e" : scamResult.score >= 40 ? "#eab308" : "#ef4444"}
-                    strokeWidth="3"
-                    strokeDasharray={`${(scamResult.score / 100) * 100} 100`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`text-3xl font-extrabold ${scamResult.score >= 70 ? "text-green-500" : scamResult.score >= 40 ? "text-yellow-500" : "text-red-500"}`}>
-                    {scamResult.score}
-                  </span>
-                </div>
-              </div>
+              <ScamGauge score={scamResult.score} />
               <p className="text-sm text-slate-600 dark:text-slate-300 text-center">{scamResult.analysis}</p>
             </div>
           )}

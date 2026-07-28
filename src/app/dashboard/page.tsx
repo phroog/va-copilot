@@ -5,11 +5,13 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/lib/i18n/context";
+import { useToast } from "@/components/toast";
 import MoodCheckDialog from "@/components/mood-check-dialog";
 import LuckyWheel from "@/components/lucky-wheel";
 import DailyMotivation from "@/components/daily-motivation";
 import WorldClock from "@/components/world-clock";
 import QuickNotes from "@/components/quick-notes";
+import { formatDuration } from "@/lib/utils";
 
 interface Job {
   id: string;
@@ -52,14 +54,9 @@ interface TimeEntry {
   hourly_rate: number;
 }
 
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return `${h}h ${m}m`;
-}
-
 export default function DashboardHome() {
   const { t, locale } = useLocale();
+  const { showToast } = useToast();
   const [stats, setStats] = useState({ jobs: 0, applications: 0, interviews: 0, offers: 0 });
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
@@ -134,8 +131,8 @@ export default function DashboardHome() {
       // Recent invoices
       const allInvoices: InvoiceSummary[] = invoicesData.invoices ?? [];
       setRecentInvoices(allInvoices.slice(0, 3));
-    } catch {
-      // silent
+    } catch (e) {
+      showToast(e?.message ?? "Failed to load dashboard data", "error");
     }
   };
 
@@ -161,7 +158,7 @@ export default function DashboardHome() {
           setGreeting((g) => g + " — " + (moodGreetings[data.mood] ?? ""));
         }
       })
-      .catch(() => {});
+      .catch(() => showToast("Failed to load mood", "error"));
   }, []);
 
   // Live timer tick

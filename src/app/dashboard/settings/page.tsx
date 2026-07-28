@@ -71,7 +71,7 @@ export default function SettingsPage() {
         const gcal = (integData.integrations ?? []).find((i: any) => i.provider === "google_calendar");
         setHasGoogleCal(!!gcal);
       })
-      .catch(() => {})
+      .catch(() => showToast("Failed to load settings", "error"))
       .finally(() => {
         setLoading(false);
         setCheckingGoogle(false);
@@ -89,8 +89,8 @@ export default function SettingsPage() {
       fetch("/api/profile").then(r => r.json()).then(d => { if (d.profile) setProfile(d.profile); });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch {
-      // silent
+    } catch (e) {
+      showToast(e?.message ?? "Failed to save profile", "error");
     } finally {
       setSaving(false);
     }
@@ -106,8 +106,8 @@ export default function SettingsPage() {
       });
       setRateSaved(true);
       setTimeout(() => setRateSaved(false), 2000);
-    } catch {
-      // silent
+    } catch (e) {
+      showToast(e?.message ?? "Failed to save rate", "error");
     } finally {
       setRateSaving(false);
     }
@@ -515,6 +515,7 @@ export default function SettingsPage() {
 
 function WorldClockSettings() {
   const { t } = useLocale();
+  const { showToast } = useToast();
   const [timezones, setTimezones] = useState<{ id: string; label: string; timezone: string }[]>([]);
   const [newLabel, setNewLabel] = useState("");
   const [newTimezone, setNewTimezone] = useState("UTC");
@@ -526,7 +527,7 @@ function WorldClockSettings() {
     fetch("/api/timezones")
       .then((r) => r.json())
       .then((data) => setTimezones(data.timezones ?? []))
-      .catch(() => {});
+      .catch(() => showToast("Failed to load timezones", "error"));
   }, []);
 
   const addTimezone = async () => {

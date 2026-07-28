@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocale } from "@/lib/i18n/context";
+import { useToast } from "@/components/toast";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +48,7 @@ const statusFlow: Record<string, string[]> = {
 
 export default function PipelinePage() {
   const { t } = useLocale();
+  const { showToast } = useToast();
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailApp, setDetailApp] = useState<Application | null>(null);
@@ -55,7 +57,7 @@ export default function PipelinePage() {
     fetch("/api/applications")
       .then((r) => r.json())
       .then((data) => setApps(data.applications ?? []))
-      .catch(() => {})
+      .catch(() => showToast("Failed to load applications", "error"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -67,7 +69,9 @@ export default function PipelinePage() {
         body: JSON.stringify({ id, status }),
       });
       setApps((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
-    } catch {}
+    } catch (e) {
+      showToast(e?.message ?? "Failed to move application", "error");
+    }
   };
 
   const getColumnApps = (key: string) => apps.filter((a) => a.status === key);

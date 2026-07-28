@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLocale } from "@/lib/i18n/context";
+import { useToast } from "@/components/toast";
+import { formatDuration } from "@/lib/utils";
 
 interface TimeEntry {
   id: string;
@@ -30,13 +32,6 @@ interface JobOption {
   id: string;
   title: string;
   platform: string;
-}
-
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
 function getEntryDurationSeconds(entry: TimeEntry): number {
@@ -68,6 +63,7 @@ function isSameDay(a: string, b: string): boolean {
 
   export default function TimeTrackerPage() {
   const { t } = useLocale();
+  const { showToast } = useToast();
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [running, setRunning] = useState<TimeEntry | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,7 +108,7 @@ function isSameDay(a: string, b: string): boolean {
             setEventId(eventId);
           }
         })
-        .catch(() => {});
+        .catch(() => showToast("Failed to load event", "error"));
     }
   }, []);
 
@@ -138,23 +134,20 @@ function isSameDay(a: string, b: string): boolean {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Load screenshots for entries
+  // Load screenshots for all entries
   useEffect(() => {
     if (entries.length > 0) {
-      const entryIds = entries.map(e => e.id).filter(Boolean);
-      if (entryIds.length > 0) {
-        fetch(`/api/screenshots?time_entry_id=${entryIds[0]}`)
-          .then(r => r.json())
-          .then(data => {
-            const map: Record<string, Screenshot[]> = {};
-            for (const s of data.screenshots ?? []) {
-              if (!map[s.time_entry_id]) map[s.time_entry_id] = [];
-              map[s.time_entry_id].push(s);
-            }
-            setScreenshots(map);
-          })
-          .catch(() => {});
-      }
+      fetch(`/api/screenshots`)
+        .then(r => r.json())
+        .then(data => {
+          const map: Record<string, Screenshot[]> = {};
+          for (const s of data.screenshots ?? []) {
+            if (!map[s.time_entry_id]) map[s.time_entry_id] = [];
+            map[s.time_entry_id].push(s);
+          }
+          setScreenshots(map);
+        })
+        .catch(() => showToast("Failed to load screenshots", "error"));
     }
   }, [entries]);
 
@@ -165,7 +158,7 @@ function isSameDay(a: string, b: string): boolean {
       .then((data) => {
         if (data.settings?.default_hourly_rate) setHourlyRate(String(data.settings.default_hourly_rate));
       })
-      .catch(() => {});
+      .catch(() => showToast("Failed to load settings", "error"));
   }, []);
 
   // Load jobs for linking
@@ -173,7 +166,7 @@ function isSameDay(a: string, b: string): boolean {
     fetch("/api/jobs")
       .then((r) => r.json())
       .then((data) => setJobs(data.jobs ?? []))
-      .catch(() => {});
+      .catch(() => showToast("Failed to load jobs", "error"));
   }, []);
 
   // Live elapsed timer
@@ -306,7 +299,9 @@ function isSameDay(a: string, b: string): boolean {
         body: JSON.stringify({ verified: !entry.verified }),
       });
       fetchData();
-    } catch {}
+    } catch (e) {
+      showToast(e?.message ?? "Failed to toggle verification", "error");
+    }
   };
 
   const exportCsv = () => {

@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/toast";
 import { createClient } from "@/lib/supabase/client";
 
 export default function CreditsPage() {
+  const { showToast } = useToast();
   const supabase = createClient();
   const [credits, setCredits] = useState<{ balance: number; total_used: number } | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
@@ -27,7 +29,9 @@ export default function CreditsPage() {
       ]);
       if (credRes.ok) setCredits(await credRes.json());
       if (logRes?.ok) setLogs(await logRes.json());
-    } catch {}
+    } catch (e) {
+      showToast(e?.message ?? "Failed to load credits", "error");
+    }
 
     setLoading(false);
   }

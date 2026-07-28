@@ -14,10 +14,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let body: { jobId?: string };
+    let body: { jobId?: string; force?: boolean };
     try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
-    const { jobId } = body;
+    const { jobId, force } = body;
     if (!jobId) {
       return NextResponse.json({ error: "jobId is required" }, { status: 400 });
     }
@@ -32,16 +32,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    // Return cached pitch if already exists — no credit cost
-    const { data: existingPitch } = await supabase
-      .from("pitches")
-      .select("content")
-      .eq("job_id", jobId)
-      .eq("user_id", user.id)
-      .single();
+    // Return cached pitch if already exists — no credit cost (unless force)
+    if (!force) {
+      const { data: existingPitch } = await supabase
+        .from("pitches")
+        .select("content")
+        .eq("job_id", jobId)
+        .eq("user_id", user.id)
+        .single();
 
-    if (existingPitch) {
-      return NextResponse.json({ pitch: existingPitch.content });
+      if (existingPitch) {
+        return NextResponse.json({ pitch: existingPitch.content });
+      }
     }
 
     const creditCheck = await checkCredits(user.id);

@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useLocale } from "@/lib/i18n/context";
+import { useToast } from "@/components/toast";
 import { useFocusTimer } from "@/components/focus-timer-provider";
 import { MiniGamesDialog } from "@/components/mini-games/game-engine";
 
@@ -28,6 +29,7 @@ const SOUNDS = [
 
 export default function MochiHub() {
   const { t } = useLocale();
+  const { showToast } = useToast();
   const focusTimer = useFocusTimer();
   const [open, setOpen] = useState(false);
 
@@ -54,7 +56,9 @@ export default function MochiHub() {
       const res = await fetch("/api/pet");
       const data = await res.json();
       setPet(data.pet);
-    } catch {} finally { setPetLoading(false); }
+    } catch (e) {
+      showToast(e?.message ?? "Failed to load pet", "error");
+    } finally { setPetLoading(false); }
   }, []);
 
   useEffect(() => { if (open) { fetchPet(); fetchBalance(); } }, [open, fetchPet]);
@@ -64,7 +68,9 @@ export default function MochiHub() {
   }, [messages]);
 
   const fetchBalance = async () => {
-    try { const r = await fetch("/api/ai/credits"); if (r.ok) { const d = await r.json(); setBalance(d.balance); } } catch {}
+    try { const r = await fetch("/api/ai/credits"); if (r.ok) { const d = await r.json(); setBalance(d.balance); } } catch (e) {
+      showToast(e?.message ?? "Failed to load balance", "error");
+    }
   };
 
   const doPetAction = async (action: string) => {
@@ -119,7 +125,7 @@ export default function MochiHub() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-4 right-4 z-50 w-12 h-12 rounded-full bg-gradient-to-br from-kawaii-purple to-kawaii-pink shadow-lg shadow-kawaii-purple/20 flex items-center justify-center text-xl squishy animate-float hover:scale-110 transition-transform"
+        className="fixed bottom-4 right-4 z-[101] w-12 h-12 rounded-full bg-gradient-to-br from-kawaii-purple to-kawaii-pink shadow-lg shadow-kawaii-purple/20 flex items-center justify-center text-xl squishy animate-float hover:scale-110 transition-transform"
         title="Mochi"
       >
         🐾

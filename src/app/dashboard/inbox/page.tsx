@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocale } from "@/lib/i18n/context";
+import { useToast } from "@/components/toast";
 
 interface InboxMessage {
   id: string;
@@ -48,6 +49,7 @@ const avatarColors = [
 
 export default function InboxPage() {
   const { t } = useLocale();
+  const { showToast } = useToast();
   const [messages, setMessages] = useState<InboxMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -58,8 +60,8 @@ export default function InboxPage() {
       const res = await fetch("/api/inbox/messages");
       const data = await res.json();
       setMessages(data.messages ?? []);
-    } catch {
-      // silent
+    } catch (e) {
+      showToast(e?.message ?? "Failed to load messages", "error");
     } finally {
       setLoading(false);
     }
@@ -95,8 +97,8 @@ export default function InboxPage() {
       if (data.message) {
         setMessages((prev) => [data.message, ...prev]);
       }
-    } catch {
-      // silent
+    } catch (e) {
+      showToast(e?.message ?? "Failed to insert test message", "error");
     } finally {
       setInserting(false);
     }
@@ -118,9 +120,22 @@ export default function InboxPage() {
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t("inboxDescription")}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={insertTestMessage} disabled={inserting}>
-          {inserting ? "..." : "📨 Test Insert"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <Button variant="outline" size="sm" onClick={async () => {
+              try {
+                await fetch("/api/inbox/messages", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ markAllRead: true }) });
+                setMessages((prev) => prev.map((m) => ({ ...m, read: true })));
+                showToast("All marked as read");
+              } catch (e) { showToast(e?.message ?? "Failed", "error"); }
+            }}>
+              ✅ Mark all read
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={insertTestMessage} disabled={inserting}>
+            {inserting ? "..." : "📨 Test Insert"}
+          </Button>
+        </div>
       </div>
 
       {loading ? (

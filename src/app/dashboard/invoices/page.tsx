@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocale } from "@/lib/i18n/context";
+import { useToast } from "@/components/toast";
 import Link from "next/link";
 
 interface InvoiceItem {
@@ -48,6 +49,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function InvoicesPage() {
   const { t } = useLocale();
+  const { showToast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -70,7 +72,9 @@ export default function InvoicesPage() {
       const res = await fetch("/api/invoices");
       const data = await res.json();
       setInvoices(data.invoices ?? []);
-    } catch {} finally {
+    } catch (e) {
+      showToast(e?.message ?? "Failed to load invoices", "error");
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -81,7 +85,7 @@ export default function InvoicesPage() {
     fetch("/api/jobs")
       .then((r) => r.json())
       .then((data) => setJobs((data.jobs ?? []).filter((j: JobOption) => j.client_name)))
-      .catch(() => {});
+      .catch(() => showToast("Failed to load jobs", "error"));
   }, []);
 
   const resetForm = () => {
