@@ -42,6 +42,15 @@ interface JobOption {
   client_email: string;
 }
 
+interface TrackedEntry {
+  id: string;
+  date: string;
+  description: string;
+  hours: number;
+  hourly_rate: number;
+  amount: number;
+}
+
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300",
   sent: "bg-kawaii-lavender/30 text-kawaii-purple dark:text-kawaii-lavender",
@@ -61,9 +70,9 @@ export default function InvoicesPage() {
 
   // Job & time tracking linkage
   const [jobId, setJobId] = useState<string | null>(null);
-  const [timeEntryIds, setTimeEntryIds] = useState<string[]>([]);
-  const [trackedTouched, setTrackedTouched] = useState(false);
-  const [unbilled, setUnbilled] = useState<{ totalHours: number; totalAmount: number; entryCount: number } | null>(null);
+  const [trackedEntries, setTrackedEntries] = useState<TrackedEntry[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [trackedLoaded, setTrackedLoaded] = useState(false);
   const [trackedLoading, setTrackedLoading] = useState(false);
 
   // Form fields
@@ -102,14 +111,7 @@ export default function InvoicesPage() {
           openNew();
           const match = list.find((j: JobOption) => j.id === jobParam);
           if (match) {
-            setJobId(match.id);
-            setClientName(match.client_name);
-            setClientAddress(match.client_address ?? "");
-            setClientEmail(match.client_email ?? "");
-            fetch(`/api/invoices/suggest-items?job_id=${match.id}`)
-              .then((r) => r.json())
-              .then((d) => setUnbilled({ totalHours: d.totalHours ?? 0, totalAmount: d.totalAmount ?? 0, entryCount: d.entryCount ?? 0 }))
-              .catch(() => {});
+            selectJob(match.id);
           }
         }
       })
@@ -126,9 +128,9 @@ export default function InvoicesPage() {
     setNotes("");
     setItems([{ description: "", quantity: 1, unit_price: 0 }]);
     setJobId(null);
-    setTimeEntryIds([]);
-    setTrackedTouched(false);
-    setUnbilled(null);
+    setTrackedEntries([]);
+    setSelectedIds(new Set());
+    setTrackedLoaded(false);
     setEditId(null);
     setShowForm(false);
   };
@@ -149,9 +151,9 @@ export default function InvoicesPage() {
     setNotes(inv.notes ?? "");
     setItems(inv.invoice_items?.length > 0 ? inv.invoice_items.map((i) => ({ description: i.description, quantity: i.quantity, unit_price: i.unit_price })) : [{ description: "", quantity: 1, unit_price: 0 }]);
     setJobId(inv.job_id ?? null);
-    setTimeEntryIds([]);
-    setTrackedTouched(false);
-    setUnbilled(null);
+    setTrackedEntries([]);
+    setSelectedIds(new Set());
+    setTrackedLoaded(false);
     setShowForm(true);
   };
 
@@ -167,10 +169,10 @@ export default function InvoicesPage() {
         due_date: dueDate || null,
         tax_rate: parseFloat(taxRate) || 0,
         notes,
-        items: items.filter((i) => i.description.trim()),
+        items: allItems.map((i) => ({ description: i.description, quantity: i.quantity, unit_price: i.unit_price })).filter((i) => i.description.trim()),
         job_id: jobId || null,
       };
-      if (trackedTouched) body.time_entry_ids = timeEntryIds;
+      if (trackedLoaded) body.time_entry_ids = Array.from(selectedIds);
       const url = editId ? `/api/invoices/${editId}` : "/api/invoices";
       const method = editId ? "PATCH" : "POST";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -218,9 +220,9 @@ export default function InvoicesPage() {
 
   const selectJob = (selectedId: string) => {
     setJobId(selectedId || null);
-    setTimeEntryIds([]);
-    setUnbilled(null);
-    if (selectedId) setTrackedTouched(true);
+    setTrackedEntries([]);
+    setSelectedIds(new Set());
+    setTrackedLoaded(false);
     const job = jobs.find((j) => j.id === selectedId);
     if (job) {
       setClientName(job.client_name);
@@ -230,36 +232,42 @@ export default function InvoicesPage() {
     if (selectedId) {
       setTrackedLoading(true);
       fetch(`/api/invoices/suggest-items?job_id=${selectedId}`)
-        .then((r) => r.json())
-        .then((d) => setUnbilled({ totalHours: d.totalHours ?? 0, totalAmount: d.totalAmount ?? 0, entryCount: d.entryCount ?? 0 }))
-        .catch(() => setUnbilled(null))
+        .then(async (r) => {
+          if (!r.ok) throw new Error("Failed to load tracked time");
+          return r.json();
+        })
+        .then((d) => {
+          const list: TrackedEntry[] = d.entries ?? [];
+          setTrackedEntries(list);
+          setSelectedIds(new Set(list.map((e) => e.id)));
+          setTrackedLoaded(true);
+        })
+        .catch((e) => {
+          showToast((e as any)?.message ?? "Failed to load tracked time", "error");
+        })
         .finally(() => setTrackedLoading(false));
     }
   };
 
-  const addTrackedTime = async () => {
-    if (!jobId) return;
-    setTrackedLoading(true);
-    try {
-      const res = await fetch(`/api/invoices/suggest-items?job_id=${jobId}`);
-      if (!res.ok) throw new Error("Failed to load tracked time");
-      const d = await res.json();
-      if (!d.items?.length) {
-        showToast("No unbilled tracked time for this job", "error");
-        return;
-      }
-      setItems((prev) => [...prev, ...d.items.map((i: any) => ({ description: i.description, quantity: i.quantity, unit_price: i.unit_price }))]);
-      setTimeEntryIds((prev) => Array.from(new Set([...prev, ...d.items.flatMap((i: any) => i.entry_ids ?? [])])));
-      setTrackedTouched(true);
-      showToast(`Added ${d.items.length} line item(s) from tracked time`, "success");
-    } catch (e) {
-      showToast((e as any)?.message ?? "Failed to load tracked time", "error");
-    } finally {
-      setTrackedLoading(false);
-    }
+  const toggleEntry = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
-  const calcSubtotal = () => items.reduce((s, i) => s + (parseFloat(String(i.quantity)) || 0) * (parseFloat(String(i.unit_price)) || 0), 0);
+  const selectAllTracked = () => setSelectedIds(new Set(trackedEntries.map((e) => e.id)));
+  const clearTracked = () => setSelectedIds(new Set());
+
+  const trackedItems: InvoiceItem[] = trackedEntries
+    .filter((e) => selectedIds.has(e.id))
+    .map((e) => ({ description: `${e.date} — ${e.description}`, quantity: e.hours, unit_price: e.hourly_rate, total: e.amount }));
+
+  const allItems: InvoiceItem[] = [...items, ...trackedItems];
+
+  const calcSubtotal = () => allItems.reduce((s, i) => s + (parseFloat(String(i.quantity)) || 0) * (parseFloat(String(i.unit_price)) || 0), 0);
   const calcTax = () => calcSubtotal() * ((parseFloat(taxRate) || 0) / 100);
   const calcTotal = () => calcSubtotal() + calcTax();
 
@@ -358,15 +366,37 @@ export default function InvoicesPage() {
                     {jobs.map((j) => <option key={j.id} value={j.id}>{j.title} — {j.client_name}</option>)}
                   </select>
                   {jobId && (
-                    <div className="flex items-center justify-between gap-2 mt-2">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {trackedLoading ? "Loading tracked time..." : unbilled
-                          ? `⏱ ${unbilled.totalHours.toFixed(2)}h unbilled · ${unbilled.entryCount} entr${unbilled.entryCount === 1 ? "y" : "ies"} · $${unbilled.totalAmount.toFixed(2)}`
-                          : "No unbilled tracked time"}
-                      </p>
-                      <Button size="sm" variant="outline" className="text-xs shrink-0" onClick={addTrackedTime} disabled={trackedLoading || !unbilled?.entryCount}>
-                        🕐 Add tracked time
-                      </Button>
+                    <div className="mt-3 rounded-2xl border border-kawaii-lavender/30 dark:border-dark-surface p-3">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <p className="text-xs font-bold text-slate-600 dark:text-slate-300">⏱ Unbilled tracked time</p>
+                        {trackedEntries.length > 0 && (
+                          <div className="flex items-center gap-2 text-xs">
+                            <button onClick={selectAllTracked} className="text-kawaii-purple dark:text-kawaii-lavender hover:underline">Select all</button>
+                            <button onClick={clearTracked} className="text-slate-400 hover:underline">Clear</button>
+                          </div>
+                        )}
+                      </div>
+                      {trackedLoading ? (
+                        <p className="text-xs text-slate-400 animate-pulse">Loading tracked time...</p>
+                      ) : trackedEntries.length === 0 ? (
+                        <p className="text-xs text-slate-400">No unbilled tracked time for this job.</p>
+                      ) : (
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                          {trackedEntries.map((entry) => {
+                            const checked = selectedIds.has(entry.id);
+                            return (
+                              <label key={entry.id} className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer text-sm transition-all ${checked ? "bg-kawaii-lavender/20 dark:bg-kawaii-purple/20" : "bg-white/50 dark:bg-dark-surface/40 hover:bg-kawaii-lavender/10"}`}>
+                                <input type="checkbox" checked={checked} onChange={() => toggleEntry(entry.id)} className="rounded border-kawaii-lavender/40 text-kawaii-purple focus:ring-kawaii-purple" />
+                                <span className="flex-1 min-w-0">
+                                  <span className="block text-slate-700 dark:text-slate-200 truncate">{entry.date} — {entry.description}</span>
+                                  <span className="block text-xs text-slate-400">{entry.hours.toFixed(2)}h @ ${entry.hourly_rate.toFixed(2)}</span>
+                                </span>
+                                <span className="font-bold text-slate-700 dark:text-slate-200 shrink-0">${entry.amount.toFixed(2)}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -407,12 +437,12 @@ export default function InvoicesPage() {
               {/* Items */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label className="text-xs font-bold">{t("items")}</Label>
+                  <Label className="text-xs font-bold">{t("items")} ({allItems.length})</Label>
                   <Button size="sm" variant="outline" className="text-xs" onClick={addItem}>➕ {t("addItem")}</Button>
                 </div>
                 <div className="space-y-2">
                   {items.map((item, i) => (
-                    <div key={i} className="flex gap-2 items-end">
+                    <div key={`m${i}`} className="flex gap-2 items-end">
                       <div className="flex-1">
                         <Input
                           placeholder={t("description")}
@@ -444,6 +474,15 @@ export default function InvoicesPage() {
                         ${((parseFloat(String(item.quantity)) || 0) * (parseFloat(String(item.unit_price)) || 0)).toFixed(2)}
                       </div>
                       <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 text-lg pb-1">✕</button>
+                    </div>
+                  ))}
+                  {trackedItems.map((item, i) => (
+                    <div key={`t${i}`} className="flex gap-2 items-end rounded-xl bg-kawaii-lavender/10 dark:bg-kawaii-purple/10 px-2">
+                      <div className="flex-1 text-sm text-slate-700 dark:text-slate-200 py-2 truncate">🕐 {item.description}</div>
+                      <div className="w-16 text-sm text-center py-2 text-slate-600 dark:text-slate-300">{item.quantity}</div>
+                      <div className="w-20 text-sm text-center py-2 text-slate-600 dark:text-slate-300">${item.unit_price.toFixed(2)}</div>
+                      <div className="w-16 text-sm font-bold text-slate-700 dark:text-slate-200 text-center py-2">${(item.total ?? 0).toFixed(2)}</div>
+                      <button onClick={() => toggleEntry(trackedEntries.filter((e) => selectedIds.has(e.id))[i]?.id ?? "")} className="text-slate-400 text-lg pb-1" title="Remove from invoice">✕</button>
                     </div>
                   ))}
                 </div>

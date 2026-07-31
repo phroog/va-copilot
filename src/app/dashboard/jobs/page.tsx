@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useLocale } from "@/lib/i18n/context";
 import { useToast } from "@/components/toast";
+import Link from "next/link";
 
 import {
   Dialog,
@@ -756,8 +757,6 @@ interface Milestone {
 
 function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId }: { job: any; generating: string | null; generatePitch: (id: string, title: string, hasExisting: boolean, force?: boolean) => void; deleteJob: (id: string, title: string) => void; t: any; creditSuckJobId: string | null }) {
   const { showToast } = useToast();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
   const [tokenLink, setTokenLink] = useState("");
@@ -784,14 +783,6 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
   const [newMilestoneTitle, setNewMilestoneTitle] = useState("");
   const [newMilestoneDesc, setNewMilestoneDesc] = useState("");
   const [newMilestoneDate, setNewMilestoneDate] = useState("");
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false);
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
 
   const toggleScoreBreakdown = async () => {
     if (scoreBreakdown) { setScoreBreakdownOpen(!scoreBreakdownOpen); return; }
@@ -896,7 +887,11 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
     <Card key={job.id}>
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-lg flex-1">{job.title}</CardTitle>
+          <Link href={`/dashboard/jobs/${job.id}`} className="text-lg flex-1">
+            <CardTitle className="text-lg flex items-center gap-2 hover:text-kawaii-purple dark:hover:text-kawaii-lavender transition-colors">
+              {job.title} <span className="text-xs text-slate-300 dark:text-slate-500 group-hover:text-kawaii-purple">↗</span>
+            </CardTitle>
+          </Link>
           {job.score != null ? (
             <div className="flex items-center gap-1 shrink-0 relative">
               <button
@@ -973,75 +968,84 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
           {job.description}
         </p>
         <div className="flex flex-wrap gap-2 items-center">
-          <div className="relative inline-flex">
-            <Button size="sm" variant="primary" onClick={() => generatePitch(job.id, job.title, !!job.has_pitch)} disabled={generating === job.id}>
-              {generating === job.id ? "Loading..." : job.has_pitch ? "📋 View Pitch" : "🚀 Generate Pitch"}
-            </Button>
-            {creditSuckJobId === job.id && (
-              <>
-                <span className="absolute -top-3 -left-3 text-base animate-credit-suck">💎</span>
-                <span className="absolute -top-2 -right-2 text-lg animate-ping">🕳️</span>
-              </>
-            )}
-          </div>
-          <div className="relative" ref={dropdownRef}>
-            <Button size="sm" variant="outline" onClick={() => setDropdownOpen(!dropdownOpen)} className="flex items-center gap-1">
-              <span>Actions</span>
-              <svg className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </Button>
-            {dropdownOpen && (
-              <div className="absolute left-0 top-full mt-1 z-50 min-w-[190px] bg-white dark:bg-dark-card border border-kawaii-lavender/20 dark:border-dark-surface rounded-xl shadow-xl py-1 animate-slide-up">
-                <button onClick={() => { setDropdownOpen(false); setDetailOpen(!detailOpen); }} className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
-                  {detailOpen ? "▲" : "▼"} Details
-                </button>
-                {job.url && (
-                  <a href={job.url} target="_blank" rel="noopener noreferrer" className="block px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
-                    ↗ View Job
-                  </a>
-                )}
-                <button onClick={() => { setDropdownOpen(false); setPortalOpen(!portalOpen); }} className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
-                  🔗 {t("clientPortal")}
-                </button>
-                <a
-                  href={`/dashboard/invoices?job=${job.id}`}
-                  onClick={() => setDropdownOpen(false)}
-                  className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2"
-                >
-                  🧾 Create Invoice
-                </a>
-                <button onClick={async () => {
-                  setDropdownOpen(false);
-                  setScamChecking(true);
-                  try {
-                    const res = await fetch("/api/ai/scam-check", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ client_name: job.client_name || "", website_url: job.url || "", job_description: job.description || "" }),
-                    });
-                    const data = await res.json();
-                    if (res.status === 402) { alert(data.error); return; }
-                    setScamScore(data.score);
-                    setScamAnalysis(data.analysis);
-                    setScamDialogOpen(true);
-                  } catch (e) {
-                    showToast((e as any)?.message ?? "Scam check failed", "error");
-                  } finally { setScamChecking(false); }
-                }} disabled={scamChecking} className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
-                  {scamChecking ? "⏳" : "🕵️"} Scam Check (1🪙)
-                </button>
-                <button onClick={() => { setDropdownOpen(false); setReviewOpen(!reviewOpen); }} className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
-                  ⭐ Request Review
-                </button>
-                <button onClick={() => { setDropdownOpen(false); setMilestonesOpen(!milestonesOpen); }} className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
-                  📋 Milestones {milestones.filter(m => m.status !== "done").length > 0 && `(${milestones.filter(m => m.status !== "done").length})`}
-                </button>
-                <hr className="my-1 border-kawaii-lavender/20 dark:border-dark-surface" />
-                <button onClick={() => { setDropdownOpen(false); deleteJob(job.id, job.title); }} className="w-full text-left px-3.5 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
-                  🗑️ Delete
-                </button>
-              </div>
-            )}
-          </div>
+          <Button size="sm" variant="primary" onClick={() => generatePitch(job.id, job.title, !!job.has_pitch)} disabled={generating === job.id}>
+            {generating === job.id ? "Loading..." : job.has_pitch ? "📋 View Pitch" : "🚀 Generate Pitch"}
+          </Button>
+          {creditSuckJobId === job.id && (
+            <span className="relative text-base">
+              <span className="absolute -top-3 -left-3 animate-credit-suck">💎</span>
+            </span>
+          )}
+          <Link href={`/dashboard/jobs/${job.id}`}>
+            <Button size="sm" variant="outline">📂 Open</Button>
+          </Link>
+          <button
+            onClick={() => setDetailOpen(!detailOpen)}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-sm bg-kawaii-lavender/15 hover:bg-kawaii-lavender/30 dark:bg-dark-surface/50 dark:hover:bg-dark-surface text-slate-600 dark:text-slate-300 squishy"
+            title="Details"
+          >
+            {detailOpen ? "▲" : "▼"}
+          </button>
+          <button
+            onClick={() => setMilestonesOpen(!milestonesOpen)}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-sm bg-kawaii-lavender/15 hover:bg-kawaii-lavender/30 dark:bg-dark-surface/50 dark:hover:bg-dark-surface text-slate-600 dark:text-slate-300 squishy"
+            title="Milestones"
+          >
+            📋{milestones.filter(m => m.status !== "done").length > 0 ? ` (${milestones.filter(m => m.status !== "done").length})` : ""}
+          </button>
+          <button
+            onClick={() => setPortalOpen(!portalOpen)}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-sm bg-kawaii-lavender/15 hover:bg-kawaii-lavender/30 dark:bg-dark-surface/50 dark:hover:bg-dark-surface text-slate-600 dark:text-slate-300 squishy"
+            title="Client Portal"
+          >
+            🔗
+          </button>
+          <Link href={`/dashboard/invoices?job=${job.id}`} className="w-8 h-8 flex items-center justify-center rounded-full text-sm bg-kawaii-lavender/15 hover:bg-kawaii-lavender/30 dark:bg-dark-surface/50 dark:hover:bg-dark-surface text-slate-600 dark:text-slate-300 squishy" title="Create Invoice">
+            🧾
+          </Link>
+          <button
+            onClick={async () => {
+              setScamChecking(true);
+              try {
+                const res = await fetch("/api/ai/scam-check", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ client_name: job.client_name || "", website_url: job.url || "", job_description: job.description || "" }),
+                });
+                const data = await res.json();
+                if (res.status === 402) { alert(data.error); return; }
+                setScamScore(data.score);
+                setScamAnalysis(data.analysis);
+                setScamDialogOpen(true);
+              } catch (e) {
+                showToast((e as any)?.message ?? "Scam check failed", "error");
+              } finally { setScamChecking(false); }
+            }}
+            disabled={scamChecking}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-sm bg-kawaii-lavender/15 hover:bg-kawaii-lavender/30 dark:bg-dark-surface/50 dark:hover:bg-dark-surface text-slate-600 dark:text-slate-300 squishy"
+            title="Scam Check (1 credit)"
+          >
+            {scamChecking ? "⏳" : "🕵️"}
+          </button>
+          <button
+            onClick={() => setReviewOpen(!reviewOpen)}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-sm bg-kawaii-lavender/15 hover:bg-kawaii-lavender/30 dark:bg-dark-surface/50 dark:hover:bg-dark-surface text-slate-600 dark:text-slate-300 squishy"
+            title="Request Review"
+          >
+            ⭐
+          </button>
+          {job.url && (
+            <a href={job.url} target="_blank" rel="noopener noreferrer" className="w-8 h-8 flex items-center justify-center rounded-full text-sm bg-kawaii-lavender/15 hover:bg-kawaii-lavender/30 dark:bg-dark-surface/50 dark:hover:bg-dark-surface text-slate-600 dark:text-slate-300 squishy" title="View Job">
+              ↗
+            </a>
+          )}
+          <button
+            onClick={() => deleteJob(job.id, job.title)}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-sm bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-500 squishy"
+            title="Delete"
+          >
+            🗑️
+          </button>
         </div>
 
         {detailOpen && (

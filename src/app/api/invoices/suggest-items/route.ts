@@ -31,42 +31,43 @@ export async function GET(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const groups = new Map<string, { date: string; label: string; rate: number; hours: number; entry_ids: string[] }>();
+  // Fallback rate when entries were tracked without a rate
+  const { data: settings } = await supabase
+    .from("user_settings")
+    .select("default_hourly_rate")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const defaultRate = Number(settings?.default_hourly_rate) || 0;
 
   let totalHours = 0;
-  for (const entry of entries ?? []) {
+  let totalAmount = 0;
+  const list = (entries ?? []).flatMap((entry) => {
     const start = new Date(entry.start_time);
     const end = entry.end_time ? new Date(entry.end_time) : null;
-    if (!end || end.getTime() <= start.getTime()) continue;
+    if (!end || end.getTime() <= start.getTime()) return [];
 
     const hours = Math.round(((end.getTime() - start.getTime()) / 3600000) * 100) / 100;
-    if (hours <= 0) continue;
+    if (hours <= 0) return [];
+    const rate = Number(entry.hourly_rate) || defaultRate || 0;
+    const amount = Math.round(hours * rate * 100) / 100;
+
     totalHours += hours;
+    totalAmount += amount;
 
-    const dateKey = start.toISOString().split("T")[0];
-    const rate = Number(entry.hourly_rate) || 0;
-    const key = `${dateKey}|${rate}`;
-    const label = start.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    const title = entry.description || entry.project_name || "Tracked work";
+    return [{
+      id: entry.id,
+      date: start.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      description: entry.description || entry.project_name || "Tracked work",
+      hours,
+      hourly_rate: rate,
+      amount,
+    }];
+  });
 
-    if (!groups.has(key)) {
-      groups.set(key, { date: label, label: title, rate, hours: 0, entry_ids: [] });
-    }
-    const g = groups.get(key)!;
-    g.hours = Math.round((g.hours + hours) * 100) / 100;
-    g.entry_ids.push(entry.id);
-  }
-
-  const items = Array.from(groups.values()).map((g) => ({
-    description: `${g.date} — ${g.label}`,
-    quantity: g.hours,
-    unit_price: g.rate,
-    total: Math.round(g.hours * g.rate * 100) / 100,
-    entry_ids: g.entry_ids,
-  }));
-
-  const totalAmount = Math.round(items.reduce((s, i) => s + i.total, 0) * 100) / 100;
-  const entryCount = items.reduce((s, i) => s + i.entry_ids.length, 0);
-
-  return NextResponse.json({ items, totalHours: Math.round(totalHours * 100) / 100, totalAmount, entryCount });
+  return NextResponse.json({
+    entries: list,
+    totalHours: Math.round(totalHours * 100) / 100,
+    totalAmount: Math.round(totalAmount * 100) / 100,
+    entryCount: list.length,
+  });
 }

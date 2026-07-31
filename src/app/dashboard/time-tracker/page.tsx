@@ -92,6 +92,24 @@ function isSameDay(a: string, b: string): boolean {
   const [screenshots, setScreenshots] = useState<Record<string, Screenshot[]>>({});
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Load job from query param for job linking
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const jobParam = params.get("job");
+    if (jobParam) {
+      fetch("/api/jobs")
+        .then((r) => r.json())
+        .then((data) => {
+          const match = (data.jobs ?? []).find((j: any) => j.id === jobParam);
+          if (match) {
+            setSelectedJobId(match.id);
+            setProject(match.title);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
   // Load event from query param for event linking
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

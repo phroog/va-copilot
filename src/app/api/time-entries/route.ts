@@ -9,6 +9,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date");
   const project = searchParams.get("project");
+  const job = searchParams.get("job");
   const exportType = searchParams.get("export");
 
   let query = supabase
@@ -25,6 +26,10 @@ export async function GET(request: Request) {
 
   if (project) {
     query = query.eq("project_name", project);
+  }
+
+  if (job) {
+    query = query.eq("job_id", job);
   }
 
   const { data: entries, error } = await query;
