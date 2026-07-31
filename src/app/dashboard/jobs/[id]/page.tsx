@@ -55,11 +55,12 @@ function durationHours(entry: TimeEntry): number {
   return Math.round(((end - start) / 3600000) * 100) / 100;
 }
 
-export default function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function JobDetailPage({ params }: { params: { id: string } }) {
   const { t } = useLocale();
   const { showToast } = useToast();
+  const id = params.id;
 
-  const [jobId, setJobId] = useState("");
+  const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -142,8 +143,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   }, []);
 
   useEffect(() => {
-    params.then((p) => load(p.id));
-  }, [params, load]);
+    load(id);
+  }, [id, load]);
 
   const statusMilestones = (status: string) => milestones.filter((m) => m.status === status);
 
