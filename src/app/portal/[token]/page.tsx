@@ -8,17 +8,19 @@ import Link from "next/link";
 interface PortalData {
   job: { id: string; title: string; platform: string; budget: string; description: string };
   timeEntries: { id: string; description: string; start_time: string; end_time: string | null; hourly_rate: number }[];
-  invoices: { id: string; invoice_number: string; status: string; issue_date: string; invoice_items: { total: number }[]; tax_rate: number }[];
+  invoices: { id: string; invoice_number: string; status: string; issue_date: string; due_date: string; invoice_items: { description: string; quantity: number; unit_price: number; total: number }[]; tax_rate: number }[];
 }
 
 export default function PortalPage({ params }: { params: Promise<{ token: string }> }) {
   const [data, setData] = useState<PortalData | null>(null);
+  const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       const { token } = await params;
+      setToken(token);
       try {
         const res = await fetch(`/api/portal/${token}`);
         if (!res.ok) { setError("Invalid or expired link"); return; }
@@ -108,23 +110,60 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
               <div className="space-y-3">
                 {data.invoices.map((inv) => {
                   const sub = (inv.invoice_items ?? []).reduce((s, i) => s + Number(i.total || 0), 0);
-                  const total = sub + sub * (Number(inv.tax_rate) / 100);
+                  const tax = sub * (Number(inv.tax_rate) / 100);
+                  const total = sub + tax;
+                  const pdfUrl = `/api/portal/${token}/invoice/${inv.id}/pdf`;
                   return (
-                    <div key={inv.id} className="flex items-center justify-between p-3 rounded-2xl bg-sari-lavender/15 dark:bg-dark-surface/50">
-                      <div>
-                        <p className="text-sm font-semibold">{inv.invoice_number}</p>
-                        <p className="text-xs text-slate-400">{inv.issue_date}</p>
+                    <div key={inv.id} className="p-3 rounded-2xl bg-sari-lavender/15 dark:bg-dark-surface/50">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">{inv.invoice_number}</p>
+                          <p className="text-xs text-slate-400">
+                            {inv.issue_date}
+                            {inv.due_date ? ` — Due ${inv.due_date}` : ""}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                            inv.status === "paid" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" :
+                            inv.status === "sent" ? "bg-sari-lavender/30 text-sari-ube" :
+                            "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                          }`}>
+                            {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
+                          </span>
+                          <p className="text-sm font-bold mt-1">${total.toFixed(2)}</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                          inv.status === "paid" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" :
-                          inv.status === "sent" ? "bg-sari-lavender/30 text-sari-ube" :
-                          "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-                        }`}>
-                          {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
-                        </span>
-                        <p className="text-sm font-bold mt-1">${total.toFixed(2)}</p>
-                      </div>
+                      {(inv.invoice_items ?? []).length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {inv.invoice_items.map((item, i) => (
+                            <div key={i} className="flex items-center justify-between text-xs">
+                              <span className="text-slate-600 dark:text-slate-300">{item.description}</span>
+                              <span className="text-slate-500">
+                                {item.quantity}h × ${Number(item.unit_price).toFixed(2)} = <b className="text-slate-700 dark:text-slate-200">${Number(item.total).toFixed(2)}</b>
+                              </span>
+                            </div>
+                          ))}
+                          <div className="flex items-center justify-between text-xs border-t border-sari-lavender/30 pt-1 mt-1">
+                            <span className="text-slate-500">Tax ({Number(inv.tax_rate)}%)</span>
+                            <span className="text-slate-600">${tax.toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs font-bold">
+                            <span className="text-slate-700 dark:text-slate-200">Total</span>
+                            <span className="text-slate-800 dark:text-slate-100">${total.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )}
+                      {inv.status !== "draft" && (
+                        <a
+                          href={pdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-sari-ube dark:text-sari-lavender hover:underline"
+                        >
+                          📥 Download PDF
+                        </a>
+                      )}
                     </div>
                   );
                 })}

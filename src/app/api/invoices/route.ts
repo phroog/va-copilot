@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { sellerSnapshot } from "@/lib/invoices/pdf";
 
 export async function GET(request: Request) {
   const supabase = createClient();
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("invoices")
-    .select("*, invoice_items(*)")
+    .select("*, invoice_items(*), jobs(title, client_name, client_address, client_email)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -28,10 +29,40 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { client_name, client_address, client_email, issue_date, due_date, tax_rate, notes, items } = body;
+  const { client_name, client_address, client_email, issue_date, due_date, tax_rate, notes, items, job_id, seller, time_entry_ids } = body;
 
-  if (!client_name) {
-    return NextResponse.json({ error: "client_name is required" }, { status: 400 });
+  if (!client_name && !job_id) {
+    return NextResponse.json({ error: "client_name or job_id is required" }, { status: 400 });
+  }
+
+  // Resolve client info + seller snapshot from job/profile when available
+  let resolvedClient: any = { client_name, client_address, client_email };
+  if (job_id) {
+    const { data: job } = await supabase
+      .from("jobs")
+      .select("id, title, client_name, client_address, client_email")
+      .eq("id", job_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (job) {
+      resolvedClient = {
+        client_name: resolvedClient.client_name || job.client_name || "",
+        client_address: resolvedClient.client_address || job.client_address || "",
+        client_email: resolvedClient.client_email || job.client_email || "",
+      };
+    }
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("business_name, full_name, business_address, business_email, tax_id, bank_account")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const snapshot = sellerSnapshot(profile);
+  const finalSeller: Record<string, string> = {};
+  for (const key of Object.keys(snapshot)) {
+    finalSeller[key] = (seller && seller[key]) || snapshot[key] || "";
   }
 
   // Generate invoice number
@@ -55,13 +86,15 @@ export async function POST(request: Request) {
     .insert({
       user_id: user.id,
       invoice_number,
-      client_name,
-      client_address: client_address ?? "",
-      client_email: client_email ?? "",
+      client_name: resolvedClient.client_name || "Client",
+      client_address: resolvedClient.client_address ?? "",
+      client_email: resolvedClient.client_email ?? "",
       issue_date: issue_date || new Date().toISOString().split("T")[0],
       due_date: due_date || null,
       tax_rate: tax_rate ?? 0,
       notes: notes ?? "",
+      job_id: job_id ?? null,
+      ...finalSeller,
     })
     .select()
     .single();
@@ -82,10 +115,21 @@ export async function POST(request: Request) {
     if (itemError) return NextResponse.json({ error: itemError.message }, { status: 500 });
   }
 
+  // Link tracked time entries to this invoice for traceability
+  if (time_entry_ids && time_entry_ids.length > 0) {
+    const { error: linkError } = await supabase
+      .from("time_entries")
+      .update({ invoice_id: invoice.id })
+      .in("id", time_entry_ids)
+      .eq("user_id", user.id)
+      .is("invoice_id", null);
+    if (linkError) return NextResponse.json({ error: linkError.message }, { status: 500 });
+  }
+
   // Fetch full invoice with items
   const { data: full } = await supabase
     .from("invoices")
-    .select("*, invoice_items(*)")
+    .select("*, invoice_items(*), jobs(title)")
     .eq("id", invoice.id)
     .single();
 

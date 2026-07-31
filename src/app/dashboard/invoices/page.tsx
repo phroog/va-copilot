@@ -30,6 +30,8 @@ interface Invoice {
   tax_rate: number;
   created_at: string;
   invoice_items: InvoiceItem[];
+  job_id?: string | null;
+  jobs?: { title: string } | null;
 }
 
 interface JobOption {
@@ -56,6 +58,13 @@ export default function InvoicesPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // Job & time tracking linkage
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [timeEntryIds, setTimeEntryIds] = useState<string[]>([]);
+  const [trackedTouched, setTrackedTouched] = useState(false);
+  const [unbilled, setUnbilled] = useState<{ totalHours: number; totalAmount: number; entryCount: number } | null>(null);
+  const [trackedLoading, setTrackedLoading] = useState(false);
 
   // Form fields
   const [clientName, setClientName] = useState("");
@@ -84,7 +93,26 @@ export default function InvoicesPage() {
   useEffect(() => {
     fetch("/api/jobs")
       .then((r) => r.json())
-      .then((data) => setJobs((data.jobs ?? []).filter((j: JobOption) => j.client_name)))
+      .then((data) => {
+        const list = (data.jobs ?? []).filter((j: JobOption) => j.client_name);
+        setJobs(list);
+        const url = new URL(window.location.href);
+        const jobParam = url.searchParams.get("job");
+        if (jobParam) {
+          openNew();
+          const match = list.find((j: JobOption) => j.id === jobParam);
+          if (match) {
+            setJobId(match.id);
+            setClientName(match.client_name);
+            setClientAddress(match.client_address ?? "");
+            setClientEmail(match.client_email ?? "");
+            fetch(`/api/invoices/suggest-items?job_id=${match.id}`)
+              .then((r) => r.json())
+              .then((d) => setUnbilled({ totalHours: d.totalHours ?? 0, totalAmount: d.totalAmount ?? 0, entryCount: d.entryCount ?? 0 }))
+              .catch(() => {});
+          }
+        }
+      })
       .catch(() => showToast("Failed to load jobs", "error"));
   }, []);
 
@@ -97,6 +125,10 @@ export default function InvoicesPage() {
     setTaxRate("0");
     setNotes("");
     setItems([{ description: "", quantity: 1, unit_price: 0 }]);
+    setJobId(null);
+    setTimeEntryIds([]);
+    setTrackedTouched(false);
+    setUnbilled(null);
     setEditId(null);
     setShowForm(false);
   };
@@ -116,6 +148,10 @@ export default function InvoicesPage() {
     setTaxRate(String(inv.tax_rate));
     setNotes(inv.notes ?? "");
     setItems(inv.invoice_items?.length > 0 ? inv.invoice_items.map((i) => ({ description: i.description, quantity: i.quantity, unit_price: i.unit_price })) : [{ description: "", quantity: 1, unit_price: 0 }]);
+    setJobId(inv.job_id ?? null);
+    setTimeEntryIds([]);
+    setTrackedTouched(false);
+    setUnbilled(null);
     setShowForm(true);
   };
 
@@ -123,7 +159,7 @@ export default function InvoicesPage() {
     if (!clientName) return;
     setSaving(true);
     try {
-      const body = {
+      const body: Record<string, any> = {
         client_name: clientName,
         client_address: clientAddress,
         client_email: clientEmail,
@@ -132,13 +168,18 @@ export default function InvoicesPage() {
         tax_rate: parseFloat(taxRate) || 0,
         notes,
         items: items.filter((i) => i.description.trim()),
+        job_id: jobId || null,
       };
+      if (trackedTouched) body.time_entry_ids = timeEntryIds;
       const url = editId ? `/api/invoices/${editId}` : "/api/invoices";
       const method = editId ? "PATCH" : "POST";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (res.ok) {
         resetForm();
         fetchInvoices();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast((err as any)?.error ?? "Failed to save invoice", "error");
       }
     } finally {
       setSaving(false);
@@ -175,12 +216,46 @@ export default function InvoicesPage() {
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const selectJob = (jobId: string) => {
-    const job = jobs.find((j) => j.id === jobId);
+  const selectJob = (selectedId: string) => {
+    setJobId(selectedId || null);
+    setTimeEntryIds([]);
+    setUnbilled(null);
+    if (selectedId) setTrackedTouched(true);
+    const job = jobs.find((j) => j.id === selectedId);
     if (job) {
       setClientName(job.client_name);
       setClientAddress(job.client_address ?? "");
       setClientEmail(job.client_email ?? "");
+    }
+    if (selectedId) {
+      setTrackedLoading(true);
+      fetch(`/api/invoices/suggest-items?job_id=${selectedId}`)
+        .then((r) => r.json())
+        .then((d) => setUnbilled({ totalHours: d.totalHours ?? 0, totalAmount: d.totalAmount ?? 0, entryCount: d.entryCount ?? 0 }))
+        .catch(() => setUnbilled(null))
+        .finally(() => setTrackedLoading(false));
+    }
+  };
+
+  const addTrackedTime = async () => {
+    if (!jobId) return;
+    setTrackedLoading(true);
+    try {
+      const res = await fetch(`/api/invoices/suggest-items?job_id=${jobId}`);
+      if (!res.ok) throw new Error("Failed to load tracked time");
+      const d = await res.json();
+      if (!d.items?.length) {
+        showToast("No unbilled tracked time for this job", "error");
+        return;
+      }
+      setItems((prev) => [...prev, ...d.items.map((i: any) => ({ description: i.description, quantity: i.quantity, unit_price: i.unit_price }))]);
+      setTimeEntryIds((prev) => Array.from(new Set([...prev, ...d.items.flatMap((i: any) => i.entry_ids ?? [])])));
+      setTrackedTouched(true);
+      showToast(`Added ${d.items.length} line item(s) from tracked time`, "success");
+    } catch (e) {
+      showToast((e as any)?.message ?? "Failed to load tracked time", "error");
+    } finally {
+      setTrackedLoading(false);
     }
   };
 
@@ -235,6 +310,9 @@ export default function InvoicesPage() {
                       <p className="text-xs text-slate-400">
                         {inv.issue_date} {inv.due_date ? `— Due: ${inv.due_date}` : ""}
                       </p>
+                      {inv.jobs?.title && (
+                        <p className="text-xs text-kawaii-purple dark:text-kawaii-lavender mt-0.5">💼 {inv.jobs.title}</p>
+                      )}
                     </div>
                     <span className="text-lg font-bold text-slate-700 dark:text-slate-200">${total.toFixed(2)}</span>
                   </div>
@@ -272,12 +350,25 @@ export default function InvoicesPage() {
                 <div>
                   <Label className="text-xs">{t("selectClientFromJob")}</Label>
                   <select
-                    onChange={(e) => e.target.value && selectJob(e.target.value)}
+                    value={jobId ?? ""}
+                    onChange={(e) => selectJob(e.target.value)}
                     className="w-full rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 px-4 py-2.5 text-sm text-slate-700 dark:bg-dark-card dark:text-slate-200 dark:border-dark-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kawaii-purple"
                   >
                     <option value="">— {t("typeManually")} —</option>
                     {jobs.map((j) => <option key={j.id} value={j.id}>{j.title} — {j.client_name}</option>)}
                   </select>
+                  {jobId && (
+                    <div className="flex items-center justify-between gap-2 mt-2">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {trackedLoading ? "Loading tracked time..." : unbilled
+                          ? `⏱ ${unbilled.totalHours.toFixed(2)}h unbilled · ${unbilled.entryCount} entr${unbilled.entryCount === 1 ? "y" : "ies"} · $${unbilled.totalAmount.toFixed(2)}`
+                          : "No unbilled tracked time"}
+                      </p>
+                      <Button size="sm" variant="outline" className="text-xs shrink-0" onClick={addTrackedTime} disabled={trackedLoading || !unbilled?.entryCount}>
+                        🕐 Add tracked time
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 

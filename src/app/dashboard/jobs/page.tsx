@@ -1002,6 +1002,13 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
                 <button onClick={() => { setDropdownOpen(false); setPortalOpen(!portalOpen); }} className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2">
                   🔗 {t("clientPortal")}
                 </button>
+                <a
+                  href={`/dashboard/invoices?job=${job.id}`}
+                  onClick={() => setDropdownOpen(false)}
+                  className="w-full text-left px-3.5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-kawaii-lavender/10 dark:hover:bg-kawaii-purple/20 flex items-center gap-2"
+                >
+                  🧾 Create Invoice
+                </a>
                 <button onClick={async () => {
                   setDropdownOpen(false);
                   setScamChecking(true);
