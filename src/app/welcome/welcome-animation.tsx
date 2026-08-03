@@ -23,9 +23,89 @@ const PARTICLES = [
   { top: "26%", left: "50%", size: 3, delay: 1.08, hue: UBE },
 ];
 
+function createWelcomeSfx() {
+  let ctx: AudioContext | null = null;
+
+  function ensure() {
+    if (ctx) return ctx;
+    const AC = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AC) return null;
+    ctx = new AC();
+    return ctx;
+  }
+
+  function tone(freq: number, at: number, dur: number, type: OscillatorType, vol: number, slideTo?: number) {
+    const c = ensure();
+    if (!c) return;
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, at);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, at + dur);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol, at + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g);
+    g.connect(c.destination);
+    o.start(at);
+    o.stop(at + dur + 0.05);
+  }
+
+  function sparkle(x: number, y: number) {
+    tone(x, 0, 0.4, "triangle", 0.045);
+    tone(y, 0.12, 0.5, "triangle", 0.04);
+  }
+
+  function schedule() {
+    const c = ensure();
+    if (!c) return;
+    const t = c.currentTime + (c.state === "suspended" ? 0 : 0.02);
+    // 0.5s — S sweeps in: soft swell
+    tone(196, t + 0.5, 0.7, "sine", 0.05, 392);
+    tone(392, t + 0.55, 0.6, "sine", 0.03, 587);
+    // 1.5s — "Sari" glows, gentle major chord
+    tone(523.25, t + 1.5, 0.55, "sine", 0.06);
+    tone(659.25, t + 1.62, 0.55, "sine", 0.055);
+    tone(783.99, t + 1.74, 0.7, "sine", 0.06);
+    tone(1046.5, t + 1.86, 0.9, "sine", 0.045);
+    // 2.5s — particles shimmer
+    sparkle(1318.51, 1567.98);
+    sparkle(1046.5, 1318.51);
+    sparkle(783.99, 1046.5);
+  }
+
+  function unlock() {
+    const c = ensure();
+    if (c && c.state === "suspended") c.resume().catch(() => {});
+  }
+
+  function dispose() {
+    if (ctx) ctx.close().catch(() => {});
+    ctx = null;
+  }
+
+  return { schedule, unlock, dispose };
+}
+
 export default function WelcomeAnimation() {
   const router = useRouter();
   const doneRef = useRef(false);
+  const sfxRef = useRef<ReturnType<typeof createWelcomeSfx> | null>(null);
+
+  useEffect(() => {
+    const sfx = createWelcomeSfx();
+    sfxRef.current = sfx;
+    sfx.schedule();
+    const unlock = () => sfx.unlock();
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      sfx.dispose();
+      sfxRef.current = null;
+    };
+  }, []);
 
   const finish = () => {
     if (doneRef.current) return;
