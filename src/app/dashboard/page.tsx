@@ -12,6 +12,7 @@ import DailyMotivation from "@/components/daily-motivation";
 import WorldClock from "@/components/world-clock";
 import QuickNotes from "@/components/quick-notes";
 import StressBusterWidget from "@/components/stress-buster-widget";
+import { useProfileName } from "@/lib/use-profile-name";
 import { formatDuration } from "@/lib/utils";
 
 interface Job {
@@ -58,6 +59,7 @@ interface TimeEntry {
 export default function DashboardHome() {
   const { t, locale } = useLocale();
   const { showToast } = useToast();
+  const { name: userName } = useProfileName();
   const [stats, setStats] = useState({ jobs: 0, applications: 0, interviews: 0, offers: 0 });
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
@@ -195,7 +197,9 @@ export default function DashboardHome() {
       <MoodCheckDialog />
 
       <div>
-        <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">{greeting}</h1>
+        <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
+          {greeting}{userName ? ", " + userName : ""}
+        </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">{t("welcomeDashboard")}</p>
       </div>
 

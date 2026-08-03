@@ -9,6 +9,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useProfileName } from "@/lib/use-profile-name";
 
 const moods = [
   { emoji: "😄", label: "happy", color: "bg-green-100 dark:bg-green-900/30 hover:bg-green-200" },
@@ -21,6 +22,7 @@ const moods = [
 export default function MoodCheckDialog() {
   const [open, setOpen] = useState(false);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const { name: userName } = useProfileName();
 
   useEffect(() => {
     const checkMood = async () => {
@@ -53,7 +55,7 @@ export default function MoodCheckDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-center text-2xl">🌸 How are you feeling today?</DialogTitle>
+          <DialogTitle className="text-center text-2xl">🌸 How are you feeling today{userName ? ", " + userName : ""}?</DialogTitle>
           <DialogDescription className="text-center">
             Pick a mood to personalize your experience!
           </DialogDescription>

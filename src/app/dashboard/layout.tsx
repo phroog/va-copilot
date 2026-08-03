@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useLocale } from "@/lib/i18n/context";
+import { useProfileName } from "@/lib/use-profile-name";
 import { useState, useEffect, useCallback } from "react";
 import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Inbox, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, Target } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -74,6 +75,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { t } = useLocale();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const { name: userName } = useProfileName();
   const [unreadCount, setUnreadCount] = useState(0);
   const [creditsBalance, setCreditsBalance] = useState<number | null>(null);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
@@ -205,11 +207,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Link>
                 <div className="flex items-center gap-2 pl-3 border-l border-kawaii-lavender/30 dark:border-dark-surface">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-kawaii-purple to-kawaii-pink flex items-center justify-center text-white text-xs font-bold">
-                  {userEmail?.charAt(0).toUpperCase() ?? "U"}
+                  {(userName || userEmail)?.charAt(0).toUpperCase() ?? "U"}
                 </div>
-                <span className="hidden sm:block text-sm font-medium text-slate-600 dark:text-slate-300 truncate max-w-[150px]">
-                  {userEmail ?? ""}
-                </span>
+                {userName && (
+                  <span className="hidden sm:block text-sm font-medium text-slate-600 dark:text-slate-300 truncate max-w-[150px]">
+                    {userName}
+                  </span>
+                )}
               </div>
             </div>
           </div>
