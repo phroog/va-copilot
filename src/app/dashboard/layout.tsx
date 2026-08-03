@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useLocale } from "@/lib/i18n/context";
 import { useState, useEffect, useCallback } from "react";
-import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Inbox, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3 } from "lucide-react";
+import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Inbox, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, Target } from "lucide-react";
 import dynamic from "next/dynamic";
 const MochiHub = dynamic(() => import("@/components/mochi-hub"), { ssr: false });
 import { ToastProvider } from "@/components/toast";
@@ -28,6 +28,7 @@ const sidebarGroups = [
       { href: "/dashboard/agency", labelKey: "agency", icon: Shield },
       { href: "/dashboard/agency/reporting", labelKey: "agencyReporting", icon: BarChart3 },
       { href: "/dashboard/clients", labelKey: "clients", icon: Users },
+      { href: "/dashboard/stress-buster", labelKey: "stressBuster", icon: Target },
     ],
   },
   {

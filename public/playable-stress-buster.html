@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#6C4E8F" />
+  <title>Sari Stress Buster — Playable Ad</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: 'Nunito', system-ui, sans-serif;
+      background: linear-gradient(160deg, #FFF8F0 0%, #F1E7FA 55%, #E9D8F4 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .ad-shell {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      max-width: 460px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: max(10px, env(safe-area-inset-top)) 14px max(10px, env(safe-area-inset-bottom));
+    }
+
+    .ad-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .ad-brand .logo {
+      font-size: 30px;
+      line-height: 1;
+      filter: drop-shadow(0 3px 6px rgba(108,78,143,.3));
+    }
+    .ad-brand .wordmark {
+      font-size: 24px;
+      font-weight: 900;
+      background: linear-gradient(90deg, #6C4E8F, #E8A598);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: .5px;
+    }
+    .ad-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #6C4E8F;
+      margin: 0 0 8px;
+      text-align: center;
+    }
+    .ad-hint {
+      font-size: 12px;
+      font-weight: 700;
+      color: #8b6fae;
+      margin: 8px 0 0;
+      text-align: center;
+    }
+
+    .ad-game {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 0;
+    }
+
+    /* Branded end overlay (semi-transparent) */
+    .ad-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(108, 78, 143, 0.62);
+      backdrop-filter: blur(3px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 28px;
+      color: #fff;
+      animation: adFade .4s ease-out;
+      gap: 12px;
+    }
+    .ad-overlay.hidden { display: none; }
+    .ad-overlay .o-logo { font-size: 52px; line-height: 1; filter: drop-shadow(0 6px 14px rgba(0,0,0,.35)); }
+    .ad-overlay .o-wordmark {
+      font-size: 34px;
+      font-weight: 900;
+      background: linear-gradient(90deg, #FFDAB9, #E8A598, #FFDAB9);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: 1px;
+      margin: 2px 0 4px;
+      text-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    .ad-overlay .o-text {
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.45;
+      max-width: 300px;
+      margin: 0;
+      text-shadow: 0 2px 6px rgba(0,0,0,.3);
+    }
+    .ad-overlay .o-score {
+      font-size: 14px;
+      font-weight: 700;
+      opacity: .9;
+      margin: 0;
+    }
+    .ad-overlay .o-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 17px;
+      font-weight: 900;
+      color: #6C4E8F;
+      background: linear-gradient(90deg, #FFF8F0, #FFDAB9);
+      padding: 14px 32px;
+      border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.3);
+      text-decoration: none;
+      transition: transform .15s ease;
+    }
+    .ad-overlay .o-cta:hover { transform: scale(1.05); }
+    .ad-overlay .o-again {
+      background: none;
+      border: none;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: underline;
+      cursor: pointer;
+      opacity: .85;
+      margin-top: 4px;
+      padding: 8px 12px;
+    }
+    @keyframes adFade { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div class="ad-shell">
+    <div class="ad-brand">
+      <span class="logo">🍠</span>
+      <span class="wordmark">Sari</span>
+    </div>
+    <h1 class="ad-title">Sari Stress Buster 🎯</h1>
+
+    <div class="ad-game">
+      <div id="game-mount"></div>
+    </div>
+
+    <p class="ad-hint">Pop 3 client frustrations to win the day!</p>
+  </div>
+
+  <!-- Branded end overlay (hidden until the 3rd arrow lands) -->
+  <div id="overlay" class="ad-overlay hidden">
+    <div class="o-logo">🍠</div>
+    <div class="o-wordmark">Sari</div>
+    <p class="o-text">Stress? We handle the hard part.<br />You focus on winning.</p>
+    <p id="o-score" class="o-score"></p>
+    <a id="o-cta" class="o-cta" href="https://sari.ph" target="_blank" rel="noopener">Try Sari Free →</a>
+    <button id="o-again" class="o-again" type="button">↻ Play again</button>
+  </div>
+
+  <script src="stress-buster.js"></script>
+  <script>
+    (function () {
+      // Landing page for the CTA — swap for the production site URL.
+      var LANDING_URL = "https://sari.ph";
+      document.getElementById("o-cta").href = LANDING_URL;
+
+      var mount = document.getElementById("game-mount");
+      var overlay = document.getElementById("overlay");
+      var scoreEl = document.getElementById("o-score");
+      var game = null;
+
+      function computeSize() {
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+        var avail = Math.min(vw - 28, vh * 0.62, 400);
+        return Math.max(240, Math.round(avail));
+      }
+
+      function start() {
+        overlay.classList.add("hidden");
+        var size = computeSize();
+        if (game) game.destroy();
+        game = SariStressBuster(mount, {
+          arrows: 3,
+          size: size,
+          title: null,          // ad renders its own header
+          subtitle: null,
+          builtInEnd: false,    // ad shows the branded overlay instead
+          sound: true,          // muted by default via engine toggle
+          onGameOver: function (score) {
+            scoreEl.textContent = "Final score: " + score + " pts 🏹";
+            overlay.classList.remove("hidden");
+          },
+        });
+      }
+
+      document.getElementById("o-cta").addEventListener("click", function (e) {
+        e.preventDefault();
+        window.open(LANDING_URL, "_blank");
+      });
+
+      document.getElementById("o-again").addEventListener("click", start);
+
+      // Re-fit on orientation change / resize before the round starts.
+      var resizeTimer = 0;
+      window.addEventListener("resize", function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+          if (!game) return;
+          var st = game.getState();
+          if (st.arrowsUsed === 0 && !st.ended) start();
+        }, 250);
+      });
+
+      start();
+    })();
+  </script>
+</body>
+</html>

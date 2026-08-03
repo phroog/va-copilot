@@ -11,6 +11,7 @@ import LuckyWheel from "@/components/lucky-wheel";
 import DailyMotivation from "@/components/daily-motivation";
 import WorldClock from "@/components/world-clock";
 import QuickNotes from "@/components/quick-notes";
+import StressBusterWidget from "@/components/stress-buster-widget";
 import { formatDuration } from "@/lib/utils";
 
 interface Job {
@@ -199,6 +200,9 @@ export default function DashboardHome() {
       </div>
 
       <DailyMotivation />
+
+      {/* Stress Buster mini-game widget */}
+      <StressBusterWidget />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
