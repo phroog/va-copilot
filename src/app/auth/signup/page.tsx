@@ -32,7 +32,7 @@ export default function SignupPage() {
       setError(err.message);
       setLoading(false);
     } else {
-      router.push("/dashboard");
+      router.push("/welcome");
     }
   };
 

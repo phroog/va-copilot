@@ -104,6 +104,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [supabase, fetchUnread]);
 
   const handleLogout = async () => {
+    try {
+      window.sessionStorage.removeItem("sari_welcome_done");
+    } catch {}
     await supabase.auth.signOut();
     router.push("/");
   };
