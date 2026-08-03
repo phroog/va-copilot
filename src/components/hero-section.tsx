@@ -30,6 +30,14 @@ export default function HeroSection() {
             </Button>
           </Link>
         </div>
+        <div className="mt-4">
+          <Link
+            href="/va-escape-room"
+            className="inline-block text-sm font-bold text-kawaii-purple dark:text-kawaii-lavender underline underline-offset-4 hover:opacity-80 transition-opacity"
+          >
+            🎮 Try our escape room →
+          </Link>
+        </div>
         <div className="mt-12 flex items-center justify-center gap-8 text-sm text-slate-400 dark:text-slate-500">
           <span>✨ No credit card</span>
           <span>🛡️ Cancel anytime</span>

@@ -5,6 +5,7 @@ const footerLinks = [
   { label: "How It Works", href: "#how-it-works" },
   { label: "Pricing", href: "#pricing" },
   { label: "Academy", href: "/academy" },
+  { label: "🎮 Escape Room", href: "/va-escape-room" },
   { label: "Privacy", href: "#" },
   { label: "Terms", href: "#" },
 ];
