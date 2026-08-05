@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const ALLOWED_TYPES = ["rss", "api", "web"];
+const ALLOWED_TYPES = ["web"];
 
 export async function GET() {
   const supabase = createClient();
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   const sourceType = (body.source_type || "").trim();
   if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
   if (!ALLOWED_TYPES.includes(sourceType)) {
-    return NextResponse.json({ error: "source_type must be one of: rss, api, web" }, { status: 400 });
+    return NextResponse.json({ error: "source_type must be 'web'" }, { status: 400 });
   }
 
   const insert: Record<string, any> = {

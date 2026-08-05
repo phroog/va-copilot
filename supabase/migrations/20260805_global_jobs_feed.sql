@@ -1,14 +1,16 @@
 -- ═══════════════════════════════════════════════════════════════════
 -- Centralized Global Live Job Feed
 -- Tables: job_sources, global_jobs, user_job_interactions
+-- Sources are always web listing pages scraped by the admin collector
+-- (Playwright on the laptop / a server). No RSS, no Vercel cron.
 -- ═══════════════════════════════════════════════════════════════════
 
--- ── 1. Job sources (RSS / API / web) ──────────────────────────────
+-- ── 1. Job sources (web only) ─────────────────────────────────────
 create table if not exists job_sources (
   id uuid default gen_random_uuid() primary key,
   name text not null,
-  source_type text not null check (source_type in ('rss', 'api', 'web')),
-  url text,
+  source_type text not null default 'web' check (source_type = 'web'),
+  url text not null,
   platform text,
   is_active boolean default true,
   include_in_live_feed boolean default true,
@@ -35,13 +37,15 @@ create policy "Authenticated users can delete job sources"
   on job_sources for delete
   using (auth.role() = 'authenticated');
 
--- Preset job sources (only inserted if not already present)
+-- Preset web sources (only inserted if not already present).
+-- These are listing/search pages the admin collector opens and scans.
 insert into job_sources (name, source_type, url, platform, is_active, include_in_live_feed)
 values
-  ('Upwork', 'rss', 'https://www.upwork.com/ab/feed/jobs/rss', 'Upwork', true, true),
-  ('OnlineJobs.ph', 'rss', 'https://www.onlinejobs.ph/jobs/rss', 'OnlineJobs.ph', true, true),
-  ('LinkedIn Jobs', 'web', 'https://www.linkedin.com/jobs/', 'LinkedIn', true, true),
-  ('Indeed', 'web', 'https://www.indeed.com/', 'Indeed', true, true)
+  ('Upwork', 'web', 'https://www.upwork.com/nx/search/jobs/?q=virtual+assistant', 'Upwork', true, true),
+  ('OnlineJobs.ph', 'web', 'https://www.onlinejobs.ph/jobseekers/jobsearch/?keyword=virtual+assistant', 'OnlineJobs.ph', true, true),
+  ('LinkedIn Jobs', 'web', 'https://www.linkedin.com/jobs/search?keywords=virtual%20assistant', 'LinkedIn', true, true),
+  ('Indeed', 'web', 'https://www.indeed.com/jobs?q=virtual+assistant', 'Indeed', true, true),
+  ('Facebook Groups', 'web', 'https://www.facebook.com/groups/20531316728', 'Facebook', false, false)
 on conflict (name) do nothing;
 
 -- ── 2. Global jobs (shared live feed) ──────────────────────────────

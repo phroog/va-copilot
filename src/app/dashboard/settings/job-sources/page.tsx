@@ -11,7 +11,7 @@ import { useToast } from "@/components/toast";
 interface JobSource {
   id: string;
   name: string;
-  source_type: "rss" | "api" | "web";
+  source_type: "web";
   url: string | null;
   platform: string | null;
   is_active: boolean;
@@ -34,8 +34,6 @@ function timeAgo(dateStr: string | null): string {
 }
 
 const TYPE_BADGE: Record<string, string> = {
-  rss: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
-  api: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
   web: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
 };
 
@@ -47,7 +45,7 @@ export default function JobSourcesPage() {
 
   // Add form
   const [newName, setNewName] = useState("");
-  const [newType, setNewType] = useState<"rss" | "api" | "web">("rss");
+  const [newType, setNewType] = useState<"web">("web");
   const [newUrl, setNewUrl] = useState("");
   const [newPlatform, setNewPlatform] = useState("");
   const [adding, setAdding] = useState(false);
@@ -139,8 +137,8 @@ export default function JobSourcesPage() {
       <div>
         <h1 className="text-3xl font-extrabold">🛰️ Job Sources</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Sources feed the centralized Live Feed. RSS/API sources are collected automatically by a Vercel Cron job;
-          web sources are scraped by the extension&apos;s Admin Mode.
+          Sources feed the centralized Live Feed. Web listing pages are scraped by the
+          admin collector (Playwright) and pushed into the feed — users don&apos;t scrape anything.
         </p>
       </div>
 
@@ -148,13 +146,13 @@ export default function JobSourcesPage() {
       <Card className="border-kawaii-purple/20 dark:border-kawaii-purple/30 bg-gradient-to-r from-kawaii-lavender/10 to-kawaii-pink/5 dark:from-dark-surface/30 dark:to-dark-surface/10">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">➕ Add Custom Source</CardTitle>
-          <CardDescription>Add your own RSS, API (JSON), or web listing URL.</CardDescription>
+          <CardDescription>Add a job listing page URL to scrape.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Name *</Label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. FreelanceJobs RSS" />
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Upwork Search" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Type</Label>
@@ -163,9 +161,7 @@ export default function JobSourcesPage() {
                 onChange={(e) => setNewType(e.target.value as any)}
                 className="w-full h-10 px-3 rounded-xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200"
               >
-                <option value="rss">RSS (auto-collected)</option>
-                <option value="api">API / JSON (auto-collected)</option>
-                <option value="web">Web (Admin extension)</option>
+                <option value="web">Web (listing page)</option>
               </select>
             </div>
             <div className="space-y-1">

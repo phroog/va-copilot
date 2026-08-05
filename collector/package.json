@@ -1,0 +1,14 @@
+{
+  "name": "sari-collector",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local web job collector for the Sari Live Feed. Scrapes job listing pages with Playwright and uploads to the shared feed. Runs on the admin's laptop now, on a server later.",
+  "type": "module",
+  "scripts": {
+    "start": "node collector.mjs",
+    "once": "node collector.mjs --once"
+  },
+  "dependencies": {
+    "playwright": "^1.45.0"
+  }
+}

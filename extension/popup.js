@@ -72,12 +72,6 @@ const notesStatus = $("notes-status");
 const darkToggle = $("dark-toggle");
 const darkToggleBottom = $("dark-toggle-bottom");
 
-/* ── Admin Mode refs ───────────────────────────────────────────── */
-const adminModeToggle = $("admin-mode-toggle");
-const adminSecretInput = $("admin-secret-input");
-const adminSaveBtn = $("admin-save-btn");
-const adminStatus = $("admin-status");
-
 /* ── Tools grid ───────────────────────────────────────────────── */
 const toolsGrid = $("tools-grid");
 const toolDetail = $("tool-detail");
@@ -223,8 +217,6 @@ async function loadState() {
     "currentJob",
     "sariDarkMode",
     "savedJobId",
-    "sariAdminEnabled",
-    "sariAdminSecret",
   ]);
   sariToken = result.sariToken || null;
   currentJob = result.currentJob || null;
@@ -236,9 +228,6 @@ async function loadState() {
   if (!result.sariDarkMode) {
     [darkToggle, darkToggleBottom].forEach((b) => { if (b) b.textContent = "🌙"; });
   }
-  // Admin Mode
-  if (adminModeToggle) adminModeToggle.checked = !!result.sariAdminEnabled;
-  if (adminSecretInput && result.sariAdminSecret) adminSecretInput.value = result.sariAdminSecret;
 }
 
 async function clearToken() {
@@ -299,57 +288,6 @@ function updateSettingsTab() {
   if (settingsConnectedAs) {
     settingsConnectedAs.textContent = sariToken ? "Connected" : "Not connected";
   }
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   ADMIN MODE — Live Feed Web Collector
-   ══════════════════════════════════════════════════════════════════ */
-
-async function saveAdminSettings() {
-  if (!adminModeToggle || !adminSecretInput) return;
-  const enabled = adminModeToggle.checked;
-  const secret = adminSecretInput.value.trim();
-
-  if (enabled && !secret) {
-    if (adminStatus) { adminStatus.textContent = "⚠️ Enter the ADMIN_SECRET to enable Admin Mode"; adminStatus.classList.remove("hidden"); }
-    adminModeToggle.checked = false;
-    return;
-  }
-
-  await chrome.storage.local.set({ sariAdminEnabled: enabled, sariAdminSecret: secret });
-  if (adminStatus) {
-    adminStatus.textContent = enabled ? "✅ Admin Mode enabled — collecting every 6 min" : "Admin Mode disabled";
-    adminStatus.classList.remove("hidden");
-    setTimeout(() => { adminStatus.classList.add("hidden"); }, 3000);
-  }
-
-  // Kick off an immediate collect.
-  if (enabled) {
-    try { chrome.runtime.sendMessage({ action: "adminCollectNow" }); } catch {}
-  }
-}
-
-if (adminSaveBtn) adminSaveBtn.addEventListener("click", saveAdminSettings);
-if (adminModeToggle) {
-  adminModeToggle.addEventListener("change", async () => {
-    // Persist toggle immediately; require secret on enable.
-    const enabled = adminModeToggle.checked;
-    const { sariAdminSecret } = await chrome.storage.local.get("sariAdminSecret");
-    if (enabled && !sariAdminSecret) {
-      if (adminStatus) { adminStatus.textContent = "⚠️ Enter the ADMIN_SECRET and press Save"; adminStatus.classList.remove("hidden"); }
-      adminModeToggle.checked = false;
-      return;
-    }
-    await chrome.storage.local.set({ sariAdminEnabled: enabled });
-    if (adminStatus) {
-      adminStatus.textContent = enabled ? "✅ Admin Mode enabled" : "Admin Mode disabled";
-      adminStatus.classList.remove("hidden");
-      setTimeout(() => { adminStatus.classList.add("hidden"); }, 2500);
-    }
-    if (enabled) {
-      try { chrome.runtime.sendMessage({ action: "adminCollectNow" }); } catch {}
-    }
-  });
 }
 
 function renderJobInfo() {

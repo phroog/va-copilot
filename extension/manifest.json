@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Sari - VA Assistant",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Your all-in-one freelancing companion for VAs",
-  "permissions": ["storage", "activeTab", "scripting", "tabs", "alarms"],
+  "permissions": ["storage", "activeTab", "scripting", "tabs"],
   "host_permissions": [
     "https://va-copilot-theta.vercel.app/*",
     "http://localhost:3000/*",

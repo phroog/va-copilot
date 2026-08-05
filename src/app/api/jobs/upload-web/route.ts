@@ -28,10 +28,6 @@ export async function POST(request: Request) {
   const jobs = Array.isArray(body) ? body : Array.isArray(body.jobs) ? body.jobs : [];
   const sourceId: string | null = body.sourceId ?? null;
 
-  if (jobs.length === 0) {
-    return NextResponse.json({ error: "No jobs provided" }, { status: 400 });
-  }
-
   const supabase = createServiceRoleClient();
   const inserted: string[] = [];
   const duplicates = 0;
@@ -45,7 +41,8 @@ export async function POST(request: Request) {
     if (job?.id) inserted.push(job.id);
   }
 
-  // Mark the source as collected so it isn't re-polled for 10 minutes.
+  // Mark the source as collected so it isn't re-polled for 10 minutes —
+  // even when nothing was found, so a broken source isn't retried every pass.
   if (sourceId) {
     await supabase
       .from("job_sources")
