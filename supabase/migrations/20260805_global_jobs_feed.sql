@@ -21,6 +21,11 @@ create table if not exists job_sources (
 
 alter table job_sources enable row level security;
 
+drop policy if exists "Authenticated users can view job sources" on job_sources;
+drop policy if exists "Authenticated users can insert job sources" on job_sources;
+drop policy if exists "Authenticated users can update job sources" on job_sources;
+drop policy if exists "Authenticated users can delete job sources" on job_sources;
+
 create policy "Authenticated users can view job sources"
   on job_sources for select
   using (auth.role() = 'authenticated');
@@ -70,6 +75,8 @@ create table if not exists global_jobs (
 -- service role / admin key (no insert/update/delete policies here).
 alter table global_jobs enable row level security;
 
+drop policy if exists "Authenticated users can view global jobs" on global_jobs;
+
 create policy "Authenticated users can view global jobs"
   on global_jobs for select
   using (auth.role() = 'authenticated');
@@ -97,6 +104,10 @@ create table if not exists user_job_interactions (
 );
 
 alter table user_job_interactions enable row level security;
+
+drop policy if exists "Users can view own interactions" on user_job_interactions;
+drop policy if exists "Users can insert own interactions" on user_job_interactions;
+drop policy if exists "Users can update own interactions" on user_job_interactions;
 
 create policy "Users can view own interactions"
   on user_job_interactions for select
