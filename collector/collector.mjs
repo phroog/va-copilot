@@ -1,22 +1,25 @@
 /**
  * Sari Live Feed — Web Job Collector
  *
- * Scrapes job listing pages (Upwork, OnlineJobs.ph, LinkedIn, Indeed, ...)
- * with a real browser (Playwright) and uploads the found jobs to the shared
- * live feed. Only the admin runs this — end users never scrape.
+ * Scrapes job listing pages (Upwork, OnlineJobs.ph, Indeed, ...) with a real
+ * browser (Playwright) and uploads the found jobs to the shared live feed.
+ * Only the admin runs this — end users never scrape.
  *
- * Runs on the admin's laptop for now; later it can run unchanged on a server
- * (headless) for 24/7 collection.
+ * For known platforms each source is expanded into multiple search URLs (one
+ * per keyword, newest-first) so the feed covers all work-from-home roles, not
+ * just one search term. Run on the laptop now; later unchanged on a server
+ * (HEADLESS=1) for 24/7 collection.
  *
  * Env:
- *   SARI_API             default https://va-copilot-theta.vercel.app
- *   ADMIN_SECRET         required — matches the server's ADMIN_SECRET
- *   POLL_INTERVAL_MIN    default 6
- *   HEADLESS             set "1" to hide the browser window (server mode)
- *   PROFILE_DIR          optional persistent browser profile (login state)
+ *   SARI_API               default https://va-copilot-theta.vercel.app
+ *   ADMIN_SECRET           required — matches the server's ADMIN_SECRET
+ *   SEARCH_KEYWORDS        comma-separated list (default covers WFH roles)
+ *   POLL_INTERVAL_MIN      default 6
+ *   HEADLESS               set "1" to hide the browser window (server mode)
+ *   PROFILE_DIR            optional persistent browser profile (login state)
  *
  * Usage:
- *   npm start        (loop forever, every 6 min)
+ *   npm start        (loop forever, every POLL_INTERVAL_MIN minutes)
  *   npm run once     (single pass)
  */
 
@@ -29,9 +32,56 @@ const HEADLESS = process.env.HEADLESS === "1";
 const PROFILE_DIR = process.env.PROFILE_DIR || null;
 const ONCE = process.argv.includes("--once");
 
+const SEARCH_KEYWORDS = (process.env.SEARCH_KEYWORDS || [
+  "virtual assistant",
+  "executive assistant",
+  "social media manager",
+  "data entry",
+  "bookkeeping",
+  "customer service",
+  "content writer",
+  "video editor",
+  "graphic designer",
+  "web developer",
+  "proofreader",
+  "seo specialist",
+  "appointment setter",
+  "lead generation",
+  "transcription",
+  "ecommerce assistant",
+])
+  .toString()
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 if (!ADMIN_SECRET) {
   console.error("[collector] ADMIN_SECRET is not set. Run with: set ADMIN_SECRET=... then npm start");
   process.exit(1);
+}
+
+/* ── Platform URL builders (newest first) ───────────────────────── */
+function buildSearchUrls(source) {
+  const platform = (source.platform || source.name || "").toLowerCase();
+  const kw = (k) => encodeURIComponent(k);
+
+  if (platform.includes("upwork")) {
+    return SEARCH_KEYWORDS.map(
+      (k) => `https://www.upwork.com/nx/search/jobs/?q=${kw(k)}&sort=recency`
+    );
+  }
+  if (platform.includes("onlinejobs")) {
+    return SEARCH_KEYWORDS.map(
+      (k) => `https://www.onlinejobs.ph/jobseekers/jobsearch?jobkeyword=${kw(k)}`
+    );
+  }
+  if (platform.includes("indeed")) {
+    return SEARCH_KEYWORDS.map(
+      (k) => `https://www.indeed.com/jobs?q=${kw(k)}&sort=date`
+    );
+  }
+  // Unknown platform: scan the configured URL as-is.
+  return [source.url].filter(Boolean);
 }
 
 /* ── Scraping logic (portable string, runs inside the page) ─────── */
@@ -46,6 +96,12 @@ const SCAN_FN = `
     else if (hostname.includes("linkedin.com")) platform = "LinkedIn";
     else if (hostname.includes("indeed.com")) platform = "Indeed";
     else platform = hostname;
+
+    function detectExperience(el) {
+      const t = (el?.textContent || "");
+      const m = t.match(/Entry Level|Intermediate|Expert|Senior|Junior|Mid[ -]?Level/i);
+      return m ? m[0] : "";
+    }
 
     const jobs = [];
 
@@ -91,10 +147,13 @@ const SCAN_FN = `
           if (t) skills.push(t);
         });
 
-        const postedEl = card.querySelector('[data-test="posted-date"], time, [class*="posted"]');
+        const postedEl = card.querySelector('[data-test="job-pubilshed-date"], time, [class*="posted"]');
         const postedDate = postedEl?.textContent?.trim() || "";
 
-        jobs.push({ title, description, budgetAmount, budgetType, url: jobUrl, platform, skills, postedDate, clientName: "" });
+        jobs.push({
+          title, description, budgetAmount, budgetType, url: jobUrl, platform,
+          skills, postedDate, clientName: "", experienceLevel: detectExperience(card),
+        });
       });
     }
 
@@ -135,81 +194,12 @@ const SCAN_FN = `
         );
         const postedDate = postedEl?.textContent?.trim() || "";
 
-        jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName });
-      });
-    }
-
-    /* Facebook */
-    else if (platform === "Facebook") {
-      const postSelectors = [
-        'div[data-pagelet] div[role="article"]',
-        'div[role="article"]',
-        '.userContentWrapper',
-        'div[class*="post"]',
-      ];
-      let posts = [];
-      for (const sel of postSelectors) {
-        posts = document.querySelectorAll(sel);
-        if (posts.length > 0) break;
-      }
-
-      const keywords = /\\b(looking for|hiring|need a|job|vacancy|open position|freelancer|virtual assistant|va)\\b/i;
-      posts.forEach((post) => {
-        const text = post.textContent || "";
-        if (!keywords.test(text)) return;
-
-        const title = text.split("\\n").find((l) => keywords.test(l))?.trim()?.substring(0, 200) || text.substring(0, 120).trim();
-        const description = text.substring(0, 2000).trim();
-
-        const linkEl = post.querySelector('a[href*="/posts/"], a[href*="story"], a[href*="permalink"]');
-        const jobUrl = linkEl?.href || url;
-
-        const budgetMatch = text.match(/\\$\\s*[\\d,]+(?:\\s*-\\s*\\$?\\s*[\\d,]+)?(?:\\s*\\/\\s*hr)?/i);
-        const budgetAmount = budgetMatch ? budgetMatch[0] : "";
-
-        jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate: "", clientName: "" });
-      });
-    }
-
-    /* LinkedIn */
-    else if (platform === "LinkedIn") {
-      const cards = document.querySelectorAll(
-        '.job-card-container, .job-search-card, .job-card, article[class*="job"], li[class*="job"]'
-      );
-      cards.forEach((card) => {
-        const titleEl = card.querySelector(
-          '.job-card-list__title, .job-card-container__link, artdeco-entity-lockup__title a, a[class*="job-title"], h3 a, a[class*="job-card"]'
+        const typeEl = item.querySelector(
+          '[class*="job-type"], [class*="employment"], [class*="type"]'
         );
-        const title = titleEl?.textContent?.trim() || "";
-        if (!title) return;
+        const experienceLevel = typeEl?.textContent?.trim() || "";
 
-        const companyEl = card.querySelector(
-          '.job-card-container__company-name, .job-search-card__subtitle, [class*="company"]'
-        );
-        const clientName = companyEl?.textContent?.trim() || "";
-
-        const locationEl = card.querySelector(
-          '.job-card-container__metadata-item, .job-search-card__location, [class*="location"]'
-        );
-        const location = locationEl?.textContent?.trim() || "";
-
-        const linkHref = titleEl?.getAttribute("href") || "";
-        const jobUrl = linkHref.startsWith("http")
-          ? linkHref
-          : "https://www.linkedin.com" + (linkHref.startsWith("/") ? "" : "/") + linkHref;
-
-        const descEl = card.querySelector(
-          '.job-card-container__description, .job-search-card__snippet, [class*="description"], [class*="snippet"]'
-        );
-        const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
-
-        const budgetEl = card.querySelector('[class*="salary"], [class*="pay"], [class*="compensation"]');
-        const budgetAmount = budgetEl?.textContent?.trim() || "";
-
-        const postedEl = card.querySelector('time, [class*="posted"], [class*="date"]');
-        const postedDate = postedEl?.textContent?.trim() || "";
-
-        jobs.push({ title, description: description || location, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName });
+        jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName, experienceLevel });
       });
     }
 
@@ -250,7 +240,14 @@ const SCAN_FN = `
         );
         const budgetAmount = salaryEl?.textContent?.trim() || "";
 
-        jobs.push({ title, description: description || location, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate: "", clientName });
+        const postedEl = card.querySelector('time, .date, [class*="date"]');
+        const postedDate = postedEl?.textContent?.trim() || "";
+
+        jobs.push({
+          title, description: description || location, budgetAmount, budgetType: "",
+          url: jobUrl, platform, skills: [], postedDate, clientName,
+          experienceLevel: detectExperience(card),
+        });
       });
     }
 
@@ -259,6 +256,36 @@ const SCAN_FN = `
 `;
 
 /* ── API helpers ────────────────────────────────────────────────── */
+/** Parse listing "posted X ago" / "Posted on YYYY-MM-DD" text into an ISO date. */
+function parsePostedDate(raw) {
+  if (!raw) return null;
+  const t = raw.toLowerCase();
+  const now = Date.now();
+
+  // Absolute date: "Posted on 2026-08-01 17:50:27" or "2026-08-01"
+  const abs = t.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})?:?(\d{2})?/);
+  if (abs) {
+    const [, y, mo, d, h, mi, s] = abs;
+    const iso = `${y}-${mo}-${d}T${h || "00"}:${mi || "00"}:${s || "00"}Z`;
+    const ts = Date.parse(iso);
+    if (!isNaN(ts)) return new Date(ts).toISOString();
+  }
+
+  // Relative: "5 hours ago", "2 days ago", "3 minutes ago", "just now", "today"
+  const num = t.match(/(\d+)\s*(minute|hour|day|week|month|year)s?\s*ago/);
+  if (num) {
+    const n = parseInt(num[1], 10);
+    const unit = num[2];
+    const ms = { minute: 60e3, hour: 36e5, day: 864e5, week: 7 * 864e5, month: 30 * 864e5, year: 365 * 864e5 }[unit] || 0;
+    return new Date(now - n * ms).toISOString();
+  }
+  if (/just now|moments ago|a few seconds/i.test(t)) return new Date(now).toISOString();
+  if (/today/i.test(t)) return new Date(now).toISOString();
+  if (/yesterday/i.test(t)) return new Date(now - 864e5).toISOString();
+
+  return null;
+}
+
 async function getPendingSources() {
   const res = await fetch(`${SARI_API}/api/jobs/pending-web-sources`, {
     headers: { "x-admin-secret": ADMIN_SECRET },
@@ -279,20 +306,18 @@ async function uploadJobs(source, jobs) {
   return res.json();
 }
 
-/* ── Scrape one source ──────────────────────────────────────────── */
-async function scrapeSource(browser, source) {
-  const contextOpts = PROFILE_DIR ? { storageState: PROFILE_DIR } : {};
-  const context = await browser.newContext(contextOpts);
+/* ── Scrape one URL ─────────────────────────────────────────────── */
+async function scrapeUrl(context, url, platformName) {
   const page = await context.newPage();
   try {
-    await page.goto(source.url, { waitUntil: "domcontentloaded", timeout: 45000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
 
-    // Wait for candidate content, then let lazy-loading run.
+    // Wait for candidate content, then scroll to load more results.
     const selectors = [
       'section[data-test="JobCard"]',
       ".joblist-item",
-      ".job-card-container",
       ".job_seen_beacon",
+      ".jobsearch-ResultJob",
       "div[role=\"article\"]",
       "article",
     ];
@@ -301,17 +326,50 @@ async function scrapeSource(browser, source) {
       selectors,
       { timeout: 25000 }
     ).catch(() => {});
-    await page.waitForTimeout(2500);
 
-    const result = await page.evaluate(new Function(`(${SCAN_FN}); return scanPageForJobs();`));
-    const jobs = (result?.jobs || []).map((j) => ({
+    for (let i = 0; i < 6; i++) {
+      await page.evaluate(() => window.scrollBy(0, window.innerHeight)).catch(() => {});
+      await page.waitForTimeout(1200).catch(() => {});
+    }
+    await page.waitForTimeout(1500).catch(() => {});
+
+    const result = await page.evaluate(new Function(`${SCAN_FN}; return scanPageForJobs();`));
+    return (result?.jobs || []).map((j) => ({
       ...j,
-      platform: j.platform || source.platform || source.name,
+      platform: j.platform || platformName,
+      posted_at: parsePostedDate(j.postedDate) || new Date().toISOString(),
     }));
-    return jobs;
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
+/* ── Scrape one source (all expanded search URLs) ───────────────── */
+async function scrapeSource(browser, source) {
+  const contextOpts = PROFILE_DIR ? { storageState: PROFILE_DIR } : {};
+  const context = await browser.newContext(contextOpts);
+  const urls = buildSearchUrls(source);
+  const seen = new Set();
+  const allJobs = [];
+
+  try {
+    for (const url of urls) {
+      try {
+        const jobs = await scrapeUrl(context, url, source.platform || source.name);
+        for (const j of jobs) {
+          const key = j.url || `${j.title}|${j.clientName}`;
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          allJobs.push(j);
+        }
+      } catch (err) {
+        console.error(`[collector]      skip ${url}: ${err.message}`);
+      }
+    }
   } finally {
     await context.close();
   }
+  return allJobs;
 }
 
 /* ── Main loop ──────────────────────────────────────────────────── */
@@ -325,10 +383,10 @@ async function runPass(browser) {
 
   let totalUploaded = 0;
   for (const source of sources) {
-    console.log(`[collector]   -> ${source.name}: ${source.url}`);
+    console.log(`[collector]   -> ${source.name} (${SEARCH_KEYWORDS.length} keywords)`);
     try {
       const jobs = await scrapeSource(browser, source);
-      console.log(`[collector]      found ${jobs.length} job(s)`);
+      console.log(`[collector]      found ${jobs.length} unique job(s)`);
       const res = await uploadJobs(source, jobs);
       totalUploaded += res.inserted || 0;
       console.log(`[collector]      uploaded ${res.inserted || 0} new`);
@@ -349,6 +407,7 @@ async function main() {
   };
   const browser = await chromium.launch(launchOpts);
   console.log(`[collector] browser ${HEADLESS ? "headless" : "windowed"} · API ${SARI_API} · every ${POLL_INTERVAL_MIN} min`);
+  console.log(`[collector] keywords: ${SEARCH_KEYWORDS.join(", ")}`);
 
   if (ONCE) {
     await runPass(browser);

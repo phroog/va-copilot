@@ -47,7 +47,8 @@ export async function GET(request: Request) {
     query = query.gt("collected_at", cutoff);
   }
 
-  const { data: jobs, error: jobsError } = await query.order("collected_at", { ascending: false }).limit(100);
+  // Newest first: prefer the job's posted date, fall back to collected time.
+  const { data: jobs, error: jobsError } = await query.order("posted_at", { ascending: false, nullsFirst: false }).limit(100);
   if (jobsError) return NextResponse.json({ error: jobsError.message }, { status: 500 });
 
   const feed = (jobs ?? []).map((job: any) => {

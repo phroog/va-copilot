@@ -1,8 +1,13 @@
 # Sari Live Feed Collector
 
-Scrapes web job listing pages (Upwork, OnlineJobs.ph, LinkedIn, Indeed, ...)
-with a real browser (Playwright) and uploads the found jobs into the shared
-**Live Feed**. Only the admin runs this — end users never scrape.
+Scrapes web job listing pages (Upwork, OnlineJobs.ph, Indeed, ...) with a real
+browser (Playwright) and uploads the found jobs into the shared **Live Feed**.
+Only the admin runs this — end users never scrape.
+
+For each source the collector expands a set of search **keywords** (default:
+virtual assistant, social media manager, data entry, ...) into separate
+newest-first search URLs, scrolls each page to load more results, and pushes
+everything into the feed.
 
 Runs on your laptop for now. Later you can run the exact same script on a
 server (headless) for 24/7 collection.
@@ -30,16 +35,21 @@ Optional env vars:
 |---|---|---|
 | `SARI_API` | `https://va-copilot-theta.vercel.app` | Server URL |
 | `ADMIN_SECRET` | — | Must match the server's `ADMIN_SECRET` |
+| `SEARCH_KEYWORDS` | a WFH role list | Comma-separated search terms expanded per platform |
 | `POLL_INTERVAL_MIN` | `6` | How often to check for pending sources |
 | `HEADLESS` | off | Set `1` to hide the browser window (server mode) |
-| `PROFILE_DIR` | — | Persistent Playwright storage state (keeps logins for LinkedIn/Indeed) |
+| `PROFILE_DIR` | — | Persistent Playwright storage state (keeps logins) |
 
 ## How it works
 
 1. `GET /api/jobs/pending-web-sources` (max 5 web sources not polled in 10 min).
-2. Opens each URL in Chromium, waits for job cards, scans them.
-3. `POST /api/jobs/upload-web` uploads the jobs to the shared feed.
-4. Even on failure, the source is marked collected so it isn't hammered.
+2. Each source is expanded into per-keyword search URLs (newest first):
+   - Upwork → `?q=<kw>&sort=recency`
+   - OnlineJobs.ph → `?jobkeyword=<kw>` (30 results/page)
+   - Indeed → `?q=<kw>&sort=date`
+3. Opens each URL in Chromium, scrolls to load more cards, scans them.
+4. `POST /api/jobs/upload-web` uploads the jobs to the shared feed.
+5. Even on failure, the source is marked collected so it isn't hammered.
 
 Jobs appear in the Live Feed via Supabase Realtime for **all** users.
 

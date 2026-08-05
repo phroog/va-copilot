@@ -43,14 +43,14 @@ create policy "Authenticated users can delete job sources"
   using (auth.role() = 'authenticated');
 
 -- Preset web sources (only inserted if not already present).
--- These are listing/search pages the admin collector opens and scans.
+-- These are listing/search pages the admin collector opens and scans,
+-- sorted by newest. LinkedIn is excluded (login wall). The collector
+-- itself expands these into multiple search keywords.
 insert into job_sources (name, source_type, url, platform, is_active, include_in_live_feed)
 values
-  ('Upwork', 'web', 'https://www.upwork.com/nx/search/jobs/?q=virtual+assistant', 'Upwork', true, true),
-  ('OnlineJobs.ph', 'web', 'https://www.onlinejobs.ph/jobseekers/jobsearch/?keyword=virtual+assistant', 'OnlineJobs.ph', true, true),
-  ('LinkedIn Jobs', 'web', 'https://www.linkedin.com/jobs/search?keywords=virtual%20assistant', 'LinkedIn', true, true),
-  ('Indeed', 'web', 'https://www.indeed.com/jobs?q=virtual+assistant', 'Indeed', true, true),
-  ('Facebook Groups', 'web', 'https://www.facebook.com/groups/20531316728', 'Facebook', false, false)
+  ('Upwork', 'web', 'https://www.upwork.com/nx/search/jobs/?q=virtual+assistant&sort=recency', 'Upwork', true, true),
+  ('OnlineJobs.ph', 'web', 'https://www.onlinejobs.ph/jobseekers/jobsearch?jobkeyword=virtual+assistant', 'OnlineJobs.ph', true, true),
+  ('Indeed', 'web', 'https://www.indeed.com/jobs?q=virtual+assistant&sort=date', 'Indeed', true, true)
 on conflict (name) do nothing;
 
 -- ── 2. Global jobs (shared live feed) ──────────────────────────────
@@ -67,9 +67,13 @@ create table if not exists global_jobs (
   client_name text,
   client_country text,
   client_rating numeric,
+  experience_level text,
   posted_at timestamptz,
   collected_at timestamptz default now()
 );
+
+-- Ensure the column exists even if the table predates this migration.
+alter table global_jobs add column if not exists experience_level text;
 
 -- Public read for authenticated users; writes are restricted to the
 -- service role / admin key (no insert/update/delete policies here).

@@ -1,12 +1,15 @@
 # Global Live Job Feed — Setup Guide
 
 The centralized live job feed collects jobs by scraping web listing pages
-(Upwork, OnlineJobs.ph, LinkedIn, Indeed, ...) with Playwright and pushing
-them into a shared feed. **Only the admin scrapes** — end users just browse
-the feed and never run any scraper.
+(Upwork, OnlineJobs.ph, Indeed, ...) with Playwright and pushing them into a
+shared feed. **Only the admin scrapes** — end users just browse the feed and
+never run any scraper.
 
 - The collector runs on the admin's laptop now, and can later run unchanged
   on a small server (headless) for 24/7 collection.
+- Each source is expanded into many search keywords (all work-from-home roles)
+  with newest-first sorting, so the feed covers everything — users filter by
+  role/platform themselves.
 - There are **no RSS sources and no Vercel cron** — everything is web scraping
   by the admin collector.
 
@@ -21,7 +24,8 @@ supabase/migrations/20260805_global_jobs_feed.sql
 It creates `job_sources`, `global_jobs`, and `user_job_interactions`, enables
 RLS (public read for authenticated users, writes restricted to the service
 role), adds `global_jobs` to realtime, and inserts preset web sources (Upwork,
-OnlineJobs.ph, LinkedIn Jobs, Indeed search pages).
+OnlineJobs.ph, Indeed search pages, newest-first). LinkedIn is intentionally
+excluded (login wall).
 
 ## 2. Environment variables
 
@@ -50,14 +54,16 @@ npm start      # loops forever, every 6 minutes
 The collector:
 1. Calls `GET /api/jobs/pending-web-sources` (up to 5 web sources not polled
    in the last 10 minutes),
-2. opens each URL in Chromium, waits for job cards, scans them,
-3. uploads the jobs to `POST /api/jobs/upload-web` with `x-admin-secret`.
+2. expands each source into per-keyword newest-first search URLs
+   (`SEARCH_KEYWORDS` env var, default covers WFH roles),
+3. opens each URL in Chromium, scrolls to load more cards, scans them,
+4. uploads the jobs to `POST /api/jobs/upload-web` with `x-admin-secret`.
 
 New jobs appear in **📡 Live Feed** for every user via Supabase Realtime.
 
 Keep the laptop (or a server later) running — closing it pauses collection.
-Sites that need a login (LinkedIn/Indeed) only yield what's visible without
-a logged-in session; optionally use `PROFILE_DIR` to persist a login.
+Sites that need a login (LinkedIn) are excluded by default; some Indeed
+listings may also be limited without a session.
 
 ## 4. Optional — 24/7 cloud scraping (later)
 

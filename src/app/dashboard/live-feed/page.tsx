@@ -28,6 +28,7 @@ interface FeedJob {
   client_name: string | null;
   client_country: string | null;
   client_rating: number | null;
+  experience_level: string | null;
   posted_at: string | null;
   collected_at: string;
   is_saved: boolean;
@@ -251,7 +252,7 @@ export default function LiveFeedPage() {
         <div>
           <h1 className="text-3xl font-extrabold">📡 Live Feed</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Global jobs from RSS/API collectors and the Admin extension — updated live.
+            Global jobs scraped by the admin web collector — updated live. Filter by role, platform or score.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -314,7 +315,7 @@ export default function LiveFeedPage() {
             <p className="text-4xl mb-3">📡</p>
             <p className="text-slate-400">
               {jobs.length === 0
-                ? "No jobs collected yet. Enable Admin Mode in the extension or wait for the RSS collector."
+                ? "No jobs collected yet. Run the admin collector to fill the feed."
                 : "No jobs match the current filters."}
             </p>
           </CardContent>
@@ -408,6 +409,11 @@ function FeedJobCard({
                   {job.platform}
                 </Badge>
               )}
+              {job.experience_level && (
+                <span className="text-xs px-2 py-0.5 bg-kawaii-lavender/20 dark:bg-kawaii-purple/20 rounded-full font-medium text-slate-600 dark:text-slate-300">
+                  {job.experience_level}
+                </span>
+              )}
               {job.budget && <span className="text-sm font-bold text-slate-700 dark:text-slate-200">💰 {job.budget}</span>}
             </div>
             <h3 className="font-extrabold text-base text-slate-800 dark:text-slate-100 leading-snug">
@@ -425,7 +431,7 @@ function FeedJobCard({
               )}
             </h3>
             <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-              🕒 {timeAgo(job.posted_at || job.collected_at) || "Just collected"}
+              📅 {job.posted_at ? "Posted " + timeAgo(job.posted_at) : "Collected " + timeAgo(job.collected_at)}
               {job.client_name ? ` · 👤 ${job.client_name}${job.client_country ? " (" + job.client_country + ")" : ""}` : ""}
             </p>
           </div>

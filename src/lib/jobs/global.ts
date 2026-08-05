@@ -20,6 +20,7 @@ export async function upsertGlobalJob(job: Record<string, any>) {
     client_name: job.client_name ?? null,
     client_country: job.client_country ?? null,
     client_rating: job.client_rating ?? null,
+    experience_level: job.experience_level ?? job.experienceLevel ?? null,
     posted_at: job.posted_at ?? null,
   };
 
