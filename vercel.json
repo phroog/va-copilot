@@ -2,8 +2,7 @@
   "crons": [
     {
       "path": "/api/jobs/collect",
-      "schedule": "0 9 * * *",
-      "Authorization": "Bearer $CRON_SECRET"
+      "schedule": "0 9 * * *"
     }
   ]
 }
