@@ -1,7 +1,5 @@
 /* ── Credit Balance Poller ──────────────────────────────────────── */
-const SARI_API = "https://va-copilot-theta.vercel.app";
-
-async function pollCredits() {
+const SARI_API = "https://va-copilot-theta.vercel.app";async function pollCredits() {
   try {
     const { sariToken } = await chrome.storage.local.get("sariToken");
     if (!sariToken) return;
@@ -285,3 +283,86 @@ function scanPageForJobs() {
 
   return { platform, count: jobs.length, jobs };
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   ADMIN MODE — Centralized Web Collector
+   Periodically pulls pending web sources from the Sari server, scans
+   each URL in a hidden tab, and uploads the scraped jobs.
+   ══════════════════════════════════════════════════════════════════ */
+
+const ADMIN_POLL_INTERVAL_MINUTES = 6;
+
+async function runAdminCollect() {
+  try {
+    const { sariAdminEnabled, sariAdminSecret } = await chrome.storage.local.get([
+      "sariAdminEnabled",
+      "sariAdminSecret",
+    ]);
+    if (!sariAdminEnabled || !sariAdminSecret) return;
+
+    const headers = { "Content-Type": "application/json", "x-admin-secret": sariAdminSecret };
+
+    // 1) Fetch pending web sources (not polled in the last 10 min, max 5).
+    const pendingRes = await fetch(`${SARI_API}/api/jobs/pending-web-sources`, {
+      headers: { "x-admin-secret": sariAdminSecret },
+    });
+    if (!pendingRes.ok) return;
+    const pending = await pendingRes.json();
+    const sources = pending.sources || [];
+    if (sources.length === 0) return;
+
+    // 2) Scan each URL in a hidden tab.
+    for (const source of sources) {
+      if (!source.url) continue;
+      let jobs = [];
+      try {
+        const tab = await chrome.tabs.create({ url: source.url, active: false });
+        await waitForTabLoad(tab.id, 35000);
+        await waitForContent(tab.id, 25000);
+
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: scanPageForJobs,
+        });
+        const data = results?.[0]?.result;
+        if (data && data.jobs && data.jobs.length > 0) {
+          jobs = data.jobs.map((j) => ({ ...j, platform: j.platform || source.platform || source.name }));
+        }
+
+        await chrome.tabs.remove(tab.id);
+      } catch (err) {
+        console.error(`Admin collect failed for ${source.url}:`, err);
+      }
+
+      // 3) Upload whatever we found (even zero, so the source is marked collected).
+      try {
+        await fetch(`${SARI_API}/api/jobs/upload-web`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ sourceId: source.id, jobs }),
+        });
+      } catch (err) {
+        console.error(`Admin upload failed for source ${source.id}:`, err);
+      }
+    }
+  } catch (err) {
+    console.error("Admin collect error:", err);
+  }
+}
+
+function setupAdminModeAlarm() {
+  chrome.alarms.create("sari-admin-collect", { periodInMinutes: ADMIN_POLL_INTERVAL_MINUTES });
+}
+
+chrome.runtime.onStartup.addListener(() => { setupAdminModeAlarm(); runAdminCollect(); });
+chrome.runtime.onInstalled.addListener(() => { setupAdminModeAlarm(); runAdminCollect(); });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "sari-admin-collect") runAdminCollect();
+});
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action === "adminCollectNow") {
+    runAdminCollect().then(() => sendResponse({ ok: true }));
+    return true;
+  }
+});

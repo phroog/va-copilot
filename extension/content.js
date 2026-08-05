@@ -139,7 +139,7 @@ function extractJobData() {
     '[data-test="posted-date"]',
     '[data-qa="posted-date"]',
     ".posted-date",
-    '[data-test="JobPosted"]",
+    '[data-test="JobPosted"]',
     ".job-posted",
     '[data-test="date-posted"]',
     "time",

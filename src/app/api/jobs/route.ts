@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { syncUserJobToFeed } from "@/lib/jobs/global";
 
 export async function GET(request: Request) {
   const supabase = createClient();
@@ -93,5 +94,9 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Also publish to the shared live feed (dedupe on url) and mark it saved.
+  await syncUserJobToFeed(data);
+
   return NextResponse.json({ job: data });
 }

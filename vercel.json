@@ -1,0 +1,9 @@
+{
+  "crons": [
+    {
+      "path": "/api/jobs/collect",
+      "schedule": "*/5 * * * *",
+      "Authorization": "Bearer $CRON_SECRET"
+    }
+  ]
+}

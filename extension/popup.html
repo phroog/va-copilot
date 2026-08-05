@@ -270,8 +270,19 @@
             <button id="disconnect-btn-bottom" class="btn btn-ghost" style="width:100%;margin-top:4px">Disconnect</button>
           </div>
           <div class="card">
+            <p class="settings-heading">🛠️ Admin Mode (Live Feed Collector)</p>
+            <p class="status-text" style="margin-bottom:6px">While enabled, this browser periodically scrapes pending web job sources and uploads them to the global Live Feed.</p>
+            <label class="toggle-label">
+              <input type="checkbox" id="admin-mode-toggle">
+              <span>Enable Admin Mode</span>
+            </label>
+            <input type="password" id="admin-secret-input" class="vault-input" placeholder="ADMIN_SECRET" autocomplete="off">
+            <button id="admin-save-btn" class="btn btn-secondary" style="margin-top:4px">Save &amp; Start Collecting</button>
+            <p id="admin-status" class="status-text"></p>
+          </div>
+          <div class="card">
             <p class="settings-heading">ℹ️ Sari Extension</p>
-            <p class="status-text">Version 1.1.0</p>
+            <p class="status-text">Version 1.2.0</p>
             <p class="status-text">Your all-in-one freelancing companion for VAs</p>
           </div>
         </div>

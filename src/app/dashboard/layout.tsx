@@ -9,7 +9,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { useLocale } from "@/lib/i18n/context";
 import { useProfileName } from "@/lib/use-profile-name";
 import { useState, useEffect, useCallback } from "react";
-import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Inbox, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, Target } from "lucide-react";
+import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Inbox, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, Target, RadioTower } from "lucide-react";
 import dynamic from "next/dynamic";
 const MochiHub = dynamic(() => import("@/components/mochi-hub"), { ssr: false });
 import { ToastProvider } from "@/components/toast";
@@ -22,6 +22,7 @@ const sidebarGroups = [
     links: [
       { href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard },
       { href: "/dashboard/jobs", labelKey: "jobs", icon: Briefcase },
+      { href: "/dashboard/live-feed", labelKey: "liveFeed", icon: RadioTower },
       { href: "/dashboard/milestones", labelKey: "milestones", icon: GitBranch },
       { href: "/dashboard/pipeline", labelKey: "pipeline", icon: GitBranch },
       { href: "/dashboard/vault", labelKey: "vault", icon: Shield },

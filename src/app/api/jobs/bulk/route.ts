@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { syncUserJobToFeed } from "@/lib/jobs/global";
 
 export async function POST(request: Request) {
   const supabase = createClient();
@@ -31,5 +32,11 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.from("jobs").insert(inserts).select();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Publish each saved job to the shared live feed too.
+  for (const job of (data ?? [])) {
+    await syncUserJobToFeed(job);
+  }
+
   return NextResponse.json({ jobs: data, count: data?.length ?? 0 });
 }

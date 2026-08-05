@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -388,6 +389,23 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3">
             <Button onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "💾 Save Business Details"}</Button>
             {saved && <span className="text-sm text-green-500 animate-fade-in">✅ Saved!</span>}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">🛰️ {t("jobSources")}</CardTitle>
+          <CardDescription>Manage the RSS/API/web sources that feed the centralized Live Feed.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard/settings/job-sources">
+              <Button variant="primary">🛰️ Manage Job Sources</Button>
+            </Link>
+            <p className="text-xs text-slate-400">
+              Toggle “Include in Live Feed”, check last-collected time, and add custom RSS/API/web sources.
+            </p>
           </div>
         </CardContent>
       </Card>
