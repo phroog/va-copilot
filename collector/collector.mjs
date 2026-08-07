@@ -89,6 +89,41 @@ function buildSearchUrls(source) {
       (k) => `https://www.indeed.com/jobs?q=${kw(k)}&sort=date`
     );
   }
+  if (platform.includes("freelancer")) {
+    return SEARCH_KEYWORDS.map(
+      (k) => `https://www.freelancer.com/jobs/${kw(k).replace(/%20/g, "-")}`
+    );
+  }
+  if (platform.includes("guru")) {
+    return SEARCH_KEYWORDS.map(
+      (k) => `https://www.guru.com/d/jobs/?keywords=${kw(k)}`
+    );
+  }
+  if (platform.includes("remote.co") || platform.includes("remote co")) {
+    return SEARCH_KEYWORDS.map(
+      (k) => `https://remote.co/remote-jobs/?search=${kw(k)}`
+    );
+  }
+  if (platform.includes("workingnomads")) {
+    return SEARCH_KEYWORDS.map(
+      (k) => `https://www.workingnomads.com/jobs?keyword=${kw(k)}`
+    );
+  }
+  if (platform.includes("jobspresso")) {
+    return SEARCH_KEYWORDS.map(
+      (k) => `https://jobspresso.co/?s=${kw(k)}`
+    );
+  }
+  if (platform.includes("remoteok")) {
+    return SEARCH_KEYWORDS.map(
+      (k) => `https://remoteok.com/remote-${kw(k).replace(/%20/g, "-")}-jobs`
+    );
+  }
+  if (platform.includes("peopleperhour")) {
+    return SEARCH_KEYWORDS.map(
+      (k) => `https://www.peopleperhour.com/freelance-${kw(k).replace(/%20/g, "-")}-jobs`
+    );
+  }
   // Unknown platform: scan the configured URL as-is.
   return [source.url].filter(Boolean);
 }
@@ -104,6 +139,13 @@ const SCAN_FN = `
     else if (hostname.includes("facebook.com")) platform = "Facebook";
     else if (hostname.includes("linkedin.com")) platform = "LinkedIn";
     else if (hostname.includes("indeed.com")) platform = "Indeed";
+    else if (hostname.includes("freelancer.com")) platform = "Freelancer";
+    else if (hostname.includes("guru.com")) platform = "Guru";
+    else if (hostname.includes("remote.co")) platform = "Remote.co";
+    else if (hostname.includes("workingnomads.com")) platform = "WorkingNomads";
+    else if (hostname.includes("jobspresso.co")) platform = "Jobspresso";
+    else if (hostname.includes("remoteok.com")) platform = "RemoteOK";
+    else if (hostname.includes("peopleperhour.com")) platform = "PeoplePerHour";
     else platform = hostname;
 
     function detectExperience(el) {
@@ -250,6 +292,115 @@ const SCAN_FN = `
           url: jobUrl, platform, skills: [], postedDate, clientName,
           experienceLevel: detectExperience(card),
         });
+      });
+    }
+
+    /* Freelancer.com */
+    else if (platform === "Freelancer") {
+      document.querySelectorAll(".JobSearchCard-item").forEach((card) => {
+        const titleEl = card.querySelector(".JobSearchCard-primary-heading-link");
+        const title = titleEl?.textContent?.trim() || "";
+        if (!title) return;
+        const jobUrl = titleEl.href;
+        const descEl = card.querySelector(".JobSearchCard-primary-description");
+        const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
+        const postedEl = card.querySelector(".JobSearchCard-primary-heading-days");
+        const postedDate = postedEl?.textContent?.trim() || "";
+        const budgetEl = card.querySelector("[class*='budget'], [class*='BidInfo'], [class*='amount']");
+        const budgetAmount = budgetEl?.textContent?.trim() || "";
+        jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName: "", experienceLevel: "" });
+      });
+    }
+
+    /* Guru.com */
+    else if (platform === "Guru") {
+      document.querySelectorAll(".jobRecord, [class*='jobRecord']").forEach((card) => {
+        const titleEl = card.querySelector(".jobRecord__title a, h2 a");
+        const title = titleEl?.textContent?.trim() || "";
+        if (!title) return;
+        const jobUrl = titleEl.href;
+        const metaEl = card.querySelector(".jobRecord__meta");
+        const postedDate = metaEl?.textContent?.trim()?.replace(/^Posted\s*/i, "") || "";
+        const budgetEl = card.querySelector(".jobRecord__budget");
+        const budgetAmount = budgetEl?.textContent?.trim()?.replace(/\|/g, "-") || "";
+        const descEl = card.querySelector(".jobRecord__description, .record__description, p.copy");
+        const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
+        jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName: "", experienceLevel: detectExperience(card) });
+      });
+    }
+
+    /* Remote.co */
+    else if (platform === "Remote.co") {
+      document.querySelectorAll('a[href*="job-details"]').forEach((titleEl) => {
+        const title = titleEl?.textContent?.trim() || "";
+        if (!title || title.length < 10) return;
+        const jobUrl = titleEl.href;
+        const card = titleEl.closest("li, .job-listing, article, div") || titleEl.parentElement;
+        const descEl = card?.querySelector("p, .description, [class*='snippet']");
+        const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
+        jobs.push({ title, description, budgetAmount: "", budgetType: "", url: jobUrl, platform, skills: [], postedDate: "", clientName: "", experienceLevel: "" });
+      });
+    }
+
+    /* WorkingNomads */
+    else if (platform === "WorkingNomads") {
+      document.querySelectorAll("a.job-desktop").forEach((titleEl) => {
+        const title = titleEl?.querySelector("h4")?.textContent?.trim() || titleEl?.textContent?.trim() || "";
+        if (!title) return;
+        const jobUrl = titleEl.href;
+        const descEl = titleEl.querySelector(".job-desktop__company, .job-desktop__description, .job-detail");
+        const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
+        const postedEl = titleEl.querySelector("time, .job-desktop__date, [class*='date']");
+        const postedDate = postedEl?.textContent?.trim() || "";
+        const locEl = titleEl.querySelector(".job-desktop__location");
+        const clientName = locEl?.textContent?.trim() || "";
+        jobs.push({ title, description, budgetAmount: "", budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName, experienceLevel: "" });
+      });
+    }
+
+    /* Jobspresso */
+    else if (platform === "Jobspresso") {
+      document.querySelectorAll(".entry-title a").forEach((titleEl) => {
+        const title = titleEl?.textContent?.trim() || "";
+        if (!title) return;
+        const jobUrl = titleEl.href;
+        const card = titleEl.closest(".job_listing, article, li") || titleEl.parentElement;
+        const descEl = card?.querySelector(".entry-content, .job-description, p");
+        const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
+        const budgetEl = card?.querySelector(".job-tags, .company, [class*='salary']");
+        const budgetAmount = budgetEl?.textContent?.trim() || "";
+        jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate: "", clientName: "", experienceLevel: "" });
+      });
+    }
+
+    /* RemoteOK */
+    else if (platform === "RemoteOK") {
+      document.querySelectorAll("tr.job, tr[data-posting-id]").forEach((card) => {
+        const titleEl = card.querySelector(".company_and_position a, a[class*='preventLink'], td[class*='position'] a, h2 a");
+        const title = titleEl?.textContent?.trim() || "";
+        if (!title) return;
+        const linkHref = card.getAttribute("data-url") || titleEl?.getAttribute("href") || "";
+        const jobUrl = linkHref.startsWith("http") ? linkHref : "https://remoteok.com" + linkHref;
+        const companyEl = card.querySelector(".companyLink, [class*='company']");
+        const clientName = companyEl?.textContent?.trim() || card.getAttribute("data-company") || "";
+        const meta = card.querySelector("td[class*='position'] .location, .location");
+        const location = meta?.textContent?.trim() || "";
+        jobs.push({ title, description: location, budgetAmount: "", budgetType: "", url: jobUrl, platform, skills: [], postedDate: "", clientName, experienceLevel: "" });
+      });
+    }
+
+    /* PeoplePerHour */
+    else if (platform === "PeoplePerHour") {
+      document.querySelectorAll('a[href*="freelance-jobs/"], a.item__url').forEach((titleEl) => {
+        const title = titleEl?.textContent?.trim() || "";
+        if (!title || title.length < 10) return;
+        const jobUrl = titleEl.href;
+        const card = titleEl.closest("li, article, [class*='ListItem']") || titleEl.parentElement;
+        const descEl = card?.querySelector("p, [class*='description'], [class*='summary']");
+        const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
+        const budgetEl = card?.querySelector("[class*='price'], [class*='budget'], [class*='rate']");
+        const budgetAmount = budgetEl?.textContent?.trim() || "";
+        jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate: "", clientName: "", experienceLevel: "" });
       });
     }
 

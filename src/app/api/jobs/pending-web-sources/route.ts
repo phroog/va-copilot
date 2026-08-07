@@ -3,7 +3,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 /**
  * Returns web sources that haven't been polled in the last 10 minutes
- * (limited to 5 URLs). Called by the extension's "Admin Mode" background
+ * (limited to 12 URLs). Called by the extension's "Admin Mode" background
  * script. Protected by ADMIN_SECRET.
  */
 export async function GET(request: Request) {
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     .eq("is_active", true)
     .or(`last_collected_at.is.null,last_collected_at.lt.${cutoff}`)
     .order("last_collected_at", { ascending: true, nullsFirst: true })
-    .limit(5);
+    .limit(12);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

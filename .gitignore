@@ -4,3 +4,4 @@ node_modules/
 collector/node_modules/
 collector/profile/
 collector/cdp-profile/
+tsconfig.tsbuildinfo
