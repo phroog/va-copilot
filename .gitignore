@@ -3,3 +3,4 @@ node_modules/
 .env*
 collector/node_modules/
 collector/profile/
+collector/cdp-profile/

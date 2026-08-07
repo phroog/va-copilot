@@ -31,6 +31,7 @@ const ADMIN_SECRET = process.env.ADMIN_SECRET || "";
 const POLL_INTERVAL_MIN = parseInt(process.env.POLL_INTERVAL_MIN || "6", 10);
 const HEADLESS = process.env.HEADLESS === "1";
 const PROFILE_DIR = process.env.PROFILE_DIR || null;
+const CHROME_CDP = process.env.CHROME_CDP || null;
 const ONCE = process.argv.includes("--once");
 
 const SEARCH_KEYWORDS = (process.env.SEARCH_KEYWORDS || [
@@ -321,28 +322,30 @@ async function scrapeUrl(context, url, platformName) {
   try {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
 
-    // Cloudflare "Just a moment..." challenge: give it time to pass. With a
-    // persistent profile you can solve the CAPTCHA manually in the visible
-    // window — then we wait for the challenge to clear without reloading
-    // (a reload would reset it). Without a profile we retry a few times.
-    if (PROFILE_DIR) {
+    // Cloudflare "Just a moment..." challenge: with real Chrome the Turnstile
+    // checkbox often passes automatically after a few seconds. Give it up to
+    // 60s (polling, not reloading — a reload resets the challenge). If a
+    // checkbox iframe is present, try clicking it.
+    const deadline = Date.now() + 60000;
+    while (Date.now() < deadline) {
+      const stuck = await page
+        .evaluate(() => document.body.innerText.includes("Just a moment"))
+        .catch(() => false);
+      if (!stuck) break;
+
       try {
-        await page.waitForFunction(
-          () => !document.body.innerText.includes("Just a moment"),
-          { timeout: 90000 }
-        ).catch(() => {});
-      } catch {}
-    } else {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const stuck = await page
-          .evaluate(() => document.body.innerText.includes("Just a moment"))
-          .catch(() => false);
-        if (!stuck) break;
-        await page.waitForTimeout(8000);
-        if (attempt < 2) {
-          await page.reload({ waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => {});
+        const frames = page.frames();
+        for (const f of frames) {
+          const box = await f.$(
+            'input[type="checkbox"], [role="checkbox"], .cb-i-frame, iframe[title*="checkbox"]'
+          );
+          if (box) {
+            await box.click({ force: true, timeout: 2000 }).catch(() => {});
+          }
         }
-      }
+      } catch {}
+
+      await page.waitForTimeout(2500);
     }
 
     // Wait for candidate content, then scroll to load more results.
@@ -480,6 +483,13 @@ async function runPass(browser, persistentContext) {
 async function main() {
   const launchOpts = {
     headless: HEADLESS,
+    // Real installed Chrome (not bundled Chromium): far fewer bot signals,
+    // and the Cloudflare cf_clearance from it lasts much longer.
+    channel: "chrome",
+    userAgent: DESKTOP_UA,
+    locale: "en-US",
+    extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" },
+    viewport: { width: 1366, height: 900 },
     args: ["--disable-blink-features=AutomationControlled", "--no-sandbox"],
   };
   console.log(`[collector] browser ${HEADLESS ? "headless" : "windowed"} · API ${SARI_API} · every ${POLL_INTERVAL_MIN} min`);
@@ -488,7 +498,14 @@ async function main() {
 
   let browser;
   let persistentContext = null;
-  if (PROFILE_DIR) {
+  if (CHROME_CDP) {
+    // Connect to your REAL running Chrome (started with --remote-debugging-port).
+    // The collector drives your own browser, so your real cookies, login state
+    // and trusted fingerprint are used — Cloudflare sees a normal browser.
+    browser = await chromium.connectOverCDP(CHROME_CDP);
+    persistentContext = browser.contexts()[0];
+    console.log(`[collector] connected to real Chrome via CDP ${CHROME_CDP}`);
+  } else if (PROFILE_DIR) {
     // Persistent context: keeps cookies (incl. Cloudflare cf_clearance) and
     // login state between runs. Solve the Upwork CAPTCHA once in the visible
     // window and it is remembered for later passes.
