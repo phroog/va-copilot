@@ -73,6 +73,8 @@ export default function LiveFeedPage() {
   const [pitchLoading, setPitchLoading] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [scoring, setScoring] = useState(false);
+  const [live, setLive] = useState(false);
+  const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const scoredRef = useRef<Set<string>>(new Set());
 
   const applyDefaults = useCallback((job: any): FeedJob => ({
@@ -115,9 +117,19 @@ export default function LiveFeedPage() {
           const collected = new Date(job.collected_at).getTime();
           if (isNaN(collected) || collected < cutoff) return;
           setJobs((prev) => [applyDefaults(job), ...prev.filter((j) => j.id !== job.id)]);
+          setNewIds((prev) => new Set(prev).add(job.id));
+          setTimeout(() => {
+            setNewIds((prev) => {
+              const next = new Set(prev);
+              next.delete(job.id);
+              return next;
+            });
+          }, 4000);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        setLive(status === "SUBSCRIBED");
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -256,6 +268,17 @@ export default function LiveFeedPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full transition-colors ${
+              live
+                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                : "bg-slate-100 text-slate-400 dark:bg-dark-surface dark:text-slate-500"
+            }`}
+            title={live ? "Connected — new jobs appear automatically" : "Connecting to live updates..."}
+          >
+            <span className={`w-2 h-2 rounded-full ${live ? "bg-green-500 animate-pulse" : "bg-slate-400"}`} />
+            {live ? "LIVE" : "connecting..."}
+          </span>
           {scoring && (
             <span className="text-xs text-slate-400 animate-pulse">Scoring jobs...</span>
           )}
@@ -326,6 +349,7 @@ export default function LiveFeedPage() {
             <FeedJobCard
               key={job.id}
               job={job}
+              isNew={newIds.has(job.id)}
               saving={savingIds.has(job.id)}
               generating={generatingId === job.id}
               onToggleSave={() => toggleSave(job)}
@@ -387,22 +411,33 @@ export default function LiveFeedPage() {
 
 function FeedJobCard({
   job,
+  isNew,
   saving,
   generating,
   onToggleSave,
   onGeneratePitch,
 }: {
   job: FeedJob;
+  isNew: boolean;
   saving: boolean;
   generating: boolean;
   onToggleSave: () => void;
   onGeneratePitch: () => void;
 }) {
   return (
-    <Card className="flex border-kawaii-lavender/30 dark:border-dark-surface hover:border-kawaii-purple/50 transition-all">
+    <Card
+      className={`flex border-kawaii-lavender/30 dark:border-dark-surface hover:border-kawaii-purple/50 transition-all ${
+        isNew ? "ring-2 ring-kawaii-purple/60 bg-kawaii-purple/5 dark:bg-kawaii-purple/10" : ""
+      }`}
+    >
       <CardContent className="p-4 flex flex-col md:flex-row md:items-start gap-3 w-full">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
+            {isNew && (
+              <span className="text-xs px-2 py-0.5 bg-kawaii-purple/15 text-kawaii-purple dark:text-kawaii-lavender rounded-full font-bold animate-pulse">
+                ✨ NEW
+              </span>
+            )}
             {job.platform && (
               <Badge variant="secondary" className="bg-kawaii-lavender/20 dark:bg-dark-surface text-kawaii-purple dark:text-kawaii-lavender">
                 {job.platform}

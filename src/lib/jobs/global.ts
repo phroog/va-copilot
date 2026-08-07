@@ -4,6 +4,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
  * Insert a job into the shared `global_jobs` feed.
  * Deduplicates on `url` (ON CONFLICT DO NOTHING semantics):
  * if the URL already exists we return the existing row.
+ * Returns `{ job, inserted }` — `inserted` is true only for a new row.
  */
 export async function upsertGlobalJob(job: Record<string, any>) {
   const supabase = createServiceRoleClient();
@@ -41,10 +42,10 @@ export async function upsertGlobalJob(job: Record<string, any>) {
       .select("*")
       .eq("url", payload.url)
       .maybeSingle();
-    return existing ?? null;
+    return { job: existing ?? null, inserted: false };
   }
 
-  return data;
+  return { job: data, inserted: true };
 }
 
 /**
@@ -75,7 +76,7 @@ export async function upsertUserInteraction(
  */
 export async function syncUserJobToFeed(job: Record<string, any>): Promise<string | null> {
   try {
-    const globalJob = await upsertGlobalJob(job);
+    const { job: globalJob } = await upsertGlobalJob(job);
     if (!globalJob?.id) return null;
 
     const supabase = createServiceRoleClient();

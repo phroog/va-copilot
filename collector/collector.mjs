@@ -354,12 +354,13 @@ async function scrapeSource(browser, source) {
   const context = await browser.newContext(contextOpts);
   const urls = buildSearchUrls(source);
   const seen = new Set();
-  const allJobs = [];
   const platformName = source.platform || source.name;
+  let totalInserted = 0;
 
   try {
     // Run up to CONCURRENCY URLs at once. Each gets its own page (tab), which
-    // Playwright handles safely within a shared context.
+    // Playwright handles safely within a shared context. Jobs are uploaded
+    // immediately per URL so they stream into the live feed one by one.
     let next = 0;
     const workers = Array.from({ length: Math.min(CONCURRENCY, urls.length) }, async () => {
       while (next < urls.length) {
@@ -367,11 +368,19 @@ async function scrapeSource(browser, source) {
         const url = urls[idx];
         try {
           const jobs = await scrapeUrl(context, url, platformName);
+          const fresh = [];
           for (const j of jobs) {
             const key = j.url || `${j.title}|${j.clientName}`;
             if (!key || seen.has(key)) continue;
             seen.add(key);
-            allJobs.push(j);
+            fresh.push(j);
+          }
+          if (fresh.length > 0) {
+            const res = await uploadJobs(source, fresh);
+            totalInserted += res.inserted || 0;
+            console.log(`[collector]      ${url}: ${fresh.length} found, ${res.inserted || 0} new`);
+          } else {
+            console.log(`[collector]      ${url}: 0 new`);
           }
         } catch (err) {
           console.error(`[collector]      skip ${url}: ${err.message}`);
@@ -382,7 +391,7 @@ async function scrapeSource(browser, source) {
   } finally {
     await context.close();
   }
-  return allJobs;
+  return totalInserted;
 }
 
 /* ── Main loop ──────────────────────────────────────────────────── */
@@ -398,11 +407,9 @@ async function runPass(browser) {
   for (const source of sources) {
     console.log(`[collector]   -> ${source.name} (${SEARCH_KEYWORDS.length} keywords)`);
     try {
-      const jobs = await scrapeSource(browser, source);
-      console.log(`[collector]      found ${jobs.length} unique job(s)`);
-      const res = await uploadJobs(source, jobs);
-      totalUploaded += res.inserted || 0;
-      console.log(`[collector]      uploaded ${res.inserted || 0} new`);
+      const inserted = await scrapeSource(browser, source);
+      totalUploaded += inserted;
+      console.log(`[collector]      uploaded ${inserted} new`);
     } catch (err) {
       console.error(`[collector]      FAILED: ${err.message}`);
       // Mark as collected anyway so a broken source isn't retried every pass.

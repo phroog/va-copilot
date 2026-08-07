@@ -30,15 +30,18 @@ export async function POST(request: Request) {
 
   const supabase = createServiceRoleClient();
   const inserted: string[] = [];
-  const duplicates = 0;
+  let duplicates = 0;
 
   for (const rawJob of jobs) {
-    const job = await upsertGlobalJob({
+    const { job, inserted: isNew } = await upsertGlobalJob({
       ...rawJob,
       source_id: rawJob.source_id ?? sourceId,
       posted_at: rawJob.posted_at ?? new Date().toISOString(),
     });
-    if (job?.id) inserted.push(job.id);
+    if (job?.id) {
+      if (isNew) inserted.push(job.id);
+      else duplicates++;
+    }
   }
 
   // Mark the source as collected so it isn't re-polled for 10 minutes —
