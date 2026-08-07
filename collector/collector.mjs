@@ -334,13 +334,18 @@ const SCAN_FN = `
     /* Remote.co */
     else if (platform === "Remote.co") {
       document.querySelectorAll('a[href*="job-details"]').forEach((titleEl) => {
-        const title = titleEl?.textContent?.trim() || "";
+        let title = titleEl?.textContent?.trim()?.replace(/\s+/g, " ") || "";
         if (!title || title.length < 10) return;
+        // Strip leading date badges ("New!", "Today", "3 days ago", "2 weeks ago"...)
+        const dateMatch = title.match(/^(New!\s*)?(today|yesterday|\d+\s*(hour|day|week)s?\s*ago)/i);
+        const postedDate = dateMatch ? dateMatch[0].trim() : "";
+        title = title.replace(dateMatch ? dateMatch[0] : "", "").trim();
+        if (!title) return;
         const jobUrl = titleEl.href;
         const card = titleEl.closest("li, .job-listing, article, div") || titleEl.parentElement;
         const descEl = card?.querySelector("p, .description, [class*='snippet']");
         const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
-        jobs.push({ title, description, budgetAmount: "", budgetType: "", url: jobUrl, platform, skills: [], postedDate: "", clientName: "", experienceLevel: "" });
+        jobs.push({ title, description, budgetAmount: "", budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName: "", experienceLevel: "" });
       });
     }
 
