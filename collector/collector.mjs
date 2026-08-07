@@ -324,8 +324,8 @@ async function scrapeUrl(context, url, platformName) {
 
     // Cloudflare "Just a moment..." challenge: with real Chrome the Turnstile
     // checkbox often passes automatically after a few seconds. Give it up to
-    // 60s (polling, not reloading — a reload resets the challenge). If a
-    // checkbox iframe is present, try clicking it.
+    // 60s (polling with human jitter, not reloading — a reload resets the
+    // challenge). If a checkbox iframe is present, click it like a human.
     const deadline = Date.now() + 60000;
     while (Date.now() < deadline) {
       const stuck = await page
@@ -340,12 +340,14 @@ async function scrapeUrl(context, url, platformName) {
             'input[type="checkbox"], [role="checkbox"], .cb-i-frame, iframe[title*="checkbox"]'
           );
           if (box) {
+            // Small human delay + mouse move before the click.
+            await page.mouse.move(rand(300, 800), rand(300, 600), { steps: 5 }).catch(() => {});
             await box.click({ force: true, timeout: 2000 }).catch(() => {});
           }
         }
       } catch {}
 
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(rand(2200, 3800));
     }
 
     // Wait for candidate content, then scroll to load more results.
@@ -365,12 +367,9 @@ async function scrapeUrl(context, url, platformName) {
 
     // OnlineJobs.ph is server-rendered: all results are in the DOM already, so
     // scrolling only wastes time. Only lazy-loading platforms need scrolling.
-    const scrolls = (platformName || "").toLowerCase().includes("onlinejobs") ? 0 : 5;
-    for (let i = 0; i < scrolls; i++) {
-      await page.evaluate(() => window.scrollBy(0, window.innerHeight)).catch(() => {});
-      await page.waitForTimeout(1200).catch(() => {});
-    }
-    await page.waitForTimeout(1500).catch(() => {});
+    const needsScroll = !(platformName || "").toLowerCase().includes("onlinejobs");
+    if (needsScroll) await humanScroll(page, 5);
+    await humanPause(800, 1800);
 
     const result = await page.evaluate(new Function(`${SCAN_FN}; return scanPageForJobs();`));
     const jobs = (result?.jobs || []).map((j) => ({
@@ -393,6 +392,30 @@ async function scrapeUrl(context, url, platformName) {
 /* ── Browser stealth: look like a real Chrome, not a headless bot ── */
 const DESKTOP_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+
+/** Random delay with jitter — humans are never perfectly regular. */
+function humanPause(minMs, maxMs) {
+  const ms = minMs + Math.random() * (maxMs - minMs);
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+const rand = (min, max) => min + Math.random() * (max - min);
+
+/**
+ * Scroll like a human: small variable steps, occasional pauses, sometimes a
+ * small scroll back up (re-reading), mouse moves while scrolling.
+ */
+async function humanScroll(page, targetSteps = 5) {
+  const steps = Math.max(2, Math.floor(targetSteps + Math.random() * 2));
+  for (let i = 0; i < steps; i++) {
+    const dir = Math.random() < 0.9 ? 1 : -1; // 10% chance to scroll up a bit
+    const px = Math.floor(rand(150, 550) * dir);
+    // Move the mouse to a random spot on the page while scrolling (like a real user).
+    await page.mouse.move(rand(200, 1100), rand(150, 800), { steps: 8 }).catch(() => {});
+    await page.evaluate((p) => window.scrollBy(0, p), px).catch(() => {});
+    await page.waitForTimeout(rand(350, 1400)).catch(() => {});
+  }
+}
 
 function buildContext(browser, source) {
   return browser.newContext({
@@ -418,12 +441,13 @@ async function scrapeSource(browser, source, persistentContext) {
   let totalInserted = 0;
 
   try {
-    // Run up to CONCURRENCY URLs at once. Each gets its own page (tab), which
-    // Playwright handles safely within a shared context. Every single job is
-    // uploaded immediately after it is found, so jobs stream into the live
-    // feed one by one while the scan continues.
+    // Scan URLs with a cap on concurrent tabs, and STAGGERED starts: a human
+    // opens one search at a time, not 16 tabs instantly. Each job is uploaded
+    // immediately after it is found, so jobs stream into the live feed.
+    const maxConcurrent = Math.min(CONCURRENCY, 3);
     let next = 0;
-    const workers = Array.from({ length: Math.min(CONCURRENCY, urls.length) }, async () => {
+    let active = 0;
+    const runNext = async () => {
       while (next < urls.length) {
         const idx = next++;
         const url = urls[idx];
@@ -445,7 +469,14 @@ async function scrapeSource(browser, source, persistentContext) {
         } catch (err) {
           console.error(`[collector]      skip ${url}: ${err.message}`);
         }
+        // Human pause between searches before the next tab opens.
+        await humanPause(600, 1500);
       }
+    };
+
+    const workers = Array.from({ length: maxConcurrent }, async () => {
+      if (++active > 1) await humanPause(800, 2000); // stagger tab openings
+      await runNext();
     });
     await Promise.all(workers);
   } finally {
@@ -486,9 +517,7 @@ async function main() {
     // Real installed Chrome (not bundled Chromium): far fewer bot signals,
     // and the Cloudflare cf_clearance from it lasts much longer.
     channel: "chrome",
-    userAgent: DESKTOP_UA,
     locale: "en-US",
-    extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" },
     viewport: { width: 1366, height: 900 },
     args: ["--disable-blink-features=AutomationControlled", "--no-sandbox"],
   };
