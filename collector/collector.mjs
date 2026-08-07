@@ -359,8 +359,9 @@ async function scrapeSource(browser, source) {
 
   try {
     // Run up to CONCURRENCY URLs at once. Each gets its own page (tab), which
-    // Playwright handles safely within a shared context. Jobs are uploaded
-    // immediately per URL so they stream into the live feed one by one.
+    // Playwright handles safely within a shared context. Every single job is
+    // uploaded immediately after it is found, so jobs stream into the live
+    // feed one by one while the scan continues.
     let next = 0;
     const workers = Array.from({ length: Math.min(CONCURRENCY, urls.length) }, async () => {
       while (next < urls.length) {
@@ -368,20 +369,19 @@ async function scrapeSource(browser, source) {
         const url = urls[idx];
         try {
           const jobs = await scrapeUrl(context, url, platformName);
-          const fresh = [];
           for (const j of jobs) {
             const key = j.url || `${j.title}|${j.clientName}`;
             if (!key || seen.has(key)) continue;
             seen.add(key);
-            fresh.push(j);
+            try {
+              const res = await uploadJobs(source, [j]);
+              totalInserted += res.inserted || 0;
+              console.log(`[collector]      + "${j.title}" (${res.inserted ? "new" : "dup"})`);
+            } catch (err) {
+              console.error(`[collector]      upload failed for "${j.title}": ${err.message}`);
+            }
           }
-          if (fresh.length > 0) {
-            const res = await uploadJobs(source, fresh);
-            totalInserted += res.inserted || 0;
-            console.log(`[collector]      ${url}: ${fresh.length} found, ${res.inserted || 0} new`);
-          } else {
-            console.log(`[collector]      ${url}: 0 new`);
-          }
+          console.log(`[collector]      ${url}: ${jobs.length} job(s) on page`);
         } catch (err) {
           console.error(`[collector]      skip ${url}: ${err.message}`);
         }
