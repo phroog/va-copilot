@@ -321,16 +321,27 @@ async function scrapeUrl(context, url, platformName) {
   try {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
 
-    // Cloudflare "Just a moment..." challenge: give it time to pass, then
-    // reload if the page is still stuck on the challenge.
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const stuck = await page
-        .evaluate(() => document.body.innerText.includes("Just a moment"))
-        .catch(() => false);
-      if (!stuck) break;
-      await page.waitForTimeout(8000);
-      if (attempt < 2) {
-        await page.reload({ waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => {});
+    // Cloudflare "Just a moment..." challenge: give it time to pass. With a
+    // persistent profile you can solve the CAPTCHA manually in the visible
+    // window — then we wait for the challenge to clear without reloading
+    // (a reload would reset it). Without a profile we retry a few times.
+    if (PROFILE_DIR) {
+      try {
+        await page.waitForFunction(
+          () => !document.body.innerText.includes("Just a moment"),
+          { timeout: 90000 }
+        ).catch(() => {});
+      } catch {}
+    } else {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const stuck = await page
+          .evaluate(() => document.body.innerText.includes("Just a moment"))
+          .catch(() => false);
+        if (!stuck) break;
+        await page.waitForTimeout(8000);
+        if (attempt < 2) {
+          await page.reload({ waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => {});
+        }
       }
     }
 
@@ -381,9 +392,7 @@ const DESKTOP_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
 function buildContext(browser, source) {
-  const contextOpts = PROFILE_DIR ? { storageState: PROFILE_DIR } : {};
   return browser.newContext({
-    ...contextOpts,
     userAgent: DESKTOP_UA,
     locale: "en-US",
     extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" },
@@ -392,11 +401,14 @@ function buildContext(browser, source) {
 }
 
 /* ── Scrape one source (all expanded search URLs, in parallel) ──── */
-async function scrapeSource(browser, source) {
-  const context = await buildContext(browser, source);
-  await context.addInitScript(() => {
-    Object.defineProperty(navigator, "webdriver", { get: () => undefined });
-  });
+async function scrapeSource(browser, source, persistentContext) {
+  const context = persistentContext || (await buildContext(browser, source));
+  const needsClose = !persistentContext;
+  if (!persistentContext) {
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+    });
+  }
   const urls = buildSearchUrls(source);
   const seen = new Set();
   const platformName = source.platform || source.name;
@@ -434,13 +446,13 @@ async function scrapeSource(browser, source) {
     });
     await Promise.all(workers);
   } finally {
-    await context.close();
+    if (needsClose) await context.close();
   }
   return totalInserted;
 }
 
 /* ── Main loop ──────────────────────────────────────────────────── */
-async function runPass(browser) {
+async function runPass(browser, persistentContext) {
   console.log(`[collector] ${new Date().toISOString()} polling pending web sources...`);
   const sources = await getPendingSources();
   if (sources.length === 0) {
@@ -452,7 +464,7 @@ async function runPass(browser) {
   for (const source of sources) {
     console.log(`[collector]   -> ${source.name} (${SEARCH_KEYWORDS.length} keywords)`);
     try {
-      const inserted = await scrapeSource(browser, source);
+      const inserted = await scrapeSource(browser, source, persistentContext);
       totalUploaded += inserted;
       console.log(`[collector]      uploaded ${inserted} new`);
     } catch (err) {
@@ -470,20 +482,36 @@ async function main() {
     headless: HEADLESS,
     args: ["--disable-blink-features=AutomationControlled", "--no-sandbox"],
   };
-  const browser = await chromium.launch(launchOpts);
   console.log(`[collector] browser ${HEADLESS ? "headless" : "windowed"} · API ${SARI_API} · every ${POLL_INTERVAL_MIN} min`);
   console.log(`[collector] keywords: ${SEARCH_KEYWORDS.join(", ")}`);
+  console.log(`[collector] profile: ${PROFILE_DIR ? `persistent browser profile "${PROFILE_DIR}"` : "ephemeral (no login state)"}`);
+
+  let browser;
+  let persistentContext = null;
+  if (PROFILE_DIR) {
+    // Persistent context: keeps cookies (incl. Cloudflare cf_clearance) and
+    // login state between runs. Solve the Upwork CAPTCHA once in the visible
+    // window and it is remembered for later passes.
+    persistentContext = await chromium.launchPersistentContext(PROFILE_DIR, launchOpts);
+    await persistentContext.addInitScript(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+    });
+    browser = persistentContext.browser();
+  } else {
+    browser = await chromium.launch(launchOpts);
+  }
 
   if (ONCE) {
-    await runPass(browser);
-    await browser.close();
+    await runPass(browser, persistentContext);
+    if (persistentContext) await persistentContext.close();
+    else await browser.close();
     return;
   }
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
-      await runPass(browser);
+      await runPass(browser, persistentContext);
     } catch (err) {
       console.error(`[collector] pass failed: ${err.message}`);
     }
