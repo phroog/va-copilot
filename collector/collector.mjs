@@ -14,6 +14,7 @@
  *   SARI_API               default https://va-copilot-theta.vercel.app
  *   ADMIN_SECRET           required — matches the server's ADMIN_SECRET
  *   SEARCH_KEYWORDS        comma-separated list (default covers WFH roles)
+ *   CONCURRENCY            how many pages to scan in parallel, default 3
  *   POLL_INTERVAL_MIN      default 6
  *   HEADLESS               set "1" to hide the browser window (server mode)
  *   PROFILE_DIR            optional persistent browser profile (login state)
@@ -55,6 +56,9 @@ const SEARCH_KEYWORDS = (process.env.SEARCH_KEYWORDS || [
   .map((s) => s.trim())
   .filter(Boolean);
 
+// How many pages to scan at the same time (Playwright handles them in tabs).
+const CONCURRENCY = Math.max(1, parseInt(process.env.CONCURRENCY || "3", 10));
+
 if (!ADMIN_SECRET) {
   console.error("[collector] ADMIN_SECRET is not set. Run with: set ADMIN_SECRET=... then npm start");
   process.exit(1);
@@ -74,6 +78,10 @@ function buildSearchUrls(source) {
     return SEARCH_KEYWORDS.map(
       (k) => `https://www.onlinejobs.ph/jobseekers/jobsearch?jobkeyword=${kw(k)}`
     );
+  }
+  // Login-walled platforms can't be scraped — skip defensively (e.g. old DB rows).
+  if (platform.includes("linkedin") || platform.includes("facebook")) {
+    return [];
   }
   if (platform.includes("indeed")) {
     return SEARCH_KEYWORDS.map(
@@ -159,84 +167,77 @@ const SCAN_FN = `
 
     /* OnlineJobs.ph */
     else if (platform === "OnlineJobs.ph") {
-      const items = document.querySelectorAll(
-        '.joblist-item, .job-post-item, #joblist > li, div[class*="job-listing"], tr[class*="job"]'
-      );
+      // Each listing is an <a href="/jobseekers/job/..."> wrapping a card.
+      const items = document.querySelectorAll('a[href*="/jobseekers/job/"]');
       items.forEach((item) => {
-        const titleEl = item.querySelector(
-          '.joblist-item-title a, .job-title a, h4 a, h3 a, a[class*="title"], a[href*="/jobseekers/job/"]'
-        );
-        const title = titleEl?.textContent?.trim() || "";
-        if (!title) return;
+        const h4 = item.querySelector("h4");
+        if (!h4) return;
 
-        const descEl = item.querySelector(
-          '.joblist-item-description, .job-description, p[class*="desc"]'
-        );
+        // Title = h4 text without the trailing badge (Part Time / Full Time / ...).
+        const badge = h4.querySelector(".badge");
+        const title = h4.textContent.replace(badge?.textContent || "", "").trim();
+
+        const descEl = item.querySelector(".desc");
         const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
 
-        const salaryEl = item.querySelector(
-          '.joblist-item-salary, .salary, [class*="salary"], [class*="budget"]'
-        );
-        const budgetAmount = salaryEl?.textContent?.trim() || "";
+        // Budget/salary sits in <dd class="col"> of a <dl> (e.g. "$3" or "$4-$5/hour").
+        const dd = item.querySelector("dl.row dd.col");
+        const budgetAmount = dd?.textContent?.trim() || "";
 
-        const linkHref = titleEl?.getAttribute("href") || "";
-        const jobUrl = linkHref.startsWith("http")
-          ? linkHref
-          : "https://www.onlinejobs.ph" + (linkHref.startsWith("/") ? "" : "/") + linkHref;
+        const jobUrl = item.href;
 
-        const companyEl = item.querySelector(
-          '.joblist-item-company, .company, [class*="company"]'
-        );
-        const clientName = companyEl?.textContent?.trim() || "";
+        // Posted date is an <em> inside <p data-temp="YYYY-MM-DD HH:MM:SS">.
+        const em = item.querySelector("p[data-temp] em");
+        const postedDate = em?.textContent?.trim() || "";
 
-        const postedEl = item.querySelector(
-          '.joblist-item-date, .date, time, [class*="posted"]'
-        );
-        const postedDate = postedEl?.textContent?.trim() || "";
+        // Employment type doubles as the experience hint.
+        const experienceLevel = badge?.textContent?.trim() || "";
 
-        const typeEl = item.querySelector(
-          '[class*="job-type"], [class*="employment"], [class*="type"]'
-        );
-        const experienceLevel = typeEl?.textContent?.trim() || "";
+        const skills = [];
+        item.querySelectorAll(".job-tag a.badge").forEach((el) => {
+          const t = el.textContent?.trim();
+          if (t) skills.push(t);
+        });
 
-        jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills: [], postedDate, clientName, experienceLevel });
+        jobs.push({ title, description, budgetAmount, budgetType: "", url: jobUrl, platform, skills, postedDate, clientName: "", experienceLevel });
       });
     }
 
     /* Indeed */
     else if (platform === "Indeed") {
       const cards = document.querySelectorAll(
-        '.job_seen_beacon, .jobsearch-ResultsList .jobsearch-ResultJob, .tapItem, .result, li[class*="result"]'
+        '.job_seen_beacon, .jobsearch-ResultsList .jobsearch-ResultJob, li[class*="result"]'
       );
       cards.forEach((card) => {
+        // Title anchor carries class "jcs-JobTitle" and href "/rc/clk?jk=...".
         const titleEl = card.querySelector(
-          '.jcs-JobTitle, h2 a, a[class*="jobTitle"], .jobTitle, span[title], a[href*="/rc/clk"]'
+          'a.jcs-JobTitle, h3.jobTitle a, a[href*="/rc/clk"], span[title]'
         );
         const title = titleEl?.textContent?.trim() || "";
         if (!title) return;
 
         const companyEl = card.querySelector(
-          '.companyName, .company_location, [data-testid="company-name"], [class*="company"]'
+          '[data-testid="company-name"], .companyName, .company_location'
         );
         const clientName = companyEl?.textContent?.trim() || "";
 
         const locationEl = card.querySelector(
-          '.companyLocation, .location, [class*="location"]'
+          '[data-testid="text-location"], .companyLocation, .location'
         );
         const location = locationEl?.textContent?.trim() || "";
 
-        const linkHref = titleEl?.getAttribute("href") || "";
+        const linkHref = titleEl?.closest("a")?.getAttribute("href") || "";
         const jobUrl = linkHref.startsWith("http")
           ? linkHref
           : "https://www.indeed.com" + (linkHref.startsWith("/") ? "" : "/") + linkHref;
 
         const descEl = card.querySelector(
-          '.job-snippet, .summary, [class*="snippet"], [class*="description"]'
+          '[data-testid="belowJobSnippet"], .job-snippet, .summary'
         );
         const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
 
         const salaryEl = card.querySelector(
-          '.salary-snippet-container, .salary-snippet, [class*="salary"], [class*="metadata"]'
+          '.salary-snippet-container, .salary-snippet, [class*="salary"]'
         );
         const budgetAmount = salaryEl?.textContent?.trim() || "";
 
@@ -315,7 +316,7 @@ async function scrapeUrl(context, url, platformName) {
     // Wait for candidate content, then scroll to load more results.
     const selectors = [
       'section[data-test="JobCard"]',
-      ".joblist-item",
+      'a[href*="/jobseekers/job/"]',
       ".job_seen_beacon",
       ".jobsearch-ResultJob",
       "div[role=\"article\"]",
@@ -327,7 +328,10 @@ async function scrapeUrl(context, url, platformName) {
       { timeout: 25000 }
     ).catch(() => {});
 
-    for (let i = 0; i < 6; i++) {
+    // OnlineJobs.ph is server-rendered: all results are in the DOM already, so
+    // scrolling only wastes time. Only lazy-loading platforms need scrolling.
+    const scrolls = (platformName || "").toLowerCase().includes("onlinejobs") ? 0 : 5;
+    for (let i = 0; i < scrolls; i++) {
       await page.evaluate(() => window.scrollBy(0, window.innerHeight)).catch(() => {});
       await page.waitForTimeout(1200).catch(() => {});
     }
@@ -344,28 +348,37 @@ async function scrapeUrl(context, url, platformName) {
   }
 }
 
-/* ── Scrape one source (all expanded search URLs) ───────────────── */
+/* ── Scrape one source (all expanded search URLs, in parallel) ──── */
 async function scrapeSource(browser, source) {
   const contextOpts = PROFILE_DIR ? { storageState: PROFILE_DIR } : {};
   const context = await browser.newContext(contextOpts);
   const urls = buildSearchUrls(source);
   const seen = new Set();
   const allJobs = [];
+  const platformName = source.platform || source.name;
 
   try {
-    for (const url of urls) {
-      try {
-        const jobs = await scrapeUrl(context, url, source.platform || source.name);
-        for (const j of jobs) {
-          const key = j.url || `${j.title}|${j.clientName}`;
-          if (!key || seen.has(key)) continue;
-          seen.add(key);
-          allJobs.push(j);
+    // Run up to CONCURRENCY URLs at once. Each gets its own page (tab), which
+    // Playwright handles safely within a shared context.
+    let next = 0;
+    const workers = Array.from({ length: Math.min(CONCURRENCY, urls.length) }, async () => {
+      while (next < urls.length) {
+        const idx = next++;
+        const url = urls[idx];
+        try {
+          const jobs = await scrapeUrl(context, url, platformName);
+          for (const j of jobs) {
+            const key = j.url || `${j.title}|${j.clientName}`;
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
+            allJobs.push(j);
+          }
+        } catch (err) {
+          console.error(`[collector]      skip ${url}: ${err.message}`);
         }
-      } catch (err) {
-        console.error(`[collector]      skip ${url}: ${err.message}`);
       }
-    }
+    });
+    await Promise.all(workers);
   } finally {
     await context.close();
   }

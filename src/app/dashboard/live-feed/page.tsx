@@ -299,7 +299,7 @@ export default function LiveFeedPage() {
 
       {/* Feed */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex flex-col gap-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i} className="animate-pulse">
               <CardContent className="p-6">
@@ -321,7 +321,7 @@ export default function LiveFeedPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex flex-col gap-3">
           {filtered.map((job) => (
             <FeedJobCard
               key={job.id}
@@ -399,77 +399,73 @@ function FeedJobCard({
   onGeneratePitch: () => void;
 }) {
   return (
-    <Card className="flex flex-col border-kawaii-lavender/30 dark:border-dark-surface hover:border-kawaii-purple/50 transition-all">
-      <CardContent className="p-5 flex flex-col gap-3 h-full">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              {job.platform && (
-                <Badge variant="secondary" className="bg-kawaii-lavender/20 dark:bg-dark-surface text-kawaii-purple dark:text-kawaii-lavender">
-                  {job.platform}
-                </Badge>
-              )}
-              {job.experience_level && (
-                <span className="text-xs px-2 py-0.5 bg-kawaii-lavender/20 dark:bg-kawaii-purple/20 rounded-full font-medium text-slate-600 dark:text-slate-300">
-                  {job.experience_level}
-                </span>
-              )}
-              {job.budget && <span className="text-sm font-bold text-slate-700 dark:text-slate-200">💰 {job.budget}</span>}
-            </div>
-            <h3 className="font-extrabold text-base text-slate-800 dark:text-slate-100 leading-snug">
-              {job.url ? (
-                <a
-                  href={job.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-kawaii-purple dark:hover:text-kawaii-lavender transition-colors"
-                >
-                  {job.title} <span className="text-xs text-slate-300 dark:text-slate-500">↗</span>
-                </a>
-              ) : (
-                job.title
-              )}
-            </h3>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-              📅 {job.posted_at ? "Posted " + timeAgo(job.posted_at) : "Collected " + timeAgo(job.collected_at)}
-              {job.client_name ? ` · 👤 ${job.client_name}${job.client_country ? " (" + job.client_country + ")" : ""}` : ""}
+    <Card className="flex border-kawaii-lavender/30 dark:border-dark-surface hover:border-kawaii-purple/50 transition-all">
+      <CardContent className="p-4 flex flex-col md:flex-row md:items-start gap-3 w-full">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            {job.platform && (
+              <Badge variant="secondary" className="bg-kawaii-lavender/20 dark:bg-dark-surface text-kawaii-purple dark:text-kawaii-lavender">
+                {job.platform}
+              </Badge>
+            )}
+            {job.experience_level && (
+              <span className="text-xs px-2 py-0.5 bg-kawaii-lavender/20 dark:bg-kawaii-purple/20 rounded-full font-medium text-slate-600 dark:text-slate-300">
+                {job.experience_level}
+              </span>
+            )}
+            {job.budget && <span className="text-sm font-bold text-slate-700 dark:text-slate-200">💰 {job.budget}</span>}
+          </div>
+          <h3 className="font-extrabold text-base text-slate-800 dark:text-slate-100 leading-snug">
+            {job.url ? (
+              <a
+                href={job.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-kawaii-purple dark:hover:text-kawaii-lavender transition-colors"
+              >
+                {job.title} <span className="text-xs text-slate-300 dark:text-slate-500">↗</span>
+              </a>
+            ) : (
+              job.title
+            )}
+          </h3>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+            📅 {job.posted_at ? "Posted " + timeAgo(job.posted_at) : "Collected " + timeAgo(job.collected_at)}
+            {job.client_name ? ` · 👤 ${job.client_name}${job.client_country ? " (" + job.client_country + ")" : ""}` : ""}
+          </p>
+          {job.description && (
+            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mt-2">
+              {job.description}
             </p>
-          </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <span
-              className={`text-sm font-extrabold px-2.5 py-0.5 rounded-lg ${scoreClass(job.matching_score)}`}
-              title={job.matching_score != null ? "Matching score" : "Not scored yet"}
-            >
-              {job.matching_score != null ? job.matching_score : "—"}
-            </span>
-            {job.is_saved && <span className="text-xs text-kawaii-purple dark:text-kawaii-lavender">💾 Saved</span>}
-            {job.is_applied && <span className="text-xs text-green-600 dark:text-green-400">✅ Applied</span>}
-          </div>
+          )}
+          {job.skills && job.skills.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {job.skills.slice(0, 6).map((s) => (
+                <span key={s} className="text-xs px-2 py-0.5 bg-kawaii-lavender/20 dark:bg-kawaii-purple/20 rounded-full">
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
-        {job.description && (
-          <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3">
-            {job.description}
-          </p>
-        )}
-
-        {job.skills && job.skills.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {job.skills.slice(0, 6).map((s) => (
-              <span key={s} className="text-xs px-2 py-0.5 bg-kawaii-lavender/20 dark:bg-kawaii-purple/20 rounded-full">
-                {s}
-              </span>
-            ))}
+        <div className="flex md:flex-col items-center md:items-end gap-2 md:gap-3 shrink-0">
+          <span
+            className={`text-sm font-extrabold px-2.5 py-0.5 rounded-lg ${scoreClass(job.matching_score)}`}
+            title={job.matching_score != null ? "Matching score" : "Not scored yet"}
+          >
+            {job.matching_score != null ? job.matching_score : "—"}
+          </span>
+          <div className="flex items-center gap-2 md:flex-col md:items-stretch">
+            <Button size="sm" variant={job.is_saved ? "outline" : "primary"} onClick={onToggleSave} disabled={saving}>
+              {saving ? "..." : job.is_saved ? "💾 Saved" : "💾 Save"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={onGeneratePitch} disabled={generating}>
+              {generating ? "Loading..." : job.pitch_id ? "🚀 View Pitch" : "🚀 Pitch"}
+            </Button>
           </div>
-        )}
-
-        <div className="flex items-center gap-2 mt-auto pt-2 border-t border-kawaii-lavender/20 dark:border-dark-surface">
-          <Button size="sm" variant={job.is_saved ? "outline" : "primary"} onClick={onToggleSave} disabled={saving}>
-            {saving ? "..." : job.is_saved ? "💾 Saved" : "💾 Save"}
-          </Button>
-          <Button size="sm" variant="outline" onClick={onGeneratePitch} disabled={generating}>
-            {generating ? "Loading..." : job.pitch_id ? "🚀 View Pitch" : "🚀 Generate Pitch"}
-          </Button>
+          {job.is_saved && <span className="text-xs text-kawaii-purple dark:text-kawaii-lavender">💾 Saved</span>}
+          {job.is_applied && <span className="text-xs text-green-600 dark:text-green-400">✅ Applied</span>}
         </div>
       </CardContent>
     </Card>
