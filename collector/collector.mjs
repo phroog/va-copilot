@@ -297,14 +297,22 @@ async function getPendingSources() {
   return data.sources || [];
 }
 
-async function uploadJobs(source, jobs) {
-  const res = await fetch(`${SARI_API}/api/jobs/upload-web`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-admin-secret": ADMIN_SECRET },
-    body: JSON.stringify({ sourceId: source.id, jobs }),
-  });
-  if (!res.ok) throw new Error(`upload-web HTTP ${res.status}`);
-  return res.json();
+async function uploadJobs(source, jobs, attempt = 1) {
+  try {
+    const res = await fetch(`${SARI_API}/api/jobs/upload-web`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-secret": ADMIN_SECRET },
+      body: JSON.stringify({ sourceId: source.id, jobs }),
+    });
+    if (!res.ok) throw new Error(`upload-web HTTP ${res.status}`);
+    return res.json();
+  } catch (err) {
+    if (attempt < 3) {
+      await new Promise((r) => setTimeout(r, 1500 * attempt));
+      return uploadJobs(source, jobs, attempt + 1);
+    }
+    throw err;
+  }
 }
 
 /* ── Scrape one URL ─────────────────────────────────────────────── */
@@ -312,6 +320,19 @@ async function scrapeUrl(context, url, platformName) {
   const page = await context.newPage();
   try {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
+
+    // Cloudflare "Just a moment..." challenge: give it time to pass, then
+    // reload if the page is still stuck on the challenge.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const stuck = await page
+        .evaluate(() => document.body.innerText.includes("Just a moment"))
+        .catch(() => false);
+      if (!stuck) break;
+      await page.waitForTimeout(8000);
+      if (attempt < 2) {
+        await page.reload({ waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => {});
+      }
+    }
 
     // Wait for candidate content, then scroll to load more results.
     const selectors = [
@@ -338,20 +359,44 @@ async function scrapeUrl(context, url, platformName) {
     await page.waitForTimeout(1500).catch(() => {});
 
     const result = await page.evaluate(new Function(`${SCAN_FN}; return scanPageForJobs();`));
-    return (result?.jobs || []).map((j) => ({
+    const jobs = (result?.jobs || []).map((j) => ({
       ...j,
       platform: j.platform || platformName,
       posted_at: parsePostedDate(j.postedDate) || new Date().toISOString(),
     }));
+    if (jobs.length === 0) {
+      const stuck = await page
+        .evaluate(() => document.body.innerText.includes("Just a moment") || document.body.innerText.includes("Blocked"))
+        .catch(() => false);
+      if (stuck) console.warn(`[collector]      ⚠ ${url}: page blocked (Cloudflare/bot wall), 0 jobs`);
+    }
+    return jobs;
   } finally {
     await page.close().catch(() => {});
   }
 }
 
+/* ── Browser stealth: look like a real Chrome, not a headless bot ── */
+const DESKTOP_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+
+function buildContext(browser, source) {
+  const contextOpts = PROFILE_DIR ? { storageState: PROFILE_DIR } : {};
+  return browser.newContext({
+    ...contextOpts,
+    userAgent: DESKTOP_UA,
+    locale: "en-US",
+    extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" },
+    viewport: { width: 1366, height: 900 },
+  });
+}
+
 /* ── Scrape one source (all expanded search URLs, in parallel) ──── */
 async function scrapeSource(browser, source) {
-  const contextOpts = PROFILE_DIR ? { storageState: PROFILE_DIR } : {};
-  const context = await browser.newContext(contextOpts);
+  const context = await buildContext(browser, source);
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+  });
   const urls = buildSearchUrls(source);
   const seen = new Set();
   const platformName = source.platform || source.name;
