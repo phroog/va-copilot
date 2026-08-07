@@ -74,6 +74,7 @@ export default function LiveFeedPage() {
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [scoring, setScoring] = useState(false);
   const [live, setLive] = useState(false);
+  const [polling, setPolling] = useState(false);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const scoredRef = useRef<Set<string>>(new Set());
 
@@ -135,6 +136,19 @@ export default function LiveFeedPage() {
       supabase.removeChannel(channel);
     };
   }, [supabase, applyDefaults]);
+
+  // Polling fallback: keep the feed fresh even if the realtime
+  // WebSocket is blocked or never reaches SUBSCRIBED.
+  useEffect(() => {
+    setPolling(true);
+    const interval = setInterval(() => {
+      fetchFeed();
+    }, 15000);
+    return () => {
+      clearInterval(interval);
+      setPolling(false);
+    };
+  }, [fetchFeed]);
 
   // Batch-score jobs that don't have a score yet
   useEffect(() => {
@@ -270,14 +284,14 @@ export default function LiveFeedPage() {
         <div className="flex items-center gap-2">
           <span
             className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full transition-colors ${
-              live
+              live || polling
                 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                 : "bg-slate-100 text-slate-400 dark:bg-dark-surface dark:text-slate-500"
             }`}
-            title={live ? "Connected — new jobs appear automatically" : "Connecting to live updates..."}
+            title={live ? "Connected — new jobs appear automatically" : polling ? "Auto-refreshing every 15s" : "Connecting to live updates..."}
           >
-            <span className={`w-2 h-2 rounded-full ${live ? "bg-green-500 animate-pulse" : "bg-slate-400"}`} />
-            {live ? "LIVE" : "connecting..."}
+            <span className={`w-2 h-2 rounded-full ${live || polling ? "bg-green-500 animate-pulse" : "bg-slate-400"}`} />
+            {live || polling ? "LIVE" : "connecting..."}
           </span>
           {scoring && (
             <span className="text-xs text-slate-400 animate-pulse">Scoring jobs...</span>
