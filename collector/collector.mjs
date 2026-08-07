@@ -95,13 +95,15 @@ function buildSearchUrls(source) {
     );
   }
   if (platform.includes("guru")) {
+    // /d/jobs/?keywords= is ignored (shows all); use the skill route instead.
     return SEARCH_KEYWORDS.map(
-      (k) => `https://www.guru.com/d/jobs/?keywords=${kw(k)}`
+      (k) => `https://www.guru.com/d/jobs/skill/${kw(k).replace(/%20/g, "-")}/`
     );
   }
   if (platform.includes("remote.co") || platform.includes("remote co")) {
+    // ?search= is ignored (shows category feed); use the real search route.
     return SEARCH_KEYWORDS.map(
-      (k) => `https://remote.co/remote-jobs/?search=${kw(k)}`
+      (k) => `https://remote.co/remote-jobs/search?searchkeyword=${kw(k)}`
     );
   }
   if (platform.includes("workingnomads")) {
