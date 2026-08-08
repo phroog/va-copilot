@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { categorizeJob } from "@/lib/jobs/scoring";
 
 /**
  * Insert a job into the shared `global_jobs` feed.
@@ -23,6 +24,7 @@ export async function upsertGlobalJob(job: Record<string, any>) {
     client_rating: job.client_rating ?? null,
     experience_level: job.experience_level ?? job.experienceLevel ?? null,
     posted_at: job.posted_at ?? null,
+    category: job.category ?? categorizeJob(job),
   };
 
   if (!payload.url || payload.url === "") {
@@ -90,4 +92,77 @@ export async function syncUserJobToFeed(job: Record<string, any>): Promise<strin
     console.error("syncUserJobToFeed failed:", e);
     return null;
   }
+}
+
+/**
+ * Copy a global (live-feed) job into the current user's own `jobs` table so it
+ * shows up in "Meine Jobs". Reuses an existing linked row (by global_job_id or
+ * by url) to avoid duplicates. Returns the user job row, or null on failure.
+ */
+export async function syncGlobalJobToUserJob(
+  supabase: any,
+  userId: string,
+  globalJob: Record<string, any>,
+  extra: Record<string, any> = {}
+): Promise<Record<string, any> | null> {
+  // 1. Already linked to a local copy?
+  if (globalJob.id) {
+    const { data: linked } = await supabase
+      .from("jobs")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("global_job_id", globalJob.id)
+      .maybeSingle();
+    if (linked) return linked;
+  }
+
+  // 2. Reuse a row that was already synced by url (e.g. a manual job that was
+  //    published to the feed) — just link it back.
+  let existing: Record<string, any> | null = null;
+  if (globalJob.url) {
+    const { data: byUrl } = await supabase
+      .from("jobs")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("url", globalJob.url)
+      .maybeSingle();
+    existing = byUrl ?? null;
+  }
+
+  if (existing) {
+    if (globalJob.id) {
+      await supabase.from("jobs").update({ global_job_id: globalJob.id }).eq("id", existing.id);
+    }
+    return existing;
+  }
+
+  // 3. Create a fresh local copy.
+  const { data, error } = await supabase
+    .from("jobs")
+    .insert({
+      user_id: userId,
+      title: globalJob.title ?? "Untitled",
+      platform: globalJob.platform ?? "Unknown",
+      description: globalJob.description ?? "",
+      budget: globalJob.budget ?? "",
+      budget_type: globalJob.budget_type ?? null,
+      budget_amount: globalJob.budget_amount ?? null,
+      url: globalJob.url ?? "",
+      skills: globalJob.skills ?? null,
+      client_name: globalJob.client_name ?? null,
+      client_country: globalJob.client_country ?? null,
+      client_rating: globalJob.client_rating ?? null,
+      category: globalJob.category ?? categorizeJob(globalJob),
+      global_job_id: globalJob.id ?? null,
+      posted_at: globalJob.posted_at ?? new Date().toISOString(),
+      ...extra,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("syncGlobalJobToUserJob failed:", error.message);
+    return null;
+  }
+  return data;
 }

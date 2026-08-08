@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generatePitchForJob } from "@/lib/jobs/generate-pitch";
-import { upsertUserInteraction } from "@/lib/jobs/global";
+import { upsertUserInteraction, syncGlobalJobToUserJob } from "@/lib/jobs/global";
 
 /**
  * POST /api/jobs/feed/pitch
@@ -32,39 +32,8 @@ export async function POST(request: Request) {
   if (!globalJob) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
   // Ensure a local copy exists so pitches/follow-ups can reference a jobs.id.
-  let localJob: any = null;
-  if (globalJob.url) {
-    const { data } = await supabase
-      .from("jobs")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("url", globalJob.url)
-      .maybeSingle();
-    localJob = data ?? null;
-  }
-
-  if (!localJob) {
-    const { data, error } = await supabase
-      .from("jobs")
-      .insert({
-        user_id: user.id,
-        title: globalJob.title,
-        platform: globalJob.platform ?? "Unknown",
-        description: globalJob.description ?? "",
-        budget: globalJob.budget ?? "",
-        url: globalJob.url ?? "",
-        skills: globalJob.skills ?? null,
-        client_name: globalJob.client_name ?? null,
-        client_country: globalJob.client_country ?? null,
-        client_rating: globalJob.client_rating ?? null,
-        posted_at: globalJob.posted_at ?? new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    localJob = data;
-  }
+  const localJob = await syncGlobalJobToUserJob(supabase, user.id, globalJob);
+  if (!localJob) return NextResponse.json({ error: "Could not create a local copy of this job" }, { status: 500 });
 
   try {
     const pitch = await generatePitchForJob(supabase, localJob, user.id, force);

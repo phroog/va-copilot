@@ -48,7 +48,9 @@ export async function GET(request: Request) {
   }
 
   // Newest first: prefer the job's posted date, fall back to collected time.
-  const { data: jobs, error: jobsError } = await query.order("posted_at", { ascending: false, nullsFirst: false }).limit(100);
+  // The client paginates locally (10/25/50 per page) so we fetch a generous
+  // window here; saved jobs are always included regardless of age.
+  const { data: jobs, error: jobsError } = await query.order("posted_at", { ascending: false, nullsFirst: false }).limit(300);
   if (jobsError) return NextResponse.json({ error: jobsError.message }, { status: 500 });
 
   const feed = (jobs ?? []).map((job: any) => {
@@ -58,6 +60,7 @@ export async function GET(request: Request) {
       is_saved: it.is_saved ?? false,
       is_applied: it.is_applied ?? false,
       matching_score: it.matching_score ?? null,
+      matched_skills: it.matched_skills ?? [],
       pitch_id: it.pitch_id ?? null,
     };
   });

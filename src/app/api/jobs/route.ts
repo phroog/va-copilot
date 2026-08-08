@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { syncUserJobToFeed } from "@/lib/jobs/global";
+import { categorizeJob } from "@/lib/jobs/scoring";
 
 export async function GET(request: Request) {
   const supabase = createClient();
@@ -84,6 +85,7 @@ export async function POST(request: Request) {
     client_rating: body.client_rating ?? null,
     client_total_spent: body.client_total_spent ?? null,
     skills: body.skills ?? null,
+    category: body.category ?? categorizeJob(body),
     posted_at: new Date().toISOString(),
   };
 

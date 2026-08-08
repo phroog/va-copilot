@@ -958,6 +958,11 @@ function JobCard({ job, generating, generatePitch, deleteJob, t, creditSuckJobId
         </div>
         <p className="text-sm text-kawaii-purple dark:text-kawaii-lavender font-medium">
           {job.platform} — {job.budget}
+          {job.category && (
+            <Badge variant="secondary" className="ml-2 bg-kawaii-pink/15 dark:bg-kawaii-pink/20 text-kawaii-pink dark:text-kawaii-pink text-xs">
+              🗂️ {job.category}
+            </Badge>
+          )}
           {job.match_reason && (
             <span className="text-xs text-slate-400 dark:text-slate-500 font-normal ml-2">🎯 {job.match_reason}</span>
           )}

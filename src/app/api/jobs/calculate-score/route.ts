@@ -35,13 +35,16 @@ export async function POST(request: Request) {
 
   const scored: any[] = [];
   for (const job of jobs) {
-    const { score, match_reason } = computeScore(job, profile);
+    const { score, match_reason, matched_skills } = computeScore(job, profile);
     try {
-      await upsertUserInteraction(supabase, user.id, job.id, { matching_score: score });
+      await upsertUserInteraction(supabase, user.id, job.id, {
+        matching_score: score,
+        matched_skills,
+      });
     } catch (e) {
       console.error("Failed to store score:", e);
     }
-    scored.push({ id: job.id, matching_score: score, match_reason });
+    scored.push({ id: job.id, matching_score: score, match_reason, matched_skills });
   }
 
   return NextResponse.json({ jobs: scored });

@@ -74,9 +74,24 @@ a small VM (e.g. a $5 DigitalOcean droplet) with Chromium installed and
 ## 5. User features
 
 - **📡 Live Feed** (Dashboard sidebar): real-time feed of `global_jobs`,
-  personalized matching scores, Save, Generate Pitch, bulk "Save All Visible",
-  and filters by score/platform.
+  personalized matching scores, **skill matching** (shows which of your profile
+  skills match each job), **job categories**, Save (adds the job to
+  **Meine Jobs** too), Generate Pitch, bulk "Save Page", and filters by
+  category/platform/score. **Pagination**: pick 10/25/50 jobs per page and
+  navigate pages with Prev/Next.
+- Every job is auto-assigned a **category** (Admin Support, Graphic Design,
+  Web Development, Writing, Social Media, ...) derived from its read text.
 - **Settings → Job Sources**: toggle a source's "Include in Live Feed", see
   "Last collected", and add custom web listing URLs.
 - Manual / screenshot / URL import on `/dashboard/jobs` still works and now
-  also publishes into the shared feed.
+  also publishes into the shared feed (and gets a category).
+
+## 6. Migration (categories, skill matching, feed→own-jobs sync)
+
+```
+supabase/migrations/20260808_job_categories_skill_match_feed_sync.sql
+```
+
+Adds `category` to `global_jobs` and `jobs`, `matched_skills` to
+`user_job_interactions`, and `global_job_id` to `jobs` (links a saved feed job
+to its copy in "Meine Jobs").

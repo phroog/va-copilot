@@ -29,11 +29,13 @@ interface FeedJob {
   client_country: string | null;
   client_rating: number | null;
   experience_level: string | null;
+  category: string | null;
   posted_at: string | null;
   collected_at: string;
   is_saved: boolean;
   is_applied: boolean;
   matching_score: number | null;
+  matched_skills: string[];
   pitch_id: string | null;
 }
 
@@ -66,6 +68,9 @@ export default function LiveFeedPage() {
   const [search, setSearch] = useState("");
   const [scoreFilter, setScoreFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [savingAll, setSavingAll] = useState(false);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [pitchJob, setPitchJob] = useState<FeedJob | null>(null);
@@ -83,6 +88,8 @@ export default function LiveFeedPage() {
     is_saved: job.is_saved ?? false,
     is_applied: job.is_applied ?? false,
     matching_score: job.matching_score ?? null,
+    matched_skills: Array.isArray(job.matched_skills) ? job.matched_skills : [],
+    category: job.category ?? null,
     pitch_id: job.pitch_id ?? null,
   }), []);
 
@@ -166,10 +173,23 @@ export default function LiveFeedPage() {
     })
       .then((r) => r.json())
       .then((data) => {
-        const map = new Map<string, number>();
-        (data.jobs ?? []).forEach((s: any) => map.set(s.id, s.matching_score));
+        const map = new Map<string, { matching_score: number; matched_skills: string[] }>();
+        (data.jobs ?? []).forEach((s: any) =>
+          map.set(s.id, {
+            matching_score: s.matching_score,
+            matched_skills: Array.isArray(s.matched_skills) ? s.matched_skills : [],
+          })
+        );
         setJobs((prev) =>
-          prev.map((j) => (map.has(j.id) ? { ...j, matching_score: map.get(j.id)! } : j))
+          prev.map((j) =>
+            map.has(j.id)
+              ? {
+                  ...j,
+                  matching_score: map.get(j.id)!.matching_score,
+                  matched_skills: map.get(j.id)!.matched_skills,
+                }
+              : j
+          )
         );
       })
       .catch(() => {})
@@ -191,7 +211,7 @@ export default function LiveFeedPage() {
       setJobs((prev) =>
         prev.map((j) => (j.id === job.id ? { ...j, is_saved: !job.is_saved } : j))
       );
-      showToast(job.is_saved ? "Removed from saved" : "Saved to your list 💾");
+      showToast(job.is_saved ? "Removed from saved" : "Saved to Meine Jobs 💾");
     } catch (e: any) {
       showToast(e?.message ?? "Failed to save job", "error");
     } finally {
@@ -204,7 +224,7 @@ export default function LiveFeedPage() {
   };
 
   const saveAllVisible = async () => {
-    const visible = filtered.filter((j) => !j.is_saved);
+    const visible = pagedJobs.filter((j) => !j.is_saved);
     if (visible.length === 0) {
       showToast("Nothing to save — all visible jobs are already saved");
       return;
@@ -219,7 +239,7 @@ export default function LiveFeedPage() {
         });
       }
       setJobs((prev) => prev.map((j) => (visible.some((v) => v.id === j.id) ? { ...j, is_saved: true } : j)));
-      showToast(`Saved ${visible.length} job(s) 💾`);
+      showToast(`Saved ${visible.length} job(s) to Meine Jobs 💾`);
     } catch (e: any) {
       showToast(e?.message ?? "Failed to save jobs", "error");
     } finally {
@@ -262,6 +282,7 @@ export default function LiveFeedPage() {
   };
 
   const platforms = Array.from(new Set(jobs.map((j) => j.platform).filter((p): p is string => !!p))).sort();
+  const categories = Array.from(new Set(jobs.map((j) => j.category).filter((c): c is string => !!c))).sort();
 
   const filtered = jobs.filter((j) => {
     if (search && !(j.title + (j.description ?? "")).toLowerCase().includes(search.toLowerCase())) return false;
@@ -269,8 +290,18 @@ export default function LiveFeedPage() {
     if (scoreFilter === "medium" && ((j.matching_score ?? 0) < 40 || (j.matching_score ?? 0) >= 70)) return false;
     if (scoreFilter === "low" && (j.matching_score ?? 0) >= 40) return false;
     if (platformFilter !== "all" && j.platform !== platformFilter) return false;
+    if (categoryFilter !== "all" && j.category !== categoryFilter) return false;
     return true;
   });
+
+  // Reset to the first page whenever filters or page size change.
+  useEffect(() => {
+    setPage(1);
+  }, [search, scoreFilter, platformFilter, categoryFilter, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedJobs = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -296,8 +327,8 @@ export default function LiveFeedPage() {
           {scoring && (
             <span className="text-xs text-slate-400 animate-pulse">Scoring jobs...</span>
           )}
-          <Button variant="primary" size="sm" onClick={saveAllVisible} disabled={savingAll || filtered.length === 0}>
-            {savingAll ? "Saving..." : "💾 Save All Visible"}
+          <Button variant="primary" size="sm" onClick={saveAllVisible} disabled={savingAll || pagedJobs.length === 0}>
+            {savingAll ? "Saving..." : "💾 Save Page"}
           </Button>
         </div>
       </div>
@@ -331,6 +362,16 @@ export default function LiveFeedPage() {
               <option key={p} value={p}>{p}</option>
             ))}
           </select>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 px-4 py-2 text-sm text-slate-700 dark:bg-dark-card dark:text-slate-200 dark:border-dark-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kawaii-purple"
+          >
+            <option value="all">🗂️ All categories</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </CardContent>
       </Card>
 
@@ -359,7 +400,7 @@ export default function LiveFeedPage() {
         </Card>
       ) : (
         <div className="flex flex-col gap-3">
-          {filtered.map((job) => (
+          {pagedJobs.map((job) => (
             <FeedJobCard
               key={job.id}
               job={job}
@@ -370,6 +411,51 @@ export default function LiveFeedPage() {
               onGeneratePitch={() => generatePitch(job)}
             />
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && filtered.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+            <span>
+              Showing{" "}
+              <span className="font-bold text-slate-700 dark:text-slate-200">
+                {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filtered.length)}
+              </span>{" "}
+              of <span className="font-bold text-slate-700 dark:text-slate-200">{filtered.length}</span> jobs
+            </span>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(parseInt(e.target.value, 10))}
+              className="rounded-xl border-2 border-kawaii-lavender/30 bg-white/80 px-2 py-1 text-xs text-slate-700 dark:bg-dark-card dark:text-slate-200 dark:border-dark-surface focus-visible:outline-none"
+            >
+              {[10, 25, 50].map((n) => (
+                <option key={n} value={n}>{n} per page</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+            >
+              ← Prev
+            </Button>
+            <span className="text-sm font-bold text-slate-600 dark:text-slate-300">
+              Page {currentPage} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+            >
+              Next →
+            </Button>
+          </div>
         </div>
       )}
 
@@ -452,6 +538,11 @@ function FeedJobCard({
                 ✨ NEW
               </span>
             )}
+            {job.category && (
+              <Badge variant="secondary" className="bg-kawaii-pink/15 dark:bg-kawaii-pink/20 text-kawaii-pink dark:text-kawaii-pink">
+                🗂️ {job.category}
+              </Badge>
+            )}
             {job.platform && (
               <Badge variant="secondary" className="bg-kawaii-lavender/20 dark:bg-dark-surface text-kawaii-purple dark:text-kawaii-lavender">
                 {job.platform}
@@ -491,6 +582,16 @@ function FeedJobCard({
             <div className="flex flex-wrap gap-1 mt-2">
               {job.skills.slice(0, 6).map((s) => (
                 <span key={s} className="text-xs px-2 py-0.5 bg-kawaii-lavender/20 dark:bg-kawaii-purple/20 rounded-full">
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
+          {job.matched_skills && job.matched_skills.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1 mt-2">
+              <span className="text-xs font-semibold text-green-600 dark:text-green-400">🎯 Matches:</span>
+              {job.matched_skills.slice(0, 6).map((s) => (
+                <span key={s} className="text-xs px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded-full font-medium">
                   {s}
                 </span>
               ))}

@@ -1,5 +1,5 @@
 /* ── Category keywords ────────────────────────────────────────── */
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
+export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   "Admin Support": ["admin", "administrative", "data entry", "scheduling", "email management", "calendar", "virtual assistant"],
   "Graphic Design": ["graphic design", "photoshop", "illustrator", "canva", "design", "logo", "ui", "ux"],
   "Web Development": ["web developer", "frontend", "backend", "full stack", "react", "node", "python", "javascript", "html", "css"],
@@ -12,8 +12,29 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   "Project Management": ["project management", "asana", "trello", "jira", "coordinator", "scrum"],
 };
 
+/**
+ * Categorize a job from whatever text was read out (title, description,
+ * skills). Returns the category with the most keyword hits, or "Other".
+ */
+export function categorizeJob(job: Record<string, any>): string {
+  const text = [
+    job.title || "",
+    job.description || "",
+    (job.skills || []).join(" "),
+  ].join(" ").toLowerCase();
+
+  let best: { category: string; count: number } | null = null;
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    const count = keywords.filter((kw) => text.includes(kw.toLowerCase())).length;
+    if (count > 0 && (!best || count > best.count)) {
+      best = { category, count };
+    }
+  }
+  return best?.category ?? "Other";
+}
+
 /* ── Scoring logic ────────────────────────────────────────────── */
-export function computeScore(job: Record<string, any>, profile: Record<string, any>): { score: number; match_reason: string; breakdown: { label: string; score: number; max: number }[] } {
+export function computeScore(job: Record<string, any>, profile: Record<string, any>): { score: number; match_reason: string; breakdown: { label: string; score: number; max: number }[]; matched_skills: string[] } {
   const reasons: string[] = [];
   const breakdown: { label: string; score: number; max: number }[] = [];
   let total = 0;
@@ -30,12 +51,14 @@ export function computeScore(job: Record<string, any>, profile: Record<string, a
 
   /* ── Skill overlap (40%) ─────────────────────────────────────── */
   let skillScore = 0;
+  const matchedSkills: string[] = [];
   if (userSkills.length > 0) {
     const tokens = jobText.split(/[\s,.-]+/).filter(Boolean);
     const matched = userSkills.filter((skill) => {
       const skillWords = skill.split(/[\s]+/).filter(Boolean);
       return skillWords.some((w) => tokens.includes(w)) || jobText.includes(skill);
     });
+    matchedSkills.push(...matched);
     skillScore = (matched.length / userSkills.length) * 40;
     total += skillScore;
     if (matched.length > 0) {
@@ -101,5 +124,5 @@ export function computeScore(job: Record<string, any>, profile: Record<string, a
   breakdown.push({ label: "Platform bonus", score: platformScore, max: 10 });
 
   const score = Math.round(Math.min(100, Math.max(0, total)));
-  return { score, match_reason: reasons.join("; ") || "No matching data available", breakdown };
+  return { score, match_reason: reasons.join("; ") || "No matching data available", breakdown, matched_skills: matchedSkills };
 }

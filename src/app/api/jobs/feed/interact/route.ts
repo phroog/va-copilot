@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { upsertUserInteraction } from "@/lib/jobs/global";
+import { upsertUserInteraction, syncGlobalJobToUserJob } from "@/lib/jobs/global";
 
 /**
  * POST /api/jobs/feed/interact
  * Save / un-save / mark applied a global job for the current user.
+ * Saving also copies the job into the user's own "Meine Jobs" list.
  * Body: { global_job_id, is_saved?, is_applied? }
  */
 export async function POST(request: Request) {
@@ -20,10 +21,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "global_job_id is required" }, { status: 400 });
   }
 
-  // Verify the job exists.
+  // Verify the job exists and load the full row (needed to copy it locally).
   const { data: job, error: jobError } = await supabase
     .from("global_jobs")
-    .select("id")
+    .select("*")
     .eq("id", global_job_id)
     .maybeSingle();
 
@@ -36,7 +37,17 @@ export async function POST(request: Request) {
 
   try {
     const interaction = await upsertUserInteraction(supabase, user.id, global_job_id, fields);
-    return NextResponse.json({ interaction });
+
+    // Saving a feed job must make it show up in "Meine Jobs".
+    let localJob: Record<string, any> | null = null;
+    if (is_saved === true) {
+      localJob = await syncGlobalJobToUserJob(supabase, user.id, job, {
+        score: interaction.matching_score ?? null,
+        match_reason: interaction.match_reason ?? null,
+      });
+    }
+
+    return NextResponse.json({ interaction, local_job_id: localJob?.id ?? null });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
