@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     console.error("[admin/stats] listUsers failed:", (e as Error).message);
   }
 
-  const [userCount, profiles, weekProfiles, sources, jobsTotal, jobsToday, jobsWeek, jobsHour, perPlatform, saved, applied, pitches, interactions, recentJobs] =
+  const [userCount, profiles, weekProfiles, sources, jobsTotal, jobsToday, jobsWeek, jobsHour, saved, applied, pitches, interactions, recentJobs] =
     await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
       supabase.from("profiles").select("user_id, full_name, created_at"),
@@ -43,7 +43,6 @@ export async function GET(request: Request) {
       supabase.from("global_jobs").select("*", { count: "exact", head: true }).gte("collected_at", dayStart),
       supabase.from("global_jobs").select("*", { count: "exact", head: true }).gte("collected_at", weekStart),
       supabase.from("global_jobs").select("*", { count: "exact", head: true }).gte("collected_at", hourAgo),
-      supabase.from("global_jobs").select("platform", { count: "exact", head: false }),
       supabase.from("user_job_interactions").select("global_job_id", { count: "exact", head: true }).eq("is_saved", true),
       supabase.from("user_job_interactions").select("global_job_id", { count: "exact", head: true }).eq("is_applied", true),
       supabase.from("pitches").select("*", { count: "exact", head: true }),
@@ -59,11 +58,24 @@ export async function GET(request: Request) {
 
   // Distinct users, jobs per platform (dedupe by platform value)
   const distinctProfiles = (profiles.data ?? []).length;
+  // Known platform set from job_sources (not a sampled scan — exact).
+  const distinctPlatforms = Array.from(
+    new Set((sources.data ?? []).map((s: any) => s.platform).filter((p: any) => !!p))
+  ) as string[];
+
+  // Exact per-platform counts via head queries (global_jobs caps raw scans at 1000 rows).
+  const platformRows = await Promise.all(
+    distinctPlatforms.map((platform) =>
+      supabase
+        .from("global_jobs")
+        .select("*", { count: "exact", head: true })
+        .eq("platform", platform)
+    )
+  );
   const platformMap: Record<string, number> = {};
-  for (const row of perPlatform.data ?? []) {
-    const key = row.platform || "other";
-    platformMap[key] = (platformMap[key] ?? 0) + 1;
-  }
+  distinctPlatforms.forEach((platform, i) => {
+    platformMap[platform] = platformRows[i].count ?? 0;
+  });
   const platformBreakdown = Object.entries(platformMap)
     .map(([platform, count]) => ({ platform, count }))
     .sort((a, b) => b.count - a.count);
