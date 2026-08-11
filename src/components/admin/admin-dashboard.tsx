@@ -21,6 +21,7 @@ interface SourceRow {
   last_collected_at: string | null;
   last_collected_age_min: number | null;
   created_at: string | null;
+  keywords?: string[];
 }
 
 interface AdminStats {
@@ -65,6 +66,8 @@ export default function AdminDashboard() {
   const [live, setLive] = useState(false);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const [toggling, setToggling] = useState<string | null>(null);
+  const [keywordDrafts, setKeywordDrafts] = useState<Record<string, string>>({});
+  const [savingKw, setSavingKw] = useState<string | null>(null);
   const [recent, setRecent] = useState<AdminStats["recent_jobs"]>([]);
   const sourceById = useRef<Map<string, SourceRow>>(new Map());
 
@@ -80,6 +83,11 @@ export default function AdminDashboard() {
       setStats(data);
       setRecent(data.recent_jobs);
       data.sources.forEach((s) => sourceById.current.set(s.id, s));
+      const drafts: Record<string, string> = {};
+      data.sources.forEach((s) => {
+        drafts[s.id] = (s.keywords ?? []).join(", ");
+      });
+      setKeywordDrafts((prev) => Object.keys(drafts).length > 0 ? { ...prev, ...drafts } : prev);
     } catch (e: any) {
       if (!silent) console.error(e);
     } finally {
@@ -115,6 +123,30 @@ export default function AdminDashboard() {
       console.error(e);
     } finally {
       setToggling(null);
+    }
+  };
+
+  const saveKeywords = async (source: SourceRow) => {
+    setSavingKw(source.id);
+    try {
+      const keywords = (keywordDrafts[source.id] ?? "")
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean);
+      const res = await fetch("/api/admin/keywords", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sources: [{ id: source.id, keywords }] }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "Save failed");
+      }
+      await fetchStats(true);
+    } catch (e: any) {
+      console.error(e);
+    } finally {
+      setSavingKw(null);
     }
   };
 
@@ -211,29 +243,47 @@ export default function AdminDashboard() {
           {/* Source status */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">🔄 Job Sources</CardTitle>
-              <CardDescription>Collector sources and their last poll</CardDescription>
+              <CardTitle className="text-lg">🔤 Job Sources + Keywords</CardTitle>
+              <CardDescription>Status, last poll and the search keywords the collector types/submits per source</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2 max-h-96 overflow-y-auto">
+            <CardContent className="space-y-3 max-h-[34rem] overflow-y-auto">
               {stats.sources.map((s) => (
-                <div key={s.id} className="flex items-center justify-between gap-3 p-2 rounded-xl border border-kawaii-lavender/20 dark:border-dark-surface">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{s.name}</span>
-                      <Badge variant={s.is_active ? "success" : "outline"}>{s.is_active ? "active" : "off"}</Badge>
+                <div key={s.id} className="p-3 rounded-xl border border-kawaii-lavender/20 dark:border-dark-surface space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{s.name}</span>
+                        <Badge variant={s.is_active ? "success" : "outline"}>{s.is_active ? "active" : "off"}</Badge>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">
+                        {s.last_collected_at ? `last polled ${timeAgo(s.last_collected_at)}` : "never polled"}
+                      </p>
                     </div>
-                    <p className="text-xs text-slate-400 mt-0.5 truncate">
-                      {s.last_collected_at ? `last polled ${timeAgo(s.last_collected_at)}` : "never polled"}
-                    </p>
+                    <Button
+                      size="sm"
+                      variant={s.is_active ? "outline" : "primary"}
+                      onClick={() => toggleSource(s)}
+                      disabled={toggling === s.id}
+                    >
+                      {toggling === s.id ? "..." : s.is_active ? "Deactivate" : "Activate"}
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant={s.is_active ? "outline" : "primary"}
-                    onClick={() => toggleSource(s)}
-                    disabled={toggling === s.id}
-                  >
-                    {toggling === s.id ? "..." : s.is_active ? "Deactivate" : "Activate"}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={keywordDrafts[s.id] ?? ""}
+                      onChange={(e) => setKeywordDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                      placeholder="virtual assistant, data entry, ..."
+                      className="flex-1 min-w-0 rounded-xl border-2 border-kawaii-lavender/30 bg-white/80 px-3 py-1.5 text-xs text-slate-700 dark:bg-dark-card dark:text-slate-200 dark:border-dark-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kawaii-purple"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => saveKeywords(s)}
+                      disabled={savingKw === s.id}
+                    >
+                      {savingKw === s.id ? "..." : "Save"}
+                    </Button>
+                  </div>
                 </div>
               ))}
             </CardContent>

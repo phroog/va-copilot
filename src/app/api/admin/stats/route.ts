@@ -33,12 +33,13 @@ export async function GET(request: Request) {
     console.error("[admin/stats] listUsers failed:", (e as Error).message);
   }
 
-  const [userCount, profiles, weekProfiles, sources, jobsTotal, jobsToday, jobsWeek, jobsHour, saved, applied, pitches, interactions, recentJobs] =
+  const [userCount, profiles, weekProfiles, sources, keywordRows, jobsTotal, jobsToday, jobsWeek, jobsHour, saved, applied, pitches, interactions, recentJobs] =
     await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
       supabase.from("profiles").select("user_id, full_name, created_at"),
       supabase.from("profiles").select("user_id", { count: "exact", head: true }).gte("created_at", weekStart),
       supabase.from("job_sources").select("*").order("name", { ascending: true }),
+      supabase.from("job_source_keywords").select("source_id, keyword, position").order("position", { ascending: true }),
       supabase.from("global_jobs").select("*", { count: "exact", head: true }),
       supabase.from("global_jobs").select("*", { count: "exact", head: true }).gte("collected_at", dayStart),
       supabase.from("global_jobs").select("*", { count: "exact", head: true }).gte("collected_at", weekStart),
@@ -80,12 +81,20 @@ export async function GET(request: Request) {
     .map(([platform, count]) => ({ platform, count }))
     .sort((a, b) => b.count - a.count);
 
-  // Sources with last collected age
+  // Keywords per source
+  const keywordsBySource: Record<string, string[]> = {};
+  for (const row of keywordRows.data ?? []) {
+    if (!keywordsBySource[row.source_id]) keywordsBySource[row.source_id] = [];
+    keywordsBySource[row.source_id].push(row.keyword);
+  }
+
+  // Sources with last collected age + their configured keywords
   const sourcesWithAge = (sources.data ?? []).map((s: any) => ({
     ...s,
     last_collected_age_min: s.last_collected_at
       ? Math.round((now.getTime() - new Date(s.last_collected_at).getTime()) / 60000)
       : null,
+    keywords: keywordsBySource[s.id] ?? [],
   }));
 
   return NextResponse.json({

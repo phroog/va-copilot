@@ -144,12 +144,12 @@ function buildSearchUrls(source) {
   const kw = (k) => encodeURIComponent(k);
 
   if (platform.includes("upwork")) {
-    return SEARCH_KEYWORDS.map(
+    return keywordsFor(source).map(
       (k) => `https://www.upwork.com/nx/search/jobs/?q=${kw(k)}&sort=recency`
     );
   }
   if (platform.includes("onlinejobs")) {
-    return SEARCH_KEYWORDS.map(
+    return keywordsFor(source).map(
       (k) => `https://www.onlinejobs.ph/jobseekers/jobsearch?jobkeyword=${kw(k)}`
     );
   }
@@ -158,44 +158,44 @@ function buildSearchUrls(source) {
     return [];
   }
   if (platform.includes("indeed")) {
-    return SEARCH_KEYWORDS.map(
+    return keywordsFor(source).map(
       (k) => `https://www.indeed.com/jobs?q=${kw(k)}&sort=date`
     );
   }
   if (platform.includes("freelancer")) {
-    return SEARCH_KEYWORDS.map(
+    return keywordsFor(source).map(
       (k) => `https://www.freelancer.com/jobs/${kw(k).replace(/%20/g, "-")}`
     );
   }
   if (platform.includes("guru")) {
     // /d/jobs/?keywords= is ignored (shows all); use the skill route instead.
-    return SEARCH_KEYWORDS.map(
+    return keywordsFor(source).map(
       (k) => `https://www.guru.com/d/jobs/skill/${kw(k).replace(/%20/g, "-")}/`
     );
   }
   if (platform.includes("remote.co") || platform.includes("remote co")) {
     // ?search= is ignored (shows category feed); use the real search route.
-    return SEARCH_KEYWORDS.map(
+    return keywordsFor(source).map(
       (k) => `https://remote.co/remote-jobs/search?searchkeyword=${kw(k)}`
     );
   }
   if (platform.includes("workingnomads")) {
-    return SEARCH_KEYWORDS.map(
+    return keywordsFor(source).map(
       (k) => `https://www.workingnomads.com/jobs?keyword=${kw(k)}`
     );
   }
   if (platform.includes("jobspresso")) {
-    return SEARCH_KEYWORDS.map(
+    return keywordsFor(source).map(
       (k) => `https://jobspresso.co/?s=${kw(k)}`
     );
   }
   if (platform.includes("remoteok")) {
-    return SEARCH_KEYWORDS.map(
+    return keywordsFor(source).map(
       (k) => `https://remoteok.com/remote-${kw(k).replace(/%20/g, "-")}-jobs`
     );
   }
   if (platform.includes("peopleperhour")) {
-    return SEARCH_KEYWORDS.map(
+    return keywordsFor(source).map(
       (k) => `https://www.peopleperhour.com/freelance-${kw(k).replace(/%20/g, "-")}-jobs`
     );
   }
@@ -529,6 +529,36 @@ async function getPendingSources() {
   return data.sources || [];
 }
 
+/* ── Per-source keywords ──────────────────────────────────────────
+ * Keywords are managed centrally in the admin dashboard (Supabase table
+ * job_source_keywords) and fetched from the server once per pass. Sources
+ * without configured keywords fall back to SEARCH_KEYWORDS (or env default).
+ */
+let KEYWORDS_CACHE = null; // Map<sourceId, string[]> | null (not fetched yet)
+
+async function fetchSourceKeywords() {
+  try {
+    const res = await fetch(`${SARI_API}/api/jobs/keywords`, {
+      headers: { "x-admin-secret": ADMIN_SECRET },
+    });
+    if (!res.ok) throw new Error(`keywords HTTP ${res.status}`);
+    const data = await res.json();
+    KEYWORDS_CACHE = new Map();
+    for (const s of data.sources || []) {
+      KEYWORDS_CACHE.set(s.id, (s.keywords || []).filter(Boolean));
+    }
+    console.log(`[collector] keywords loaded for ${KEYWORDS_CACHE.size} source(s)`);
+  } catch (err) {
+    console.warn(`[collector] keywords fetch failed (using defaults): ${err.message}`);
+    KEYWORDS_CACHE = KEYWORDS_CACHE || new Map();
+  }
+}
+
+function keywordsFor(source) {
+  const cached = KEYWORDS_CACHE ? KEYWORDS_CACHE.get(source.id) : null;
+  return cached && cached.length > 0 ? cached : SEARCH_KEYWORDS;
+}
+
 async function uploadJobs(source, jobs, attempt = 1) {
   try {
     const res = await fetch(`${SARI_API}/api/jobs/upload-web`, {
@@ -686,7 +716,7 @@ async function scrapeTyped(context, source, platformName) {
 
     const boxSel = cfg.boxSelectors.join(", ");
 
-    for (const keyword of SEARCH_KEYWORDS) {
+    for (const keyword of keywordsFor(source)) {
       try {
         let box = page.locator(boxSel).first();
         const boxOk = await box.waitFor({ state: cfg.forceClick ? "attached" : "visible", timeout: 8000 }).then(() => true).catch(() => false);
@@ -948,6 +978,7 @@ async function scrapeSource(browser, source, persistentContext) {
 /* ── Main loop ──────────────────────────────────────────────────── */
 async function runPass(browser, persistentContext) {
   console.log(`[collector] ${new Date().toISOString()} polling pending web sources...`);
+  await fetchSourceKeywords();
   const sources = await getPendingSources();
   if (sources.length === 0) {
     console.log("[collector] no pending sources");
@@ -956,7 +987,7 @@ async function runPass(browser, persistentContext) {
 
   let totalUploaded = 0;
   for (const source of sources) {
-    console.log(`[collector]   -> ${source.name} (${SEARCH_KEYWORDS.length} keywords)`);
+    console.log(`[collector]   -> ${source.name} (${keywordsFor(source).length} keywords)`);
     try {
       const inserted = await scrapeSource(browser, source, persistentContext);
       totalUploaded += inserted;
