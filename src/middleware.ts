@@ -1,5 +1,6 @@
 import { type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { verifyAdminSession, ADMIN_SESSION_COOKIE } from "@/lib/admin/session";
 
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
 
@@ -26,6 +27,39 @@ export async function middleware(request: NextRequest) {
       return new Response(JSON.stringify({ error: "Too many requests" }), {
         status: 429,
         headers: { "Content-Type": "application/json", "Retry-After": "60" },
+      });
+    }
+  }
+
+  // Admin dashboard gate (separate password, independent of Supabase auth).
+  // /admin/* pages and /api/admin/* routes require a valid admin session cookie.
+  const isAdminPage = request.nextUrl.pathname.startsWith("/admin");
+  const isAdminApi = request.nextUrl.pathname.startsWith("/api/admin");
+  const isAdminLoginPage = request.nextUrl.pathname === "/admin/login";
+  const isAdminAuthApi = request.nextUrl.pathname === "/api/admin/auth";
+
+  if (isAdminPage && !isAdminLoginPage) {
+    const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+    const secret = process.env.ADMIN_SECRET || process.env.ADMIN_DASHBOARD_PASSWORD || "sari-admin";
+    const adminOk = await verifyAdminSession(token, secret);
+    if (!adminOk) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/login";
+      url.search = "";
+      return Response.redirect(url);
+    }
+  }
+
+  // API admin routes double-check the cookie themselves; only gate the login
+  // endpoint so POSTs can reach it while signed out.
+  if (isAdminApi && !isAdminAuthApi) {
+    const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+    const secret = process.env.ADMIN_SECRET || process.env.ADMIN_DASHBOARD_PASSWORD || "sari-admin";
+    const adminOk = await verifyAdminSession(token, secret);
+    if (!adminOk) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
       });
     }
   }

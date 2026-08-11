@@ -18,6 +18,8 @@
  *   POLL_INTERVAL_MIN      default 6
  *   HEADLESS               set "1" to hide the browser window (server mode)
  *   PROFILE_DIR            optional persistent browser profile (login state)
+ *   TYPED_SEARCH           set "1" to search each platform by typing into ONE
+ *                          warm tab (human sim) instead of navigating 16 URLs
  *
  * Usage:
  *   npm start        (loop forever, every POLL_INTERVAL_MIN minutes)
@@ -33,6 +35,11 @@ const HEADLESS = process.env.HEADLESS === "1";
 const PROFILE_DIR = process.env.PROFILE_DIR || null;
 const CHROME_CDP = process.env.CHROME_CDP || null;
 const ONCE = process.argv.includes("--once");
+const UPWORK_TYPED = process.env.UPWORK_TYPED === "1";
+const TYPED_SEARCH = process.env.TYPED_SEARCH === "1" || UPWORK_TYPED; // typed mode for all configured platforms
+const JOBSPRESSO_RSS_URL =
+  process.env.JOBSPRESSO_RSS_URL ||
+  "https://jobspresso.co/?feed=job_feed&job_types=ai-data%2Cdesigner%2Cdeveloper%2Cmarketing%2Cvarious%2Cproduct-mgmt%2Csales%2Csupport%2Cwriting";
 
 const SEARCH_KEYWORDS = (process.env.SEARCH_KEYWORDS || [
   "virtual assistant",
@@ -63,6 +70,72 @@ const CONCURRENCY = Math.max(1, parseInt(process.env.CONCURRENCY || "3", 10));
 if (!ADMIN_SECRET) {
   console.error("[collector] ADMIN_SECRET is not set. Run with: set ADMIN_SECRET=... then npm start");
   process.exit(1);
+}
+
+/* ── Typed-search config per platform ─────────────────────────────
+ * TYPED_SEARCH=1: for each source we open ONE landing tab (the page with the
+ * search box), type each keyword character-by-character (human jitter), press
+ * Enter and scrape the results — searches stay in that single warm tab per
+ * platform instead of 16 navigation churns. Upwork's tab is kept open across
+ * passes; the other platforms reuse an already-open tab if present.
+ */
+const TYPED_CONFIG = {
+  upwork: {
+    key: "upwork",
+    landingUrl: "https://www.upwork.com/nx/search/jobs/",
+    boxSelectors: [
+      'input[data-test="search-input"]',
+      'input[placeholder*="job"]',
+      'input[placeholder*="Search"]',
+      'input[placeholder*="search"]',
+      'input[type="search"]',
+      'input[name="q"]',
+      "#srp-search-input",
+    ],
+    resultSelectors: ['section[data-test="JobCard"]', 'section[class*="job-tile"]', 'div[class*="job-card"]', 'article[class*="job"]'],
+    keepTabOpen: true,
+    hasCloudflare: true,
+  },
+  onlinejobs: {
+    key: "onlinejobs",
+    landingUrl: "https://www.onlinejobs.ph/jobseekers/jobsearch",
+    boxSelectors: ['input#jobkeyword', 'input[name="jobkeyword"]'],
+    resultSelectors: ['a[href*="/jobseekers/job/"]'],
+    keepTabOpen: true,
+    hasCloudflare: false,
+  },
+  freelance: {
+    key: "freelancer",
+    landingUrl: "https://www.freelancer.com/jobs",
+    boxSelectors: ['input#keyword-input', 'input[name="search_keyword"]'],
+    resultSelectors: [".JobSearchCard-item"],
+    keepTabOpen: true,
+    hasCloudflare: false,
+  },
+  guru: {
+    key: "guru",
+    landingUrl: "https://www.guru.com/d/jobs/",
+    boxSelectors: ['input[aria-label="Search freelance jobs"]', 'input[placeholder*="Search freelance jobs"]'],
+    resultSelectors: [".jobRecord"],
+    keepTabOpen: true,
+    hasCloudflare: false,
+  },
+  workingnomads: {
+    key: "workingnomads",
+    landingUrl: "https://www.workingnomads.com/jobs",
+    boxSelectors: ['input[name="q"]'],
+    resultSelectors: ["a.job-desktop"],
+    keepTabOpen: true,
+    hasCloudflare: false,
+  },
+};
+
+function typedConfigFor(platformName) {
+  const name = (platformName || "").toLowerCase();
+  const found = Object.values(TYPED_CONFIG).find(
+    (c) => name.includes(c.key) || c.key.includes(name)
+  );
+  return found || null;
 }
 
 /* ── Platform URL builders (newest first) ───────────────────────── */
@@ -547,6 +620,221 @@ async function scrapeUrl(context, url, platformName) {
   }
 }
 
+/* ── "Typed search" mode (TYPED_SEARCH=1) ─────────────────────────
+ * Instead of navigating straight to per-keyword search URLs (16 navigation
+ * churns), we open ONE landing tab per platform (the page that has the search
+ * box), keep it warm, focus the box and type each keyword character-by-
+ * character (human jitter), press Enter and scrape the results. For Upwork
+ * this reuses your real logged-in Chrome tab (CDP) — the warm session stays.
+ */
+async function scrapeTyped(context, source, platformName) {
+  const cfg = typedConfigFor(platformName);
+  if (!cfg) {
+    console.warn(`[collector]   no typed config for ${platformName}, falling back to URL scan`);
+    return null;
+  }
+
+  // Reuse an already-open tab for this platform if present (especially in
+  // CHROME_CDP mode driving your real Chrome): keeps warm, logged-in sessions.
+  let page = (context.pages?.() || []).find(
+    (p) => (p.url() || "").includes(cfg.key === "onlinejobs" ? "onlinejobs.ph" : cfg.key)
+  ) || null;
+  const shouldClose = !page && !cfg.keepTabOpen;
+
+  if (!page) {
+    page = await context.newPage();
+    await page.goto(cfg.landingUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+  } else {
+    console.log(`[collector]   reusing open ${cfg.key} tab:`, page.url());
+  }
+  const seen = new Set();
+  let totalInserted = 0;
+
+  try {
+    // Cloudflare "Just a moment..." challenge (Upwork): wait it out with human
+    // jitter (no reload — a reload resets it). Click Turnstile checkbox if present.
+    if (cfg.hasCloudflare) {
+      const deadline = Date.now() + 60000;
+      while (Date.now() < deadline) {
+        const stuck = await page
+          .evaluate(() => document.body.innerText.includes("Just a moment"))
+          .catch(() => false);
+        if (!stuck) break;
+        try {
+          for (const f of page.frames()) {
+            const box = await f.$(
+              'input[type="checkbox"], [role="checkbox"], .cb-i-frame, iframe[title*="checkbox"]'
+            );
+            if (box) {
+              await page.mouse.move(rand(300, 800), rand(300, 600), { steps: 5 }).catch(() => {});
+              await box.click({ force: true, timeout: 2000 }).catch(() => {});
+            }
+          }
+        } catch {}
+        await page.waitForTimeout(rand(2200, 3800));
+      }
+    }
+
+    const waitForResults = async () => {
+      await page.waitForFunction(
+        (sels) => sels.some((s) => document.querySelector(s)),
+        cfg.resultSelectors,
+        { timeout: 25000 }
+      ).catch(() => {});
+      await page.waitForTimeout(rand(1200, 2400));
+    };
+
+    const boxSel = cfg.boxSelectors.join(", ");
+
+    for (const keyword of SEARCH_KEYWORDS) {
+      try {
+        let box = page.locator(boxSel).first();
+        const boxOk = await box.waitFor({ state: cfg.forceClick ? "attached" : "visible", timeout: 8000 }).then(() => true).catch(() => false);
+        if (!boxOk) {
+          console.log(`[collector]      search box missing, loading ${cfg.landingUrl}`);
+          await page.goto(cfg.landingUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+          box = page.locator(boxSel).first();
+          await box.waitFor({ state: cfg.forceClick ? "attached" : "visible", timeout: 20000 });
+        }
+
+        // Human typing: focus, clear, then character-by-character with jitter.
+        if (cfg.forceClick) {
+          await box.click({ force: true }).catch(() => {});
+          await box.evaluate((el) => el.focus());
+        } else {
+          await box.click();
+        }
+        await page.keyboard.press("Control+A");
+        await page.keyboard.press("Backspace");
+        await humanPause(200, 500);
+        for (const ch of keyword) {
+          await page.keyboard.type(ch, { delay: 0 });
+          await page.waitForTimeout(24 + Math.random() * 40);
+        }
+        await humanPause(150, 400);
+        await page.keyboard.press("Enter");
+
+        await waitForResults();
+
+        const result = await page.evaluate(new Function(`${SCAN_FN}; return scanPageForJobs();`));
+        const jobs = (result?.jobs || []).map((j) => ({
+          ...j,
+          platform: j.platform || platformName,
+          posted_at: parsePostedDate(j.postedDate) || new Date().toISOString(),
+        }));
+        for (const j of jobs) {
+          const key = j.url || `${j.title}|${j.clientName}`;
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          try {
+            const res = await uploadJobs(source, [j]);
+            totalInserted += res.inserted || 0;
+            console.log(`[collector]      + "${j.title}" (${res.inserted ? "new" : "dup"})`);
+          } catch (err) {
+            console.error(`[collector]      upload failed for "${j.title}": ${err.message}`);
+          }
+        }
+        console.log(`[collector]      typed "${keyword}": ${jobs.length} job(s) on page`);
+      } catch (err) {
+        console.error(`[collector]      skip typed "${keyword}": ${err.message}`);
+      }
+      await humanPause(2500, 6000);
+    }
+  } finally {
+    if (shouldClose) await page.close().catch(() => {});
+  }
+  return totalInserted;
+}
+
+/* ── RSS-feed scraping (Jobspresso) ───────────────────────────────
+ * Jobspresso serves a proper XML RSS feed (no login/bot wall, includes
+ * title/link/description/company/pubDate). Parse it with plain string regex
+ * extraction — no browser needed, so it's fast and immune to selector drift.
+ */
+function decodeXmlEntities(s) {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#8217;/g, "'")
+    .replace(/&#8216;/g, "'")
+    .replace(/&#8211;/g, "–")
+    .replace(/&#8212;/g, "—")
+    .replace(/&#038;/g, "&")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)));
+}
+
+function parseRssItems(xml) {
+  const items = [];
+  const itemRe = /<item>([\s\S]*?)<\/item>/gi;
+  const extract = (block, re) => {
+    const m = block.match(re);
+    return m && m[1] ? m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").trim() : "";
+  };
+  let m;
+  while ((m = itemRe.exec(xml)) !== null) {
+    const block = m[1];
+    const title = extract(block, /<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
+    const link = extract(block, /<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/i);
+    const description = extract(block, /<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i);
+    const client = extract(block, /<dc:creator>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/dc:creator>/i);
+    const pubDate = extract(block, /<pubDate>([\s\S]*?)<\/pubDate>/i);
+    if (!title || !link) continue;
+    items.push({
+      title: decodeXmlEntities(title),
+      url: link.replace(/&amp;/g, "&").trim(),
+      description: decodeXmlEntities(
+        description.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").substring(0, 1000)
+      ),
+      clientName: (client ? decodeXmlEntities(client.split("<br")[0].trim()) : "").replace(/⚲.*$/, "").trim(),
+      postedDate: pubDate,
+    });
+  }
+  return items;
+}
+
+async function scrapeRss(source, platformName) {
+  const url = JOBSPRESSO_RSS_URL;
+  let totalInserted = 0;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": DESKTOP_UA } });
+    if (!res.ok) throw new Error(`RSS HTTP ${res.status}`);
+    const xml = await res.text();
+    const items = parseRssItems(xml);
+    console.log(`[collector]      RSS: ${items.length} job(s) in feed`);
+    const seen = new Set();
+    for (const it of items) {
+      const key = it.url || `${it.title}|${it.clientName}`;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      const postedIso = it.postedDate ? new Date(it.postedDate).toISOString() : "";
+      try {
+        const resu = await uploadJobs(source, [{
+          title: it.title,
+          description: it.description,
+          url: it.url,
+          platform: platformName,
+          clientName: it.clientName,
+          postedDate: postedIso,
+          budgetAmount: "",
+          budgetType: "",
+          skills: [],
+          experienceLevel: "",
+        }]);
+        totalInserted += resu.inserted || 0;
+        console.log(`[collector]      + "${it.title}" (${resu.inserted ? "new" : "dup"})`);
+      } catch (err) {
+        console.error(`[collector]      RSS upload failed for "${it.title}": ${err.message}`);
+      }
+    }
+  } catch (err) {
+    console.error(`[collector]      RSS failed: ${err.message}`);
+  }
+  return totalInserted;
+}
+
 /* ── Browser stealth: look like a real Chrome, not a headless bot ── */
 const DESKTOP_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
@@ -599,6 +887,20 @@ async function scrapeSource(browser, source, persistentContext) {
   let totalInserted = 0;
 
   try {
+    // Jobspresso: use its RSS feed — no browser, no bot wall, no selector drift.
+    if ((platformName || "").toLowerCase().includes("jobspresso")) {
+      console.log(`[collector]   ${platformName} RSS-feed mode`);
+      return await scrapeRss(source, platformName);
+    }
+
+    if (TYPED_SEARCH) {
+      const typedResult = await scrapeTyped(context, source, platformName);
+      if (typedResult !== null) {
+        console.log(`[collector]   typed-search mode (1 warm tab per platform)`);
+        return typedResult;
+      }
+    }
+
     // Scan URLs with a cap on concurrent tabs, and STAGGERED starts: a human
     // opens one search at a time, not 16 tabs instantly. Each job is uploaded
     // immediately after it is found, so jobs stream into the live feed.
@@ -669,16 +971,44 @@ async function runPass(browser, persistentContext) {
   return totalUploaded;
 }
 
-async function main() {
-  const launchOpts = {
+/* ── Browser launch (real Chrome preferred, bundled Chromium as fallback) ──
+ * channel: "chrome" gives far fewer bot signals and a longer-lived
+ * Cloudflare cf_clearance, but it requires Google Chrome installed on the
+ * host. On servers/containers without it we fall back to the bundled
+ * Chromium that `npx playwright install chromium` provides. */
+function launchOpts() {
+  return {
     headless: HEADLESS,
-    // Real installed Chrome (not bundled Chromium): far fewer bot signals,
-    // and the Cloudflare cf_clearance from it lasts much longer.
     channel: "chrome",
     locale: "en-US",
     viewport: { width: 1366, height: 900 },
     args: ["--disable-blink-features=AutomationControlled", "--no-sandbox"],
   };
+}
+
+async function launchBrowser() {
+  const opts = launchOpts();
+  try {
+    return await chromium.launch(opts);
+  } catch (err) {
+    const { channel, ...rest } = opts;
+    console.warn(`[collector] system Chrome unavailable (${err.message?.split("\n")[0] || err.message}). Falling back to bundled Chromium.`);
+    return await chromium.launch(rest);
+  }
+}
+
+async function launchPersistent(profileDir) {
+  const opts = launchOpts();
+  try {
+    return await chromium.launchPersistentContext(profileDir, opts);
+  } catch (err) {
+    const { channel, ...rest } = opts;
+    console.warn(`[collector] system Chrome unavailable (${err.message?.split("\n")[0] || err.message}). Falling back to bundled Chromium.`);
+    return await chromium.launchPersistentContext(profileDir, rest);
+  }
+}
+
+async function main() {
   console.log(`[collector] browser ${HEADLESS ? "headless" : "windowed"} · API ${SARI_API} · every ${POLL_INTERVAL_MIN} min`);
   console.log(`[collector] keywords: ${SEARCH_KEYWORDS.join(", ")}`);
   console.log(`[collector] profile: ${PROFILE_DIR ? `persistent browser profile "${PROFILE_DIR}"` : "ephemeral (no login state)"}`);
@@ -696,13 +1026,13 @@ async function main() {
     // Persistent context: keeps cookies (incl. Cloudflare cf_clearance) and
     // login state between runs. Solve the Upwork CAPTCHA once in the visible
     // window and it is remembered for later passes.
-    persistentContext = await chromium.launchPersistentContext(PROFILE_DIR, launchOpts);
+    persistentContext = await launchPersistent(PROFILE_DIR);
     await persistentContext.addInitScript(() => {
       Object.defineProperty(navigator, "webdriver", { get: () => undefined });
     });
     browser = persistentContext.browser();
   } else {
-    browser = await chromium.launch(launchOpts);
+    browser = await launchBrowser();
   }
 
   if (ONCE) {
