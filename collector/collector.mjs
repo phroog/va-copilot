@@ -92,7 +92,7 @@ const TYPED_CONFIG = {
       'input[name="q"]',
       "#srp-search-input",
     ],
-    resultSelectors: ['section[data-test="JobCard"]', 'section[class*="job-tile"]', 'div[class*="job-card"]', 'article[class*="job"]'],
+    resultSelectors: ['[data-test="JobTile"]', 'section[data-test="JobCard"]', 'section[class*="job-tile"]', 'div[class*="job-card"]', 'article[class*="job"]'],
     keepTabOpen: true,
     hasCloudflare: true,
   },
@@ -231,27 +231,30 @@ const SCAN_FN = `
 
     const jobs = [];
 
-    /* Upwork */
+    /* Upwork (new Markup: [data-test="JobTile"], legacy JobCard as fallback) */
     if (platform === "Upwork") {
       const cards = document.querySelectorAll(
-        'section[data-test="JobCard"], section[class*="job-tile"], div[class*="job-card"], article[class*="job"]'
+        '[data-test="JobTile"], section[data-test="JobCard"], section[class*="job-tile"], div[class*="job-card"], article[class*="job"]'
       );
       cards.forEach((card) => {
         const titleEl = card.querySelector(
-          '[data-test="job-title"], .job-title-link, h2 a, h3 a, a[class*="job-title"]'
+          'a[data-test*="job-tile-title-link"], a[data-test*="job-title-link"], [data-test="job-title"], .job-title-link, h2 a, h3 a, a[class*="job-title"]'
         );
         const title = titleEl?.textContent?.trim() || "";
         if (!title) return;
 
         const descEl = card.querySelector(
-          '[data-test="job-description"], .job-description, .break-word, p[class*="description"]'
+          '[data-test*="JobDescription"], [data-test="job-description"], .job-description, .break-word, p[class*="description"]'
         );
         const description = descEl?.textContent?.trim()?.substring(0, 1000) || "";
 
-        const budgetEl = card.querySelector(
-          '[data-test="budget"], [data-test="JobBudget"], .job-budget, [class*="budget"]'
-        );
-        const budgetText = budgetEl?.textContent?.trim() || "";
+        // Budget parsing: helpfully the new "JobAttrs" token row carries hourly/fixed
+        // budget + experience; older cards expose a dedicated budget element.
+        let budgetText = "";
+        const attrsEl = card.querySelector('[data-test*="JobAttrs"], [class*="JobAttrs"]');
+        if (attrsEl) budgetText = attrsEl.textContent?.trim() || "";
+        const budgetEl = card.querySelector('[data-test="budget"], [data-test="JobBudget"], .job-budget, [class*="budget"]');
+        if (budgetEl?.textContent?.trim()) budgetText += " " + budgetEl.textContent.trim();
         let budgetAmount = "";
         let budgetType = "";
         if (budgetText) {
@@ -261,10 +264,16 @@ const SCAN_FN = `
           else if (/fixed/i.test(budgetText)) budgetType = "fixed";
         }
 
-        const linkEl = titleEl?.closest("a") || card.querySelector("a[href*='/job/']");
-        const jobUrl = linkEl?.href
-          ? (linkEl.href.startsWith("http") ? linkEl.href : "https://www.upwork.com" + linkEl.getAttribute("href"))
-          : url;
+        // New Upwork tiles link to the post via an anchor to /jobs/..._~<uid>/; the
+        // title link's href may be an ugly highlighted-span slug, but it resolves.
+        const linkEl = titleEl?.closest("a")
+          || card.querySelector('a[href*="~"]')
+          || card.querySelector("a[href*='/job/']");
+        const rawHref = linkEl?.getAttribute("href") || "";
+        const hrefNoQuery = rawHref.split("?")[0];
+        const jobUrl = hrefNoQuery.startsWith("http")
+          ? hrefNoQuery
+          : "https://www.upwork.com" + (hrefNoQuery.startsWith("/") ? "" : "/") + hrefNoQuery;
 
         const skills = [];
         const skillEls = card.querySelectorAll('[data-test="skill-tag"], .skill-tag, [class*="skill"]');
