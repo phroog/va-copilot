@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { upsertGlobalJob } from "@/lib/jobs/global";
+import { isRelevantJob } from "@/lib/jobs/relevance";
 
 /**
  * Accepts jobs scraped by the browser extension "Admin Mode" and inserts
  * them into the shared live feed. Protected by ADMIN_SECRET.
  *
  * Body: { jobs: Job[], sourceId?: string }
+ *
+ * Irrelevant jobs (see lib/jobs/relevance) are deleted again instead of being
+ * shown, so the live feed only ever contains useful VA/WFH/freelancer work.
  */
 export async function POST(request: Request) {
   const secret = process.env.ADMIN_SECRET;
@@ -31,6 +35,7 @@ export async function POST(request: Request) {
   const supabase = createServiceRoleClient();
   const inserted: string[] = [];
   let duplicates = 0;
+  let filtered = 0;
 
   for (const rawJob of jobs) {
     const { job, inserted: isNew } = await upsertGlobalJob({
@@ -39,8 +44,17 @@ export async function POST(request: Request) {
       posted_at: rawJob.posted_at ?? new Date().toISOString(),
     });
     if (job?.id) {
-      if (isNew) inserted.push(job.id);
-      else duplicates++;
+      if (isNew) {
+        if (isRelevantJob(rawJob)) {
+          inserted.push(job.id);
+        } else {
+          // Not useful for the VA/WFH niche — remove it again.
+          await supabase.from("global_jobs").delete().eq("id", job.id);
+          filtered++;
+        }
+      } else {
+        duplicates++;
+      }
     }
   }
 
@@ -53,5 +67,5 @@ export async function POST(request: Request) {
       .eq("id", sourceId);
   }
 
-  return NextResponse.json({ ok: true, inserted: inserted.length, duplicates });
+  return NextResponse.json({ ok: true, inserted: inserted.length, duplicates, filtered });
 }
