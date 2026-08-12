@@ -46,7 +46,7 @@ export async function POST(request: Request) {
         { onConflict: "name", ignoreDuplicates: true }
       )
       .select("id, name, platform")
-      .single();
+      .maybeSingle();
 
     if (error) {
       errors++;
