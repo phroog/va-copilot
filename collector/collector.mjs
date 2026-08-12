@@ -673,9 +673,34 @@ async function scrapeTyped(context, source, platformName) {
 
   if (!page) {
     page = await context.newPage();
-    await page.goto(cfg.landingUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+    console.log(`[collector]   opening new ${cfg.key} tab`);
   } else {
     console.log(`[collector]   reusing open ${cfg.key} tab:`, page.url());
+  }
+
+  // Only force a fresh load if the current page looks stale/blocked: an open
+  // tab in a good state stays untouched (fewer Cloudflare turnstiles), while
+  // "Oops"-like interstitials or missing search boxes get reset to the source
+  // URL. A Cloudflare "Just a moment" screen is left to the dedicated wait
+  // below (reloading there would reset the challenge).
+  const freshUrl = source.url || cfg.landingUrl;
+  const looksStale = await page
+    .evaluate(
+      ({ boxSel, isCf }) => {
+        const t = document.body?.innerText || "";
+        if (isCf && /just a moment|attention required/i.test(t.slice(0, 3000))) return false;
+        let hasBox = false;
+        try { hasBox = !!document.querySelector(boxSel); } catch {}
+        return !hasBox
+          || /oops[^\n]*something|setting up something important|temporarily down|is currently unavailable|blocked/i.test(t.slice(0, 3000));
+      },
+      { boxSel: cfg.boxSelectors.join(", "), isCf: cfg.hasCloudflare }
+    )
+    .catch(() => true);
+
+  if (looksStale) {
+    console.log(`[collector]   ${cfg.key} tab stale (no box / error page), reloading ${freshUrl}`);
+    await page.goto(freshUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
   }
   const seen = new Set();
   let totalInserted = 0;
