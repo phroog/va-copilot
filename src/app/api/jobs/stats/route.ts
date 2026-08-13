@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/jobs/stats  (x-admin-secret)
  * Real intake numbers: how many jobs are actually in the feed, how many were
