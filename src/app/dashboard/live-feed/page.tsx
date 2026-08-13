@@ -89,6 +89,8 @@ export default function LiveFeedPage() {
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [platforms, setPlatforms] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [savingAll, setSavingAll] = useState(false);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [pitchJob, setPitchJob] = useState<FeedJob | null>(null);
@@ -139,6 +141,8 @@ export default function LiveFeedPage() {
       const mapped: FeedJob[] = (data.jobs ?? []).map(applyDefaults);
       setTotal(data.total ?? 0);
       setHasMore(data.hasMore ?? false);
+      setPlatforms(Array.isArray(data.platforms) ? data.platforms : []);
+      setCategories(Array.isArray(data.categories) ? data.categories : []);
       if (mode === "append") {
         setJobs((prev: FeedJob[]) => {
           const seen = new Set(prev.map((j) => j.id));
@@ -320,9 +324,6 @@ export default function LiveFeedPage() {
       setGeneratingId(null);
     }
   };
-
-  const platforms = Array.from(new Set(jobs.map((j) => j.platform).filter((p): p is string => !!p))).sort();
-  const categories = Array.from(new Set(jobs.map((j) => j.category).filter((c): c is string => !!c))).sort();
 
   return (
     <div className="space-y-6 animate-fade-in">

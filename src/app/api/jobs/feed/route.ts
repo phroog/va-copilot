@@ -107,6 +107,11 @@ export async function GET(request: Request) {
     };
   });
 
+  // Distinct platform/category options for the filter dropdowns — computed over
+  // the full window (before filters) so every option is always available.
+  const platforms = Array.from(new Set(rows.map((j: any) => j.platform).filter(Boolean))).sort();
+  const categories = Array.from(new Set(rows.map((j: any) => j.category).filter(Boolean))).sort();
+
   if (q) rows = rows.filter((j: any) => ((j.title || "") + " " + (j.description || "")).toLowerCase().includes(q));
   if (platform !== "all") rows = rows.filter((j: any) => j.platform === platform);
   if (category !== "all") rows = rows.filter((j: any) => j.category === category);
@@ -122,5 +127,5 @@ export async function GET(request: Request) {
 
   const total = rows.length;
   const page = rows.slice(offset, offset + limit);
-  return NextResponse.json({ jobs: page, total, hasMore: offset + limit < total, offset });
+  return NextResponse.json({ jobs: page, total, hasMore: offset + limit < total, offset, platforms, categories });
 }

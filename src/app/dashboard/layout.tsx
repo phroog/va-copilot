@@ -8,8 +8,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useLocale } from "@/lib/i18n/context";
 import { useProfileName } from "@/lib/use-profile-name";
-import { useState, useEffect, useCallback } from "react";
-import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Inbox, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, Target, RadioTower } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, RadioTower } from "lucide-react";
 import dynamic from "next/dynamic";
 const MochiHub = dynamic(() => import("@/components/mochi-hub"), { ssr: false });
 import { ToastProvider } from "@/components/toast";
@@ -28,17 +28,13 @@ const sidebarGroups = [
       { href: "/dashboard/pipeline", labelKey: "pipeline", icon: GitBranch },
       { href: "/dashboard/vault", labelKey: "vault", icon: Shield },
       { href: "/academy/dashboard", labelKey: "academy", icon: BookOpen },
-      { href: "/dashboard/agency", labelKey: "agency", icon: Shield },
-      { href: "/dashboard/agency/reporting", labelKey: "agencyReporting", icon: BarChart3 },
       { href: "/dashboard/clients", labelKey: "clients", icon: Users },
-      { href: "/dashboard/stress-buster", labelKey: "stressBuster", icon: Target },
     ],
   },
   {
     labelKey: "tracking",
     defaultOpen: true,
     links: [
-      { href: "/dashboard/inbox", labelKey: "inbox", icon: Inbox },
       { href: "/dashboard/time-tracker", labelKey: "timeTracker", icon: Timer },
       { href: "/dashboard/calendar", labelKey: "calendar", icon: Calendar },
       { href: "/dashboard/focus", labelKey: "focus", icon: Timer },
@@ -60,6 +56,14 @@ const sidebarGroups = [
     ],
   },
   {
+    labelKey: "agency",
+    defaultOpen: false,
+    links: [
+      { href: "/dashboard/agency", labelKey: "agency", icon: Shield },
+      { href: "/dashboard/agency/reporting", labelKey: "agencyReporting", icon: BarChart3 },
+    ],
+  },
+  {
     labelKey: "configuration",
     defaultOpen: false,
     links: [
@@ -78,34 +82,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const { name: userName } = useProfileName();
-  const [unreadCount, setUnreadCount] = useState(0);
   const [creditsBalance, setCreditsBalance] = useState<number | null>(null);
+  const [agencyEnabled, setAgencyEnabled] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved: Record<string, boolean> = {};
     sidebarGroups.forEach((g) => { saved[g.labelKey] = g.defaultOpen; });
     return saved;
   });
 
-  const fetchUnread = useCallback(async () => {
-    try {
-      const res = await fetch("/api/inbox/messages");
-      const data = await res.json();
-      const messages: any[] = data.messages ?? [];
-      setUnreadCount(messages.filter((m: any) => !m.read).length);
-    } catch {
-      // silent
-    }
-  }, []);
-
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) setUserEmail(data.user.email ?? null);
     });
-    fetchUnread();
     fetch("/api/ai/credits").then(async r => { if (r.ok) { const d = await r.json(); setCreditsBalance(d.balance); } }).catch(() => {});
-    const interval = setInterval(fetchUnread, 30000);
-    return () => clearInterval(interval);
-  }, [supabase, fetchUnread]);
+    fetch("/api/user-settings").then(async r => { if (r.ok) { const d = await r.json(); setAgencyEnabled(d.settings?.agency_enabled === true); } }).catch(() => {});
+  }, [supabase]);
 
   const handleLogout = async () => {
     try {
@@ -141,6 +132,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             {sidebarGroups.map((group) => {
+              if (group.labelKey === "agency" && !agencyEnabled) return null;
               const isOpen = openGroups[group.labelKey];
               return (
                 <div key={group.labelKey}>
@@ -155,7 +147,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <div className="ml-1 space-y-0.5 mt-0.5">
                       {group.links.map((link) => {
                         const isActive = pathname === link.href;
-                        const showBadge = link.href === "/dashboard/inbox" && unreadCount > 0;
                         return (
                           <Link
                             key={link.href}
@@ -169,11 +160,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           >
                             <link.icon className="w-4 h-4" />
                             <span className="flex-1">{t(link.labelKey)}</span>
-                            {showBadge && (
-                              <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-kawaii-coral/30 text-red-600 dark:text-red-300">
-                                {unreadCount}
-                              </span>
-                            )}
                           </Link>
                         );
                       })}

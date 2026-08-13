@@ -25,11 +25,17 @@ export default function MoodCheckDialog() {
   const { name: userName } = useProfileName();
 
   useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    // Only ask once per day per browser session, even if the user dismisses it.
+    if (sessionStorage.getItem(`sari-mood-asked-${today}`)) return;
     const checkMood = async () => {
       try {
         const res = await fetch("/api/mood");
         const data = await res.json();
-        if (!data.mood) setOpen(true);
+        if (!data.mood) {
+          sessionStorage.setItem(`sari-mood-asked-${today}`, "1");
+          setOpen(true);
+        }
       } catch {
         // silent
       }

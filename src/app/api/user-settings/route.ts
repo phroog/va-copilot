@@ -31,11 +31,15 @@ export async function PUT(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { default_hourly_rate } = await request.json();
+  const { default_hourly_rate, agency_enabled } = await request.json();
+
+  const update: Record<string, any> = {};
+  if (default_hourly_rate !== undefined) update.default_hourly_rate = default_hourly_rate;
+  if (agency_enabled !== undefined) update.agency_enabled = agency_enabled === true;
 
   const { data, error } = await supabase
     .from("user_settings")
-    .upsert({ user_id: user.id, default_hourly_rate })
+    .upsert({ user_id: user.id, ...update })
     .select()
     .single();
 

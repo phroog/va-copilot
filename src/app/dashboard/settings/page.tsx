@@ -89,6 +89,9 @@ export default function SettingsPage() {
   const [rateSaving, setRateSaving] = useState(false);
   const [rateSaved, setRateSaved] = useState(false);
 
+  // Agency visibility (paid plan later)
+  const [agencyEnabled, setAgencyEnabled] = useState(false);
+
   // Google Calendar integration
   const [hasGoogleCal, setHasGoogleCal] = useState(false);
   const [checkingGoogle, setCheckingGoogle] = useState(true);
@@ -109,7 +112,10 @@ export default function SettingsPage() {
           if (!Array.isArray(p.job_vector) || p.job_vector.length !== 5) p.job_vector = [3, 3, 3, 3, 3];
           setProfile(p);
         }
-        if (settingsData.settings) setDefaultRate(String(settingsData.settings.default_hourly_rate ?? "0"));
+        if (settingsData.settings) {
+          setDefaultRate(String(settingsData.settings.default_hourly_rate ?? "0"));
+          setAgencyEnabled(settingsData.settings.agency_enabled === true);
+        }
         if (pubData.profile) setPublicProfile(pubData.profile);
         const gcal = (integData.integrations ?? []).find((i: any) => i.provider === "google_calendar");
         setHasGoogleCal(!!gcal);
@@ -489,6 +495,36 @@ export default function SettingsPage() {
             <p className="text-xs text-slate-400">
               Toggle “Include in Live Feed”, check last-collected time, and add custom RSS/API/web sources.
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">🏢 Agency</CardTitle>
+          <CardDescription>Agency-Features freischalten (langfristig ein Paid-Plan).</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={agencyEnabled}
+              onChange={async (e) => {
+                const next = e.target.checked;
+                setAgencyEnabled(next);
+                try {
+                  const res = await fetch("/api/user-settings", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ agency_enabled: next }),
+                  });
+                  if (!res.ok) { setAgencyEnabled(!next); throw new Error("Update failed"); }
+                  showToast(next ? "Agency aktiviert" : "Agency deaktiviert");
+                } catch { setAgencyEnabled(!next); showToast("Agency-Update fehlgeschlagen", "error"); }
+              }}
+              className="w-5 h-5"
+            />
+            <span className="text-sm text-slate-600 dark:text-slate-300">Agency im Menü anzeigen</span>
           </div>
         </CardContent>
       </Card>
