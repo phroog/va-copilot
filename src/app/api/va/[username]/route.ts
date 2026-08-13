@@ -17,6 +17,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ use
 
   const userId = pubProfile.user_id;
 
+  // CV file (public bucket) so clients can download the VA's CV.
+  const { data: cv } = await supabase
+    .from("cvs")
+    .select("file_url, file_name")
+    .eq("user_id", userId)
+    .maybeSingle();
+
   // Fetch completed jobs count
   const { count: completedJobs } = await supabase
     .from("jobs")
@@ -67,5 +74,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ use
       reviewCount: vaReviews.length,
     },
     reviews: vaReviews,
+    cv: cv?.file_url ? { url: cv.file_url, fileName: cv.file_name } : null,
   });
 }

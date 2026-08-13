@@ -35,6 +35,7 @@ export default function VAPublicProfile({ params }: { params: Promise<{ username
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [cv, setCv] = useState<{ url: string; fileName?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -48,6 +49,7 @@ export default function VAPublicProfile({ params }: { params: Promise<{ username
         setProfile(data.profile);
         setStats(data.stats);
         setReviews(data.reviews);
+        setCv(data.cv ?? null);
       } catch { setError("Failed to load profile"); } finally { setLoading(false); }
     })();
   }, [params]);
@@ -107,6 +109,16 @@ export default function VAPublicProfile({ params }: { params: Promise<{ username
             <p className="text-sm text-slate-400">@{profile.username}</p>
             {profile.bio && (
               <p className="text-slate-600 dark:text-slate-300 mt-3 max-w-lg mx-auto">{profile.bio}</p>
+            )}
+            {cv && (
+              <a
+                href={cv.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-kawaii-purple text-white text-sm font-bold hover:bg-kawaii-purple/90 transition-colors"
+              >
+                📄 CV ansehen
+              </a>
             )}
           </CardContent>
         </Card>

@@ -1,4 +1,5 @@
 import { callDeepSeek, checkCredits } from "@/lib/ai-client";
+import { cvToText } from "@/lib/cv/types";
 
 /**
  * Generate (or return cached) pitch for a job. Mirrors the logic of the
@@ -32,6 +33,14 @@ export async function generatePitchForJob(supabase: any, job: any, userId: strin
     ? `${job.budget_type}${job.budget_amount ? " - " + job.budget_amount : ""}`
     : job.budget || "";
 
+  // Attach the user's CV so the pitch is personalized to them.
+  const { data: cv } = await supabase
+    .from("cvs")
+    .select("data")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const cvText = cvToText(cv?.data);
+
   const prompt = `Generate a professional cover letter / pitch for a freelance job application.
 
 Job Title: ${job.title}
@@ -41,6 +50,7 @@ Client: ${[job.client_name, job.client_country].filter(Boolean).join(" from ") |
 Client Rating: ${job.client_rating || "Not specified"}
 Skills Required: ${skillsStr || "Not specified"}
 Description: ${(job.description || "").substring(0, 3000)}
+${cvText ? `\nMY CV (personalize the pitch to this freelancer):\n${cvText.substring(0, 4000)}` : ""}
 
 Write a compelling pitch that:
 1. Addresses the client directly and personally
