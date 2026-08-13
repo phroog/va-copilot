@@ -56,7 +56,7 @@ export async function PUT(request: Request) {
 
   const update: Record<string, any> = { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id, skills, experience_level, job_categories };
 
-  if (job_vector !== undefined) {
+  if (job_vector !== undefined && job_vector !== null) {
     if (!Array.isArray(job_vector) || job_vector.length !== 5 || job_vector.some((n: any) => !Number.isInteger(n) || n < 1 || n > 5)) {
       return NextResponse.json({ error: "job_vector must be 5 integers between 1 and 5" }, { status: 400 });
     }

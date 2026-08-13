@@ -28,12 +28,41 @@ interface Profile {
 }
 
 const VECTOR_AXES = [
-  { key: "erfahrung", label: "Erfahrung", desc: "1 = Einsteiger · 5 = Experte" },
-  { key: "technik", label: "Technik", desc: "1 = reine Admin-Arbeit · 5 = Dev/Engineering" },
-  { key: "kundenkontakt", label: "Kundenkontakt", desc: "1 = Backoffice · 5 = Telefon/Verkauf" },
-  { key: "auslastung", label: "Auslastung", desc: "1 = Einmal-Gig · 5 = Fulltime" },
-  { key: "budget", label: "Budget", desc: "1 = niedrig · 5 = Premium" },
+  { key: "erfahrung", label: "Erfahrung", opts: ["Anfänger", "Grundkenntnisse", "Erfahren (2–4 J)", "Fortgeschritten", "Experte (5+ J)"] },
+  { key: "technik", label: "Technik", opts: ["Reine Admin/VA", "Büro/Support", "Social Media/Content", "Tools (Excel/WordPress/Video)", "Dev/Data/Engineering"] },
+  { key: "kundenkontakt", label: "Kundenkontakt", opts: ["Backoffice/Daten", "E-Mail/Inbox", "Allg. Admin/Chat", "Support/Rezeption", "Telefon/Verkauf"] },
+  { key: "auslastung", label: "Auslastung", opts: ["Einmal-Gig", "Wenige Std", "Teilzeit", "~30 Std", "Fulltime"] },
+  { key: "budget", label: "Budget", opts: ["< 5$/h · < 200$ fest", "< 15$/h", "< 25$/h", "< 45$/h", "45$+/h · Premium"] },
 ];
+
+function ChipInput({ values, onChange, placeholder }: { values: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
+  const [text, setText] = useState("");
+  const add = () => {
+    const v = text.trim();
+    if (v && !(values || []).includes(v)) onChange([...(values || []), v]);
+    setText("");
+  };
+  return (
+    <div>
+      <div className="flex flex-wrap gap-1 mb-1">
+        {(values || []).map((v, i) => (
+          <span key={i} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-kawaii-lavender/20 dark:bg-dark-surface text-slate-700 dark:text-slate-200">
+            {v}
+            <button type="button" onClick={() => onChange((values || []).filter((_, j) => j !== i))} className="text-slate-400 hover:text-red-500">×</button>
+          </span>
+        ))}
+      </div>
+      <input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); add(); } }}
+        onBlur={add}
+        placeholder={placeholder}
+        className="w-full h-10 px-3 rounded-xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200"
+      />
+    </div>
+  );
+}
 
 interface PublicProfile {
   username: string;
@@ -75,7 +104,11 @@ export default function SettingsPage() {
       fetch("/api/user-integrations").then((r) => r.json()),
     ])
       .then(([profileData, settingsData, pubData, integData]) => {
-        if (profileData.profile) setProfile(profileData.profile);
+        if (profileData.profile) {
+          const p = profileData.profile;
+          if (!Array.isArray(p.job_vector) || p.job_vector.length !== 5) p.job_vector = [3, 3, 3, 3, 3];
+          setProfile(p);
+        }
         if (settingsData.settings) setDefaultRate(String(settingsData.settings.default_hourly_rate ?? "0"));
         if (pubData.profile) setPublicProfile(pubData.profile);
         const gcal = (integData.integrations ?? []).find((i: any) => i.provider === "google_calendar");
@@ -91,12 +124,21 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch("/api/profile", {
+      const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profile),
       });
-      fetch("/api/profile").then(r => r.json()).then(d => { if (d.profile) setProfile(d.profile); });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error || "Failed to save profile");
+      }
+      const d = await res.json();
+      if (d.profile) {
+        const p = d.profile;
+        if (!Array.isArray(p.job_vector) || p.job_vector.length !== 5) p.job_vector = [3, 3, 3, 3, 3];
+        setProfile(p);
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
@@ -232,11 +274,11 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Skills (comma-separated)</Label>
-            <Input
-              value={(profile.skills || []).join(", ")}
-              onChange={(e) => setProfile({ ...profile, skills: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-              placeholder="e.g. Admin Support, Social Media Management, Data Entry"
+            <Label>Skills</Label>
+            <ChipInput
+              values={profile.skills || []}
+              onChange={(v) => setProfile({ ...profile, skills: v })}
+              placeholder="Skill eingeben + Enter oder Komma"
             />
             <p className="text-xs text-slate-400">Used to match job descriptions against your skill set.</p>
           </div>
@@ -253,11 +295,11 @@ export default function SettingsPage() {
             </select>
           </div>
           <div className="space-y-2">
-            <Label>Job Categories (comma-separated)</Label>
-            <Input
-              value={(profile.job_categories || []).join(", ")}
-              onChange={(e) => setProfile({ ...profile, job_categories: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-              placeholder="e.g. Admin Support, Graphic Design, Social Media"
+            <Label>Job Categories</Label>
+            <ChipInput
+              values={profile.job_categories || []}
+              onChange={(v) => setProfile({ ...profile, job_categories: v })}
+              placeholder="Kategorie eingeben + Enter oder Komma"
             />
             <p className="text-xs text-slate-400">Categories help match jobs to your preferred work areas.</p>
           </div>
@@ -267,24 +309,26 @@ export default function SettingsPage() {
               Je näher deine Zahlen an denen des Jobs liegen, desto höher der Match im Live-Feed.
             </p>
             {VECTOR_AXES.map((ax, i) => (
-              <div key={ax.key} className="flex items-center gap-3">
-                <div className="flex-1">
-                  <Label className="text-sm">{ax.label}</Label>
-                  <p className="text-xs text-slate-400">{ax.desc}</p>
+              <div key={ax.key} className="space-y-1">
+                <div className="flex items-center gap-3">
+                  <Label className="text-sm flex-1">{ax.label}</Label>
+                  <select
+                    value={(profile.job_vector || [3, 3, 3, 3, 3])[i] ?? 3}
+                    onChange={(e) => {
+                      const arr = [...(profile.job_vector || [3, 3, 3, 3, 3])];
+                      arr[i] = parseInt(e.target.value, 10);
+                      setProfile({ ...profile, job_vector: arr });
+                    }}
+                    className="w-40 h-10 px-2 rounded-xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200"
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>{n} · {ax.opts[n - 1]}</option>
+                    ))}
+                  </select>
                 </div>
-                <select
-                  value={(profile.job_vector || [3, 3, 3, 3, 3])[i] ?? 3}
-                  onChange={(e) => {
-                    const arr = [...(profile.job_vector || [3, 3, 3, 3, 3])];
-                    arr[i] = parseInt(e.target.value, 10);
-                    setProfile({ ...profile, job_vector: arr });
-                  }}
-                  className="w-20 h-10 px-2 rounded-xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200"
-                >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
-                </select>
+                <p className="text-[11px] text-slate-400 leading-snug">
+                  1 = {ax.opts[0]} · 2 = {ax.opts[1]} · 3 = {ax.opts[2]} · 4 = {ax.opts[3]} · 5 = {ax.opts[4]}
+                </p>
               </div>
             ))}
             <p className="text-xs text-slate-400">
