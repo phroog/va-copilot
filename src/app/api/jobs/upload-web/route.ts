@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { upsertGlobalJob } from "@/lib/jobs/global";
 import { isRelevantJob } from "@/lib/jobs/relevance";
+import { classifyJobVector } from "@/lib/jobs/profile-vector";
 
 /**
  * Accepts jobs scraped by the browser extension "Admin Mode" and inserts
@@ -38,10 +39,12 @@ export async function POST(request: Request) {
   let filtered = 0;
 
   for (const rawJob of jobs) {
+    const profileVector = classifyJobVector(rawJob).vector;
     const { job, inserted: isNew } = await upsertGlobalJob({
       ...rawJob,
       source_id: rawJob.source_id ?? sourceId,
       posted_at: rawJob.posted_at ?? new Date().toISOString(),
+      profile_vector: profileVector,
     });
     if (job?.id) {
       if (isNew) {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { classifyJobVector, matchVectors, validateUserVector, type Vector } from "@/lib/jobs/profile-vector";
 
 const CUTOFF_HOURS = 24;
 
@@ -53,10 +54,19 @@ export async function GET(request: Request) {
   const { data: jobs, error: jobsError } = await query.order("posted_at", { ascending: false, nullsFirst: false }).limit(300);
   if (jobsError) return NextResponse.json({ error: jobsError.message }, { status: 500 });
 
+  // Deterministic 5-number profile match against the user's preference vector.
+  let userVec: Vector | null = null;
+  const { data: profile } = await supabase.from("profiles").select("job_vector").eq("user_id", user.id).maybeSingle();
+  if (profile?.job_vector) userVec = validateUserVector(profile.job_vector);
+
   const feed = (jobs ?? []).map((job: any) => {
     const it = interactionMap.get(job.id) ?? {};
+    const profileVector: Vector = Array.isArray(job.profile_vector) ? job.profile_vector : classifyJobVector(job).vector;
+    const match = userVec ? matchVectors(userVec, profileVector) : null;
     return {
       ...job,
+      profile_vector: profileVector,
+      profile_match: match ? match.score : null,
       is_saved: it.is_saved ?? false,
       is_applied: it.is_applied ?? false,
       matching_score: it.matching_score ?? null,

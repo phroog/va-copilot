@@ -25,6 +25,7 @@ export async function upsertGlobalJob(job: Record<string, any>) {
     experience_level: job.experience_level ?? job.experienceLevel ?? null,
     posted_at: job.posted_at ?? null,
     category: job.category ?? categorizeJob(job),
+    profile_vector: job.profile_vector ?? null,
   };
 
   if (!payload.url || payload.url === "") {
