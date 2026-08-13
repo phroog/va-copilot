@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { classifyJobVector, matchVectors, validateUserVector, type Vector } from "@/lib/jobs/profile-vector";
+import { computeScore } from "@/lib/jobs/scoring";
 
 const CUTOFF_HOURS = 24;
 
 /**
  * GET /api/jobs/feed
  * Returns the shared live feed joined with the current user's interactions
- * (is_saved, is_applied, matching_score, pitch_id). Defaults to false/null.
+ * (is_saved, is_applied, pitch_id). matching_score + matched_skills are
+ * computed on the fly (deterministic, free) so every job is always scored —
+ * no "not scored yet" placeholder, no batch job required.
  */
 export async function GET(request: Request) {
   const supabase = createClient();
@@ -54,23 +57,29 @@ export async function GET(request: Request) {
   const { data: jobs, error: jobsError } = await query.order("posted_at", { ascending: false, nullsFirst: false }).limit(300);
   if (jobsError) return NextResponse.json({ error: jobsError.message }, { status: 500 });
 
-  // Deterministic 5-number profile match against the user's preference vector.
+  // Deterministic 5-number profile match + skill/rate/category score.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("skills, desired_rate, experience_level, job_categories, job_vector")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   let userVec: Vector | null = null;
-  const { data: profile } = await supabase.from("profiles").select("job_vector").eq("user_id", user.id).maybeSingle();
   if (profile?.job_vector) userVec = validateUserVector(profile.job_vector);
 
   const feed = (jobs ?? []).map((job: any) => {
     const it = interactionMap.get(job.id) ?? {};
     const profileVector: Vector = Array.isArray(job.profile_vector) ? job.profile_vector : classifyJobVector(job).vector;
     const match = userVec ? matchVectors(userVec, profileVector) : null;
+    const scored = profile ? computeScore(job, profile) : null;
     return {
       ...job,
       profile_vector: profileVector,
       profile_match: match ? match.score : null,
+      matching_score: scored?.score ?? null,
+      matched_skills: scored?.matched_skills ?? [],
       is_saved: it.is_saved ?? false,
       is_applied: it.is_applied ?? false,
-      matching_score: it.matching_score ?? null,
-      matched_skills: it.matched_skills ?? [],
       pitch_id: it.pitch_id ?? null,
     };
   });

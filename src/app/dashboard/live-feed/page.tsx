@@ -80,11 +80,9 @@ export default function LiveFeedPage() {
   const [pitchResult, setPitchResult] = useState<string | null>(null);
   const [pitchLoading, setPitchLoading] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
-  const [scoring, setScoring] = useState(false);
   const [live, setLive] = useState(false);
   const [polling, setPolling] = useState(false);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
-  const scoredRef = useRef<Set<string>>(new Set());
 
   const applyDefaults = useCallback((job: any): FeedJob => ({
     ...job,
@@ -160,45 +158,6 @@ export default function LiveFeedPage() {
       setPolling(false);
     };
   }, [fetchFeed]);
-
-  // Batch-score jobs that don't have a score yet
-  useEffect(() => {
-    if (loading || jobs.length === 0) return;
-    const unscored = jobs.filter(
-      (j) => j.matching_score == null && !scoredRef.current.has(j.id)
-    );
-    if (unscored.length === 0) return;
-    unscored.slice(0, 50).forEach((j) => scoredRef.current.add(j.id));
-    setScoring(true);
-    fetch("/api/jobs/calculate-score", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ globalJobIds: unscored.slice(0, 50).map((j) => j.id) }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        const map = new Map<string, { matching_score: number; matched_skills: string[] }>();
-        (data.jobs ?? []).forEach((s: any) =>
-          map.set(s.id, {
-            matching_score: s.matching_score,
-            matched_skills: Array.isArray(s.matched_skills) ? s.matched_skills : [],
-          })
-        );
-        setJobs((prev) =>
-          prev.map((j) =>
-            map.has(j.id)
-              ? {
-                  ...j,
-                  matching_score: map.get(j.id)!.matching_score,
-                  matched_skills: map.get(j.id)!.matched_skills,
-                }
-              : j
-          )
-        );
-      })
-      .catch(() => {})
-      .finally(() => setScoring(false));
-  }, [loading, jobs]);
 
   const toggleSave = async (job: FeedJob) => {
     setSavingIds((prev) => new Set(prev).add(job.id));
@@ -332,9 +291,6 @@ export default function LiveFeedPage() {
             <span className={`w-2 h-2 rounded-full ${live || polling ? "bg-green-500 animate-pulse" : "bg-slate-400"}`} />
             {live || polling ? "LIVE" : "connecting..."}
           </span>
-          {scoring && (
-            <span className="text-xs text-slate-400 animate-pulse">Scoring jobs...</span>
-          )}
           <Button variant="primary" size="sm" onClick={saveAllVisible} disabled={savingAll || pagedJobs.length === 0}>
             {savingAll ? "Saving..." : "💾 Save Page"}
           </Button>
