@@ -87,7 +87,7 @@ export async function PUT(request: Request) {
 
   const { data, error } = await supabase
     .from("profiles")
-    .upsert({ user_id: user.id, ...update })
+    .upsert({ user_id: user.id, ...update }, { onConflict: "user_id" })
     .select()
     .single();
 
