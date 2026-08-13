@@ -102,9 +102,31 @@ export function classifyJobVector(job: Record<string, any>): { vector: Vector; l
 
 /* ── Match ──────────────────────────────────────────────────────────── */
 
+/* Not all axes are equally important. "Technik" (the role axis) dominates;
+   a pure-VA user should not get a high match for a social-media editor or a
+   developer job. Kundenkontakt also matters (phone/sales vs back-office). */
+const AXIS_WEIGHTS = [0.15, 0.35, 0.15, 0.10, 0.10]; // erfahrung, technik, kundenkontakt, auslastung, budget
+const WEIGHT_SUM = AXIS_WEIGHTS.reduce((a, b) => a + b, 0);
+
 export function matchVectors(userVec: Vector, jobVec: Vector): { score: number; perAxis: number[] } {
-  const perAxis = jobVec.slice(0, 5).map((jv, i) => Math.abs(jv - (userVec[i] ?? 0)));
-  const dist = perAxis.reduce((s, d) => s + d, 0);
-  const score = Math.round(100 * (1 - dist / 20));
-  return { score, perAxis };
+  const perAxis = jobVec.slice(0, 5).map((jv, i) => {
+    const close = 1 - Math.abs(jv - (userVec[i] ?? 0)) / 4; // 1 = identical, 0 = opposite
+    return Math.max(0, Math.min(1, close));
+  });
+
+  let score = perAxis.reduce((s, close, i) => s + close * AXIS_WEIGHTS[i], 0);
+  score = (score / WEIGHT_SUM) * 100;
+
+  // Role gate: big mismatches on Technik or Kundenkontakt should disqualify.
+  const techDiff = Math.abs((userVec[1] ?? 0) - (jobVec[1] ?? 0));
+  const contactDiff = Math.abs((userVec[2] ?? 0) - (jobVec[2] ?? 0));
+  const worst = Math.max(techDiff, contactDiff);
+  if (worst >= 4) score *= 0.15;
+  else if (worst >= 3) score *= 0.3;
+  else if (worst >= 2) score *= 0.6;
+
+  return {
+    score: Math.round(Math.min(100, Math.max(0, score))),
+    perAxis: perAxis.map((c) => Math.round(c * 100)),
+  };
 }
