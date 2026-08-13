@@ -67,13 +67,15 @@ export default function LiveFeedPage() {
   const supabase = createClient();
   const [jobs, setJobs] = useState<FeedJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [scoreFilter, setScoreFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("newest");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [savingAll, setSavingAll] = useState(false);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [pitchJob, setPitchJob] = useState<FeedJob | null>(null);
@@ -83,6 +85,10 @@ export default function LiveFeedPage() {
   const [live, setLive] = useState(false);
   const [polling, setPolling] = useState(false);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const offsetRef = useRef(0);
+
+  const PAGE_SIZE = 50;
 
   const applyDefaults = useCallback((job: any): FeedJob => ({
     ...job,
@@ -95,23 +101,62 @@ export default function LiveFeedPage() {
     profile_match: job.profile_match ?? null,
   }), []);
 
-  const fetchFeed = useCallback(async () => {
+  const buildQuery = useCallback(() => {
+    const p = new URLSearchParams();
+    p.set("limit", String(PAGE_SIZE));
+    p.set("sort", sortOrder);
+    if (search.trim()) p.set("q", search.trim());
+    if (platformFilter !== "all") p.set("platform", platformFilter);
+    if (categoryFilter !== "all") p.set("category", categoryFilter);
+    if (scoreFilter !== "all") p.set("score", scoreFilter);
+    return p.toString();
+  }, [search, scoreFilter, platformFilter, categoryFilter, sortOrder]);
+
+  const loadPage = useCallback(async (mode: "replace" | "append" | "merge") => {
     try {
-      const res = await fetch("/api/jobs/feed");
+      if (mode === "replace") setLoading(true);
+      if (mode === "append") setLoadingMore(true);
+      const off = mode === "append" ? offsetRef.current : 0;
+      const res = await fetch(`/api/jobs/feed?${buildQuery()}&offset=${off}`);
       if (!res.ok) throw new Error("Failed to load feed");
       const data = await res.json();
-      setJobs((data.jobs ?? []).map(applyDefaults));
+      const mapped: FeedJob[] = (data.jobs ?? []).map(applyDefaults);
+      setTotal(data.total ?? 0);
+      setHasMore(data.hasMore ?? false);
+      if (mode === "append") {
+        setJobs((prev: FeedJob[]) => {
+          const seen = new Set(prev.map((j) => j.id));
+          return [...prev, ...mapped.filter((j) => !seen.has(j.id))];
+        });
+        offsetRef.current = off + mapped.length;
+      } else if (mode === "merge") {
+        // refresh the top but keep already-loaded jobs (infinite scroll intact)
+        setJobs((prev: FeedJob[]) => {
+          const extra = prev.filter((j) => !mapped.some((m) => m.id === j.id));
+          return [...mapped, ...extra];
+        });
+      } else {
+        setJobs(mapped);
+        offsetRef.current = mapped.length;
+      }
     } catch (e: any) {
       showToast(e?.message ?? "Failed to load feed", "error");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [applyDefaults, showToast]);
+  }, [applyDefaults, buildQuery, showToast]);
 
+  // Reload when filters / sort / search change.
   useEffect(() => {
-    fetchFeed();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    loadPage("replace");
+  }, [loadPage]);
+
+  // Debounce the search box.
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput.trim()), 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   // Realtime: new global jobs appear automatically
   useEffect(() => {
@@ -151,13 +196,29 @@ export default function LiveFeedPage() {
   useEffect(() => {
     setPolling(true);
     const interval = setInterval(() => {
-      fetchFeed();
+      loadPage("merge");
     }, 15000);
     return () => {
       clearInterval(interval);
       setPolling(false);
     };
-  }, [fetchFeed]);
+  }, [loadPage]);
+
+  // Infinite scroll: load the next page when the sentinel becomes visible.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          loadPage("append");
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMore, loadingMore, loading, loadPage]);
 
   const toggleSave = async (job: FeedJob) => {
     setSavingIds((prev) => new Set(prev).add(job.id));
@@ -187,7 +248,7 @@ export default function LiveFeedPage() {
   };
 
   const saveAllVisible = async () => {
-    const visible = pagedJobs.filter((j) => !j.is_saved);
+    const visible = jobs.filter((j) => !j.is_saved);
     if (visible.length === 0) {
       showToast("Nothing to save — all visible jobs are already saved");
       return;
@@ -247,29 +308,6 @@ export default function LiveFeedPage() {
   const platforms = Array.from(new Set(jobs.map((j) => j.platform).filter((p): p is string => !!p))).sort();
   const categories = Array.from(new Set(jobs.map((j) => j.category).filter((c): c is string => !!c))).sort();
 
-  const filtered = jobs.filter((j) => {
-    if (search && !(j.title + (j.description ?? "")).toLowerCase().includes(search.toLowerCase())) return false;
-    if (scoreFilter === "high" && (j.matching_score ?? 0) < 70) return false;
-    if (scoreFilter === "medium" && ((j.matching_score ?? 0) < 40 || (j.matching_score ?? 0) >= 70)) return false;
-    if (scoreFilter === "low" && (j.matching_score ?? 0) >= 40) return false;
-    if (platformFilter !== "all" && j.platform !== platformFilter) return false;
-    if (categoryFilter !== "all" && j.category !== categoryFilter) return false;
-    return true;
-  });
-
-  const sorted = sortOrder === "match"
-    ? [...filtered].sort((a, b) => (b.profile_match ?? -1) - (a.profile_match ?? -1))
-    : filtered;
-
-  // Reset to the first page whenever filters or page size change.
-  useEffect(() => {
-    setPage(1);
-  }, [search, scoreFilter, platformFilter, categoryFilter, pageSize]);
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const pagedJobs = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -291,7 +329,7 @@ export default function LiveFeedPage() {
             <span className={`w-2 h-2 rounded-full ${live || polling ? "bg-green-500 animate-pulse" : "bg-slate-400"}`} />
             {live || polling ? "LIVE" : "connecting..."}
           </span>
-          <Button variant="primary" size="sm" onClick={saveAllVisible} disabled={savingAll || pagedJobs.length === 0}>
+          <Button variant="primary" size="sm" onClick={saveAllVisible} disabled={savingAll || jobs.length === 0}>
             {savingAll ? "Saving..." : "💾 Save Page"}
           </Button>
         </div>
@@ -302,8 +340,8 @@ export default function LiveFeedPage() {
         <CardContent className="p-4 flex flex-col md:flex-row gap-3">
           <Input
             placeholder="🔍 Search feed..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="md:max-w-xs"
           />
           <select
@@ -359,20 +397,18 @@ export default function LiveFeedPage() {
             </Card>
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : jobs.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <p className="text-4xl mb-3">📡</p>
             <p className="text-slate-400">
-              {jobs.length === 0
-                ? "No jobs collected yet. Run the admin collector to fill the feed."
-                : "No jobs match the current filters."}
+              No jobs match the current filters.
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="flex flex-col gap-3">
-          {pagedJobs.map((job) => (
+          {jobs.map((job) => (
             <FeedJobCard
               key={job.id}
               job={job}
@@ -386,48 +422,17 @@ export default function LiveFeedPage() {
         </div>
       )}
 
-      {/* Pagination */}
-      {!loading && filtered.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-            <span>
-              Showing{" "}
-              <span className="font-bold text-slate-700 dark:text-slate-200">
-                {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, sorted.length)}
-              </span>{" "}
-              of <span className="font-bold text-slate-700 dark:text-slate-200">{sorted.length}</span> jobs
-            </span>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(parseInt(e.target.value, 10))}
-              className="rounded-xl border-2 border-kawaii-lavender/30 bg-white/80 px-2 py-1 text-xs text-slate-700 dark:bg-dark-card dark:text-slate-200 dark:border-dark-surface focus-visible:outline-none"
-            >
-              {[10, 25, 50].map((n) => (
-                <option key={n} value={n}>{n} per page</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage <= 1}
-            >
-              ← Prev
-            </Button>
-            <span className="text-sm font-bold text-slate-600 dark:text-slate-300">
-              Page {currentPage} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage >= totalPages}
-            >
-              Next →
-            </Button>
-          </div>
+      {/* Infinite scroll footer */}
+      {!loading && (
+        <div className="flex flex-col items-center gap-2 pt-2 pb-4">
+          {jobs.length > 0 && (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {jobs.length} von {total} Jobs geladen
+            </p>
+          )}
+          {loadingMore && <span className="text-sm text-slate-400 animate-pulse">Lädt mehr…</span>}
+          {!hasMore && jobs.length > 0 && <p className="text-xs text-slate-400">Ende erreicht</p>}
+          <div ref={sentinelRef} className="h-10" />
         </div>
       )}
 

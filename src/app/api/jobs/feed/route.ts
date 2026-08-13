@@ -3,21 +3,34 @@ import { createClient } from "@/lib/supabase/server";
 import { classifyJobVector, matchVectors, validateUserVector, type Vector } from "@/lib/jobs/profile-vector";
 import { computeScore } from "@/lib/jobs/scoring";
 
-const CUTOFF_HOURS = 24;
+const WINDOW_CAP = 4000;
+
+function num(v: string | null, d: number): number {
+  const n = parseInt(v || "", 10);
+  return isNaN(n) ? d : n;
+}
 
 /**
- * GET /api/jobs/feed
- * Returns the shared live feed joined with the current user's interactions
- * (is_saved, is_applied, pitch_id). matching_score + matched_skills are
- * computed on the fly (deterministic, free) so every job is always scored —
- * no "not scored yet" placeholder, no batch job required.
+ * GET /api/jobs/feed?limit=&offset=&q=&platform=&category=&score=&sort=&hours=
+ * Server-side paginated live feed. scoring + profile_match are computed on the
+ * fly (deterministic, free) over the requested time window, then filtered,
+ * sorted and sliced. Returns { jobs, total, hasMore }.
  */
 export async function GET(request: Request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const cutoff = new Date(Date.now() - CUTOFF_HOURS * 60 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
+  const url = new URL(request.url);
+  const limit = Math.max(1, Math.min(100, num(url.searchParams.get("limit"), 50)));
+  const offset = Math.max(0, num(url.searchParams.get("offset"), 0));
+  const q = (url.searchParams.get("q") || "").trim().toLowerCase();
+  const platform = url.searchParams.get("platform") || "all";
+  const category = url.searchParams.get("category") || "all";
+  const score = url.searchParams.get("score") || "all";
+  const sort = url.searchParams.get("sort") || "newest";
+  const hours = Math.max(1, Math.min(168, num(url.searchParams.get("hours"), 24)));
+  const cutoff = new Date(Date.now() - hours * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
 
   // Sources toggled off in Live Feed settings are hidden.
   const { data: excludedSources } = await supabase
@@ -44,20 +57,19 @@ export async function GET(request: Request) {
   if (excludedIds.length > 0) {
     query = query.not("source_id", "in", `(${excludedIds.join(",")})`);
   }
-
   if (savedIds.length > 0) {
     query = query.or(`collected_at.gt.${cutoff},id.in.(${savedIds.join(",")})`);
   } else {
     query = query.gt("collected_at", cutoff);
   }
 
-  // Newest first: prefer the job's posted date, fall back to collected time.
-  // The client paginates locally (10/25/50 per page) so we fetch a generous
-  // window here; saved jobs are always included regardless of age.
-  const { data: jobs, error: jobsError } = await query.order("posted_at", { ascending: false, nullsFirst: false }).limit(300);
+  // Generous window so "best match" sorting + filtering are computed over the
+  // whole visible set, then paginated server-side.
+  const { data: jobs, error: jobsError } = await query
+    .order("posted_at", { ascending: false, nullsFirst: false })
+    .limit(WINDOW_CAP);
   if (jobsError) return NextResponse.json({ error: jobsError.message }, { status: 500 });
 
-  // Deterministic 5-number profile match + skill/rate/category score.
   const { data: profile } = await supabase
     .from("profiles")
     .select("skills, desired_rate, experience_level, job_categories, job_vector")
@@ -65,13 +77,18 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   let userVec: Vector | null = null;
+  const profileHasData =
+    !!profile &&
+    ((Array.isArray(profile.skills) && profile.skills.length > 0) ||
+      profile.desired_rate ||
+      (Array.isArray(profile.job_categories) && profile.job_categories.length > 0));
   if (profile?.job_vector) userVec = validateUserVector(profile.job_vector);
 
-  const feed = (jobs ?? []).map((job: any) => {
+  let rows = (jobs ?? []).map((job: any) => {
     const it = interactionMap.get(job.id) ?? {};
     const profileVector: Vector = Array.isArray(job.profile_vector) ? job.profile_vector : classifyJobVector(job).vector;
     const match = userVec ? matchVectors(userVec, profileVector) : null;
-    const scored = profile ? computeScore(job, profile) : null;
+    const scored = profileHasData ? computeScore(job, profile) : null;
     return {
       ...job,
       profile_vector: profileVector,
@@ -84,5 +101,18 @@ export async function GET(request: Request) {
     };
   });
 
-  return NextResponse.json({ jobs: feed });
+  if (q) rows = rows.filter((j: any) => ((j.title || "") + " " + (j.description || "")).toLowerCase().includes(q));
+  if (platform !== "all") rows = rows.filter((j: any) => j.platform === platform);
+  if (category !== "all") rows = rows.filter((j: any) => j.category === category);
+  if (score === "high") rows = rows.filter((j: any) => (j.matching_score ?? 0) >= 70);
+  else if (score === "medium") rows = rows.filter((j: any) => (j.matching_score ?? 0) >= 40 && (j.matching_score ?? 0) < 70);
+  else if (score === "low") rows = rows.filter((j: any) => (j.matching_score ?? 0) < 40);
+
+  if (sort === "match") {
+    rows = [...rows].sort((a: any, b: any) => (b.profile_match ?? -1) - (a.profile_match ?? -1));
+  }
+
+  const total = rows.length;
+  const page = rows.slice(offset, offset + limit);
+  return NextResponse.json({ jobs: page, total, hasMore: offset + limit < total, offset });
 }
