@@ -23,7 +23,11 @@ export async function GET(request: Request) {
   const { count: last24h } = await supabase.from("global_jobs").select("*", { count: "exact", head: true }).gte("collected_at", dayAgo);
   const { count: last7d } = await supabase.from("global_jobs").select("*", { count: "exact", head: true }).gte("collected_at", weekAgo);
 
-  const { data: platforms } = await supabase.from("global_jobs").select("platform, collected_at");
+  const { data: platforms } = await supabase
+    .from("global_jobs")
+    .select("platform, collected_at")
+    .order("collected_at", { ascending: false })
+    .limit(100000);
 
   const byPlatformTotal: Record<string, number> = {};
   const byPlatform24h: Record<string, number> = {};
