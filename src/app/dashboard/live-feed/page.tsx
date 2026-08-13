@@ -39,6 +39,9 @@ interface FeedJob {
   pitch_id: string | null;
   profile_match: number | null;
   profile_vector?: number[];
+  scam_risk: number | null;
+  scam_level: string | null;
+  scam_flags?: string[];
 }
 
 function timeAgo(dateStr: string | null): string {
@@ -55,11 +58,21 @@ function timeAgo(dateStr: string | null): string {
   return `${days}d ago`;
 }
 
-function scoreClass(score: number | null): string {
-  if (score == null) return "";
-  if (score >= 70) return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
-  if (score >= 40) return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
-  return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300";
+const SCAM_META: Record<string, { emoji: string; label: string; cls: string }> = {
+  green: { emoji: "🟢", label: "Gering", cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
+  yellow: { emoji: "🟡", label: "Mittel", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" },
+  orange: { emoji: "🟠", label: "Erhöht", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" },
+  red: { emoji: "🔴", label: "Hoch", cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
+};
+
+function ScamBadge({ level, risk, flags }: { level: string; risk: number | null; flags?: string[] }) {
+  const m = SCAM_META[level] || SCAM_META.green;
+  const tip = flags && flags.length ? `${risk ?? "?"}% Risiko · ${flags.join("; ")}` : `${risk ?? "?"}% Risiko`;
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-lg ${m.cls}`} title={tip}>
+      {m.emoji} {m.label}
+    </span>
+  );
 }
 
 export default function LiveFeedPage() {
@@ -69,7 +82,7 @@ export default function LiveFeedPage() {
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [scoreFilter, setScoreFilter] = useState("all");
+  const [riskFilter, setRiskFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("newest");
@@ -99,6 +112,9 @@ export default function LiveFeedPage() {
     category: job.category ?? null,
     pitch_id: job.pitch_id ?? null,
     profile_match: job.profile_match ?? null,
+    scam_risk: job.scam_risk ?? null,
+    scam_level: job.scam_level ?? null,
+    scam_flags: Array.isArray(job.scam_flags) ? job.scam_flags : [],
   }), []);
 
   const buildQuery = useCallback(() => {
@@ -108,9 +124,9 @@ export default function LiveFeedPage() {
     if (search.trim()) p.set("q", search.trim());
     if (platformFilter !== "all") p.set("platform", platformFilter);
     if (categoryFilter !== "all") p.set("category", categoryFilter);
-    if (scoreFilter !== "all") p.set("score", scoreFilter);
+    if (riskFilter !== "all") p.set("risk", riskFilter);
     return p.toString();
-  }, [search, scoreFilter, platformFilter, categoryFilter, sortOrder]);
+  }, [search, riskFilter, platformFilter, categoryFilter, sortOrder]);
 
   const loadPage = useCallback(async (mode: "replace" | "append" | "merge") => {
     try {
@@ -345,14 +361,15 @@ export default function LiveFeedPage() {
             className="md:max-w-xs"
           />
           <select
-            value={scoreFilter}
-            onChange={(e) => setScoreFilter(e.target.value)}
+            value={riskFilter}
+            onChange={(e) => setRiskFilter(e.target.value)}
             className="rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 px-4 py-2 text-sm text-slate-700 dark:bg-dark-card dark:text-slate-200 dark:border-dark-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kawaii-purple"
           >
-            <option value="all">🎯 All scores</option>
-            <option value="high">✅ High (70+)</option>
-            <option value="medium">🟡 Medium (40-69)</option>
-            <option value="low">🔻 Low (&lt;40)</option>
+            <option value="all">🛡️ All risk</option>
+            <option value="green">🟢 Gering</option>
+            <option value="yellow">🟡 Mittel</option>
+            <option value="orange">🟠 Erhöht</option>
+            <option value="red">🔴 Hoch</option>
           </select>
           <select
             value={platformFilter}
@@ -586,12 +603,9 @@ function FeedJobCard({
                 🎯 {job.profile_match}%
               </span>
             )}
-            <span
-              className={`text-sm font-extrabold px-2.5 py-0.5 rounded-lg ${scoreClass(job.matching_score)}`}
-              title={job.matching_score != null ? "Matching score" : "Not scored yet"}
-            >
-              {job.matching_score != null ? job.matching_score : "—"}
-            </span>
+            {job.scam_level && (
+              <ScamBadge level={job.scam_level} risk={job.scam_risk} flags={job.scam_flags} />
+            )}
           </div>
           <div className="flex items-center gap-2 md:flex-col md:items-stretch">
             <Button size="sm" variant={job.is_saved ? "outline" : "primary"} onClick={onToggleSave} disabled={saving}>

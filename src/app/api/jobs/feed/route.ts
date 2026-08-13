@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { classifyJobVector, matchVectors, validateUserVector, type Vector } from "@/lib/jobs/profile-vector";
 import { computeScore } from "@/lib/jobs/scoring";
+import { scamScore } from "@/lib/jobs/scam-score";
 
 const WINDOW_CAP = 4000;
 
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
   const platform = url.searchParams.get("platform") || "all";
   const category = url.searchParams.get("category") || "all";
   const score = url.searchParams.get("score") || "all";
+  const risk = url.searchParams.get("risk") || "all";
   const sort = url.searchParams.get("sort") || "newest";
   const hours = Math.max(1, Math.min(168, num(url.searchParams.get("hours"), 24)));
   const cutoff = new Date(Date.now() - hours * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -89,12 +91,16 @@ export async function GET(request: Request) {
     const profileVector: Vector = Array.isArray(job.profile_vector) ? job.profile_vector : classifyJobVector(job).vector;
     const match = userVec ? matchVectors(userVec, profileVector) : null;
     const scored = profileHasData ? computeScore(job, profile) : null;
+    const scam = scamScore(job);
     return {
       ...job,
       profile_vector: profileVector,
       profile_match: match ? match.score : null,
       matching_score: scored?.score ?? null,
       matched_skills: scored?.matched_skills ?? [],
+      scam_risk: scam.risk,
+      scam_level: scam.level,
+      scam_flags: scam.flags,
       is_saved: it.is_saved ?? false,
       is_applied: it.is_applied ?? false,
       pitch_id: it.pitch_id ?? null,
@@ -107,6 +113,8 @@ export async function GET(request: Request) {
   if (score === "high") rows = rows.filter((j: any) => (j.matching_score ?? 0) >= 70);
   else if (score === "medium") rows = rows.filter((j: any) => (j.matching_score ?? 0) >= 40 && (j.matching_score ?? 0) < 70);
   else if (score === "low") rows = rows.filter((j: any) => (j.matching_score ?? 0) < 40);
+
+  if (risk !== "all") rows = rows.filter((j: any) => j.scam_level === risk);
 
   if (sort === "match") {
     rows = [...rows].sort((a: any, b: any) => (b.profile_match ?? -1) - (a.profile_match ?? -1));
