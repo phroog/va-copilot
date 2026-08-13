@@ -37,6 +37,8 @@ interface FeedJob {
   matching_score: number | null;
   matched_skills: string[];
   pitch_id: string | null;
+  profile_match: number | null;
+  profile_vector?: number[];
 }
 
 function timeAgo(dateStr: string | null): string {
@@ -69,6 +71,7 @@ export default function LiveFeedPage() {
   const [scoreFilter, setScoreFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("newest");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [savingAll, setSavingAll] = useState(false);
@@ -91,6 +94,7 @@ export default function LiveFeedPage() {
     matched_skills: Array.isArray(job.matched_skills) ? job.matched_skills : [],
     category: job.category ?? null,
     pitch_id: job.pitch_id ?? null,
+    profile_match: job.profile_match ?? null,
   }), []);
 
   const fetchFeed = useCallback(async () => {
@@ -294,14 +298,18 @@ export default function LiveFeedPage() {
     return true;
   });
 
+  const sorted = sortOrder === "match"
+    ? [...filtered].sort((a, b) => (b.profile_match ?? -1) - (a.profile_match ?? -1))
+    : filtered;
+
   // Reset to the first page whenever filters or page size change.
   useEffect(() => {
     setPage(1);
   }, [search, scoreFilter, platformFilter, categoryFilter, pageSize]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pagedJobs = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pagedJobs = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -372,6 +380,14 @@ export default function LiveFeedPage() {
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            className="rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 px-4 py-2 text-sm text-slate-700 dark:bg-dark-card dark:text-slate-200 dark:border-dark-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kawaii-purple"
+          >
+            <option value="newest">🆕 Newest</option>
+            <option value="match">🎯 Best Match</option>
+          </select>
         </CardContent>
       </Card>
 
@@ -421,9 +437,9 @@ export default function LiveFeedPage() {
             <span>
               Showing{" "}
               <span className="font-bold text-slate-700 dark:text-slate-200">
-                {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filtered.length)}
+                {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, sorted.length)}
               </span>{" "}
-              of <span className="font-bold text-slate-700 dark:text-slate-200">{filtered.length}</span> jobs
+              of <span className="font-bold text-slate-700 dark:text-slate-200">{sorted.length}</span> jobs
             </span>
             <select
               value={pageSize}
@@ -600,12 +616,22 @@ function FeedJobCard({
         </div>
 
         <div className="flex md:flex-col items-center md:items-end gap-2 md:gap-3 shrink-0">
-          <span
-            className={`text-sm font-extrabold px-2.5 py-0.5 rounded-lg ${scoreClass(job.matching_score)}`}
-            title={job.matching_score != null ? "Matching score" : "Not scored yet"}
-          >
-            {job.matching_score != null ? job.matching_score : "—"}
-          </span>
+          <div className="flex items-center gap-2">
+            {job.profile_match != null && (
+              <span
+                className="text-xs font-extrabold px-2 py-0.5 rounded-lg bg-kawaii-purple/10 text-kawaii-purple dark:text-kawaii-lavender"
+                title="Deterministischer 5-Achsen-Profil-Match"
+              >
+                🎯 {job.profile_match}%
+              </span>
+            )}
+            <span
+              className={`text-sm font-extrabold px-2.5 py-0.5 rounded-lg ${scoreClass(job.matching_score)}`}
+              title={job.matching_score != null ? "Matching score" : "Not scored yet"}
+            >
+              {job.matching_score != null ? job.matching_score : "—"}
+            </span>
+          </div>
           <div className="flex items-center gap-2 md:flex-col md:items-stretch">
             <Button size="sm" variant={job.is_saved ? "outline" : "primary"} onClick={onToggleSave} disabled={saving}>
               {saving ? "..." : job.is_saved ? "💾 Saved" : "💾 Save"}

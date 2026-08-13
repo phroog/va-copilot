@@ -24,7 +24,16 @@ interface Profile {
   skills?: string[];
   experience_level?: string;
   job_categories?: string[];
+  job_vector?: number[];
 }
+
+const VECTOR_AXES = [
+  { key: "erfahrung", label: "Erfahrung", desc: "1 = Einsteiger · 5 = Experte" },
+  { key: "technik", label: "Technik", desc: "1 = reine Admin-Arbeit · 5 = Dev/Engineering" },
+  { key: "kundenkontakt", label: "Kundenkontakt", desc: "1 = Backoffice · 5 = Telefon/Verkauf" },
+  { key: "auslastung", label: "Auslastung", desc: "1 = Einmal-Gig · 5 = Fulltime" },
+  { key: "budget", label: "Budget", desc: "1 = niedrig · 5 = Premium" },
+];
 
 interface PublicProfile {
   username: string;
@@ -37,7 +46,7 @@ interface PublicProfile {
 export default function SettingsPage() {
   const { t } = useLocale();
   const { showToast } = useToast();
-  const [profile, setProfile] = useState<Profile>({ full_name: "", desired_rate: "", bio: "", inbox_email_alias: "", business_name: "", business_address: "", business_email: "", bank_account: "", tax_id: "", public_id: "", skills: [], experience_level: "beginner", job_categories: [] });
+  const [profile, setProfile] = useState<Profile>({ full_name: "", desired_rate: "", bio: "", inbox_email_alias: "", business_name: "", business_address: "", business_email: "", bank_account: "", tax_id: "", public_id: "", skills: [], experience_level: "beginner", job_categories: [], job_vector: [3, 3, 3, 3, 3] });
   const [publicProfile, setPublicProfile] = useState<PublicProfile>({ username: "", display_name: "", bio: "", skills: "", photo_url: "" });
   const [pubSaving, setPubSaving] = useState(false);
   const [pubSaved, setPubSaved] = useState(false);
@@ -251,6 +260,36 @@ export default function SettingsPage() {
               placeholder="e.g. Admin Support, Graphic Design, Social Media"
             />
             <p className="text-xs text-slate-400">Categories help match jobs to your preferred work areas.</p>
+          </div>
+          <div className="space-y-3 pt-1">
+            <p className="text-xs text-slate-400">
+              <strong>5-Achsen-Profil (1–5):</strong> Jobs werden beim Einsammeln nach demselben Muster eingeteilt.
+              Je näher deine Zahlen an denen des Jobs liegen, desto höher der Match im Live-Feed.
+            </p>
+            {VECTOR_AXES.map((ax, i) => (
+              <div key={ax.key} className="flex items-center gap-3">
+                <div className="flex-1">
+                  <Label className="text-sm">{ax.label}</Label>
+                  <p className="text-xs text-slate-400">{ax.desc}</p>
+                </div>
+                <select
+                  value={(profile.job_vector || [3, 3, 3, 3, 3])[i] ?? 3}
+                  onChange={(e) => {
+                    const arr = [...(profile.job_vector || [3, 3, 3, 3, 3])];
+                    arr[i] = parseInt(e.target.value, 10);
+                    setProfile({ ...profile, job_vector: arr });
+                  }}
+                  className="w-20 h-10 px-2 rounded-xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200"
+                >
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+            <p className="text-xs text-slate-400">
+              Dein Vektor: <strong>[{(profile.job_vector || [3, 3, 3, 3, 3]).join(" ")}]</strong>
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Button onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "💾 Save Matching Profile"}</Button>
