@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { useToast } from "@/components/toast";
+import { useToast, ToastProvider } from "@/components/toast";
 
 const VECTOR_AXES = [
   { key: "erfahrung", label: "Erfahrung", opts: ["Anfänger", "Grundkenntnisse", "Erfahren (2–4 J)", "Fortgeschritten", "Experte (5+ J)"] },
@@ -107,8 +107,9 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFF0F5] dark:bg-dark-bg flex items-center justify-center p-4">
-      <div className="w-full max-w-xl space-y-6 animate-fade-in">
+    <ToastProvider>
+      <div className="min-h-screen bg-[#FFF0F5] dark:bg-dark-bg flex items-center justify-center p-4">
+        <div className="w-full max-w-xl space-y-6 animate-fade-in">
         <div className="text-center">
           <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">👋 Willkommen bei Sari</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
@@ -163,6 +164,7 @@ export default function OnboardingPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </ToastProvider>
   );
 }
