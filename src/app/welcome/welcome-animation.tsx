@@ -113,7 +113,7 @@ export default function WelcomeAnimation() {
     try {
       window.sessionStorage.setItem("sari_welcome_done", "true");
     } catch {}
-    router.replace("/dashboard");
+    router.replace("/onboarding");
   };
 
   useEffect(() => {
@@ -122,7 +122,7 @@ export default function WelcomeAnimation() {
       alreadyDone = window.sessionStorage.getItem("sari_welcome_done") === "true";
     } catch {}
     if (alreadyDone) {
-      router.replace("/dashboard");
+      router.replace("/onboarding");
       return;
     }
     const t = setTimeout(finish, 4000);

@@ -9,7 +9,7 @@ export default async function WelcomePage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/auth/login");
   }
 
   return <WelcomeAnimation />;
