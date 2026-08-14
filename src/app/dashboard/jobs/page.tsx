@@ -92,8 +92,8 @@ export default function JobsPage() {
 
   // Screenshot state
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
+  const [screenshotPreviews, setScreenshotPreviews] = useState<string[]>([]);
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState("");
   const [extractedJob, setExtractedJob] = useState<ImportedJob | null>(null);
@@ -174,25 +174,47 @@ export default function JobsPage() {
 
   // --- Screenshot tab ---
 
-  const handleFileSelect = (file: File | null) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setExtractError("Please select a PNG or JPG image");
+  const addFiles = (files: FileList | File[]) => {
+    const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (!arr.length) {
+      setExtractError("Please select PNG or JPG images");
       return;
     }
     setExtractError("");
     setExtractedJob(null);
-    setScreenshotFile(file);
-    const reader = new FileReader();
-    reader.onload = (e) => setScreenshotPreview(e.target?.result as string);
-    reader.readAsDataURL(file);
+    const newFiles = [...screenshotFiles, ...arr].slice(0, 8);
+    setScreenshotFiles(newFiles);
+    const previews: string[] = [];
+    newFiles.forEach((f) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const url = e.target?.result as string;
+        setScreenshotPreviews((prev) => {
+          const next = [...prev];
+          const idx = newFiles.indexOf(f);
+          if (idx >= 0) next[idx] = url;
+          return next;
+        });
+      };
+      reader.readAsDataURL(f);
+    });
+    setScreenshotPreviews((prev) => {
+      const next = [...prev];
+      while (next.length < newFiles.length) next.push("");
+      return next.slice(0, newFiles.length);
+    });
+  };
+
+  const removeFile = (idx: number) => {
+    setScreenshotFiles((prev) => prev.filter((_, i) => i !== idx));
+    setScreenshotPreviews((prev) => prev.filter((_, i) => i !== idx));
+    setExtractedJob(null);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    handleFileSelect(file ?? null);
+    addFiles(e.dataTransfer.files);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -203,13 +225,13 @@ export default function JobsPage() {
   const handleDragLeave = () => setDragOver(false);
 
   const handleExtract = async () => {
-    if (!screenshotFile) return;
+    if (!screenshotFiles.length) return;
     setExtracting(true);
     setExtractError("");
     setExtractedJob(null);
     try {
       const formData = new FormData();
-      formData.append("screenshot", screenshotFile);
+      screenshotFiles.forEach((f) => formData.append("screenshots", f));
       const res = await fetch("/api/import-job/screenshot", {
         method: "POST",
         body: formData,
@@ -253,8 +275,8 @@ export default function JobsPage() {
       if (data.job) {
         setJobs((prev) => [data.job, ...prev]);
         setExtractedJob(null);
-        setScreenshotFile(null);
-        setScreenshotPreview(null);
+        setScreenshotFiles([]);
+        setScreenshotPreviews([]);
         setAssignOrg(false);
         setSelectedOrgId("");
         showToast(t("jobSavedSuccess"));
@@ -268,8 +290,8 @@ export default function JobsPage() {
 
   const discardExtracted = () => {
     setExtractedJob(null);
-    setScreenshotFile(null);
-    setScreenshotPreview(null);
+    setScreenshotFiles([]);
+    setScreenshotPreviews([]);
   };
 
   // --- Delete Job ---
@@ -528,18 +550,33 @@ export default function JobsPage() {
                   ref={fileInputRef}
                   type="file"
                   accept="image/png,image/jpeg,image/jpg"
+                  multiple
                   className="hidden"
-                  onChange={(e) => handleFileSelect(e.target.files?.[0] ?? null)}
+                  onChange={(e) => { addFiles(e.target.files ?? []); e.target.value = ""; }}
                 />
-                {screenshotPreview ? (
+                {screenshotPreviews.length > 0 ? (
                   <div className="flex flex-col items-center gap-3">
-                    <img
-                      src={screenshotPreview}
-                      alt="Preview"
-                      className="max-h-40 rounded-xl shadow-sm object-contain"
-                    />
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {screenshotPreviews.map((src, i) => (
+                        <div key={i} className="relative">
+                          <img
+                            src={src || undefined}
+                            alt={`Screenshot ${i + 1}`}
+                            className="max-h-32 rounded-xl shadow-sm object-contain border border-kawaii-lavender/30 dark:border-dark-surface"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center"
+                            title="Entfernen"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                     <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                      {screenshotFile?.name}
+                      {screenshotPreviews.length} Screenshot(s) — für mehr anklicken
                     </p>
                   </div>
                 ) : (
@@ -562,7 +599,7 @@ export default function JobsPage() {
               <Button
                 variant="primary"
                 onClick={handleExtract}
-                disabled={!screenshotFile || extracting}
+                disabled={screenshotFiles.length === 0 || extracting}
               >
                 {extracting ? (
                   <span className="flex items-center gap-2">

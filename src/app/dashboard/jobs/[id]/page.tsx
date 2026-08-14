@@ -401,37 +401,38 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* Quick actions */}
-      <div className="flex flex-wrap gap-2">
-        {job.url && (
-          <a href={job.url} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" variant="outline">↗ View Job</Button>
-          </a>
-        )}
-        <Button size="sm" variant="primary" onClick={() => generatePitch(false)} disabled={pitchLoading || pitchRegenerating}>
-          {pitchLoading ? "Loading..." : pitch ? "📋 View Pitch" : "🚀 Generate Pitch"}
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => document.getElementById("milestones")?.scrollIntoView({ behavior: "smooth" })}>📋 Milestones</Button>
-        <Link href={`/dashboard/invoices?job=${jobId}`}>
-          <Button size="sm" variant="outline">🧾 Create Invoice</Button>
-        </Link>
-        <Link href={`/dashboard/time-tracker?job=${jobId}`}>
-          <Button size="sm" variant="outline">🕐 Track Time</Button>
-        </Link>
-        <Button size="sm" variant="outline" onClick={runScamCheck} disabled={scamChecking}>{scamChecking ? "⏳" : "🕵️"} Scam Check (1🪙)</Button>
-        <Button size="sm" variant="outline" onClick={() => generateToken()} disabled={generatingToken}>{generatingToken ? "⏳" : "🔗"} Client Portal</Button>
-        <Button size="sm" variant="outline" onClick={async () => {
-          setGenReview(true);
-          try {
-            const res = await fetch(`/api/jobs/${jobId}/request-review`, { method: "POST" });
-            const data = await res.json();
-            if (data.token) setReviewLink(`${window.location.origin}/review/${data.token.token}`);
-          } catch (e) {
-            showToast((e as any)?.message ?? "Failed to generate review link", "error");
-          } finally { setGenReview(false); }
-        }} disabled={genReview}>{genReview ? "⏳" : "⭐"} Request Review</Button>
-        <Button size="sm" variant="outline" onClick={runScore} disabled={scoringJob}>{scoringJob ? "..." : "🎯"} Score</Button>
-        <Button size="sm" variant="ghost" className="text-red-500" onClick={deleteJob}>🗑️ Delete</Button>
-      </div>
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">⚡ Schnellaktionen</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            {job.url && (
+              <a href={job.url} target="_blank" rel="noopener noreferrer" className="col-span-2 sm:col-span-1">
+                <Button size="sm" variant="outline" className="w-full">↗ Job öffnen</Button>
+              </a>
+            )}
+            <Button size="sm" variant="primary" onClick={() => generatePitch(false)} disabled={pitchLoading || pitchRegenerating} className="w-full">
+              {pitchLoading ? "Loading..." : pitch ? "📋 View Pitch" : "🚀 Generate Pitch"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => document.getElementById("milestones")?.scrollIntoView({ behavior: "smooth" })} className="w-full">📋 Milestones</Button>
+            <Link href={`/dashboard/invoices?job=${jobId}`} className="col-span-2 sm:col-span-1"><Button size="sm" variant="outline" className="w-full">🧾 Invoice</Button></Link>
+            <Link href={`/dashboard/time-tracker?job=${jobId}`} className="col-span-2 sm:col-span-1"><Button size="sm" variant="outline" className="w-full">🕐 Zeit</Button></Link>
+            <Button size="sm" variant="outline" onClick={runScamCheck} disabled={scamChecking} className="w-full">{scamChecking ? "⏳" : "🕵️"} Scam Check</Button>
+            <Button size="sm" variant="outline" onClick={() => generateToken()} disabled={generatingToken} className="w-full">{generatingToken ? "⏳" : "🔗"} Client Portal</Button>
+            <Button size="sm" variant="outline" onClick={async () => {
+              setGenReview(true);
+              try {
+                const res = await fetch(`/api/jobs/${jobId}/request-review`, { method: "POST" });
+                const data = await res.json();
+                if (data.token) setReviewLink(`${window.location.origin}/review/${data.token.token}`);
+              } catch (e) {
+                showToast((e as any)?.message ?? "Failed to generate review link", "error");
+              } finally { setGenReview(false); }
+            }} disabled={genReview} className="w-full">{genReview ? "⏳" : "⭐"} Review</Button>
+            <Button size="sm" variant="outline" onClick={runScore} disabled={scoringJob} className="w-full">{scoringJob ? "..." : "🎯"} Score</Button>
+            <Button size="sm" variant="ghost" className="w-full text-red-500" onClick={deleteJob}>🗑️ Delete</Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Job details + time stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

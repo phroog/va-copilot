@@ -57,20 +57,31 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const formData = await request.formData();
-    const file = formData.get("screenshot");
+    const files = [
+      ...formData.getAll("screenshot"),
+      ...formData.getAll("screenshots"),
+    ].filter((f): f is File => f instanceof File);
 
-    if (!file || !(file instanceof File)) {
+    if (files.length === 0) {
       return NextResponse.json({ error: "No screenshot file provided" }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-
     const Tesseract = require("tesseract.js");
-    const { data: ocrData } = await Tesseract.recognize(buffer, "eng");
-    const extractedText: string = ocrData.text ?? "";
+    const ocrTexts: string[] = [];
+    for (const file of files) {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      try {
+        const { data: ocrData } = await Tesseract.recognize(buffer, "eng");
+        const text = (ocrData.text ?? "").trim();
+        if (text) ocrTexts.push(text);
+      } catch {
+        // skip a broken image, keep the rest
+      }
+    }
 
+    const extractedText = ocrTexts.join("\n\n");
     if (!extractedText.trim()) {
-      return NextResponse.json({ error: "Could not extract any text from the image. Please try a clearer screenshot." }, { status: 400 });
+      return NextResponse.json({ error: "Could not extract any text from the images. Please try clearer screenshots." }, { status: 400 });
     }
 
     const result = await extractWithDeepSeek(extractedText);
@@ -79,8 +90,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, data: result.data });
+    return NextResponse.json({ success: true, data: result.data, screenshots: files.length });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? "Failed to process screenshot" }, { status: 500 });
+    return NextResponse.json({ error: err?.message ?? "Failed to process screenshots" }, { status: 500 });
   }
 }
