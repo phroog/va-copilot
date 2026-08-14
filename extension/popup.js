@@ -78,14 +78,29 @@ const toolDetail = $("tool-detail");
 const toolDetailContent = $("tool-detail-content");
 const toolBackBtn = $("tool-back-btn");
 
-const TOOLS = [
-  { id: "notes", icon: "📝", label: "Notes" },
-  { id: "clients", icon: "📇", label: "Clients" },
-  { id: "scam", icon: "🕵️", label: "Scam Check" },
-  { id: "vault", icon: "🔐", label: "Vault" },
-  { id: "followups", icon: "📅", label: "Follow-ups" },
-  { id: "mochi", icon: "🤖", label: "Mochi AI" },
-  { id: "search", icon: "🔍", label: "Job Search" },
+const TOOL_GROUPS = [
+  {
+    label: "👋 Arbeit",
+    items: [
+      { id: "notes", icon: "📝", label: "Notes" },
+      { id: "clients", icon: "📇", label: "Clients" },
+      { id: "followups", icon: "📅", label: "Follow-ups" },
+      { id: "search", icon: "🔍", label: "Job Search" },
+    ],
+  },
+  {
+    label: "🛡️ Sicherheit",
+    items: [
+      { id: "scam", icon: "🕵️", label: "Scam Check" },
+      { id: "vault", icon: "🔐", label: "Vault" },
+    ],
+  },
+  {
+    label: "🤖 KI & Assistenz",
+    items: [
+      { id: "mochi", icon: "🤖", label: "Mochi AI" },
+    ],
+  },
 ];
 
 /* ── Scanner DOM refs ─────────────────────────────────────────── */
@@ -142,8 +157,12 @@ bottomTabs.forEach((tab) => {
 
 function initToolsGrid() {
   if (toolsGrid.querySelector(".tool-card")) return;
-  toolsGrid.innerHTML = TOOLS.map(
-    (t) => `<button class="tool-card" data-tool="${t.id}">${t.icon}<span>${t.label}</span></button>`
+  toolsGrid.innerHTML = TOOL_GROUPS.map(
+    (g) =>
+      `<div class="tool-group-label">${g.label}</div>` +
+      g.items
+        .map((t) => `<button class="tool-card" data-tool="${t.id}">${t.icon}<span>${t.label}</span></button>`)
+        .join("")
   ).join("");
 
   toolsGrid.querySelectorAll(".tool-card").forEach((card) => {
@@ -992,13 +1011,35 @@ async function unlockVault() {
 }
 
 const vaultLockBtn = $("vault-lock-btn");
-if (vaultLockBtn) vaultLockBtn.addEventListener("click", () => { vaultKey = null; const l = $("vault-locked"); const u = $("vault-unlocked"); if (l) l.classList.remove("hidden"); if (u) u.classList.add("hidden"); vaultItems = []; });
+if (vaultLockBtn) vaultLockBtn.addEventListener("click", () => { vaultKey = null; const l = $("vault-locked"); const u = $("vault-unlocked"); if (l) l.classList.remove("hidden"); if (u) u.classList.add("hidden"); vaultItems = []; chrome.storage.session.remove("vaultCache").catch(() => {}); });
 
 async function loadVaultItems() {
   const container = $("vault-items");
   if (!container) return;
-  try { const data = await apiFetch("/api/vault"); vaultItems = data.items || []; renderVaultItems(); }
+  try { const data = await apiFetch("/api/vault"); vaultItems = data.items || []; renderVaultItems(); syncVaultAutofillCache(); }
   catch { container.innerHTML = "<p class='status-text'>Failed to load vault items</p>"; }
+}
+
+/* Share the DECRYPTED credentials with the background (session storage only,
+   cleared on lock) so the content script can autofill login forms. */
+async function syncVaultAutofillCache() {
+  try {
+    if (!vaultKey || !Array.isArray(vaultItems)) {
+      await chrome.storage.session.remove("vaultCache");
+      return;
+    }
+    const cache = [];
+    for (const item of vaultItems) {
+      try {
+        cache.push({
+          url: item.url || "",
+          username: item.username ? vaultDecrypt(vaultKey, item.username) : "",
+          password: item.encrypted_password ? vaultDecrypt(vaultKey, item.encrypted_password) : "",
+        });
+      } catch {}
+    }
+    await chrome.storage.session.set({ vaultCache: cache });
+  } catch {}
 }
 
 function renderVaultItems() {

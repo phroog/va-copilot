@@ -37,6 +37,14 @@
     },
     {
       "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": ["autofill.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
         "https://va-copilot-theta.vercel.app/*",
         "http://localhost:3000/*"
       ],

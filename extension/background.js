@@ -23,7 +23,36 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     startBackgroundScan(msg.urls, sendResponse);
     return true;
   }
+  if (msg.type === "GET_AUTOFILL") {
+    (async () => {
+      try {
+        const { vaultCache } = await chrome.storage.session.get("vaultCache");
+        const arr = Array.isArray(vaultCache) ? vaultCache : [];
+        const host = safeHost(msg.url);
+        let match = null;
+        for (const item of arr) {
+          const ih = safeHost(item.url || "");
+          if (ih && (ih === host || ih.includes(host) || host.includes(ih))) {
+            match = item;
+            break;
+          }
+        }
+        sendResponse(
+          match && match.password
+            ? { ok: true, username: match.username || "", password: match.password }
+            : { ok: false }
+        );
+      } catch {
+        sendResponse({ ok: false });
+      }
+    })();
+    return true;
+  }
 });
+
+function safeHost(url) {
+  try { return new URL(url).hostname.replace(/^www\./, "").toLowerCase(); } catch { return ""; }
+}
 
 async function startBackgroundScan(urls, sendResponse) {
   const allJobs = [];

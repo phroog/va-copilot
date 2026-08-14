@@ -156,6 +156,28 @@ body.dark .bottom-tab.active {
   gap: 8px;
 }
 
+.tool-group-label {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8b7ea8;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #e8e0f0;
+}
+
+body.dark .tool-group-label {
+  color: #b9a8d6;
+  border-top-color: #4a3560;
+}
+
+.tool-group-label:first-child {
+  border-top: none;
+  margin-top: 0;
+}
+
 .tool-card {
   display: flex;
   flex-direction: column;
