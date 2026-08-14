@@ -152,6 +152,13 @@ function isSameDay(a: string, b: string): boolean {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Live sync: reflect timer start/stop done in the browser extension (or the
+  // dashboard itself) without a manual reload.
+  useEffect(() => {
+    const iv = setInterval(fetchData, 15000);
+    return () => clearInterval(iv);
+  }, [fetchData]);
+
   // Load screenshots for all entries
   useEffect(() => {
     if (entries.length > 0) {
