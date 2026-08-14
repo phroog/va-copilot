@@ -71,11 +71,12 @@ export async function middleware(request: NextRequest) {
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/auth/login";
+    url.search = `?returnUrl=${encodeURIComponent(request.nextUrl.pathname)}`;
     return Response.redirect(url);
   }
 
-  if (!isProtected && user && request.nextUrl.pathname === "/login") {
+  if (!isProtected && user && request.nextUrl.pathname === "/auth/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return Response.redirect(url);

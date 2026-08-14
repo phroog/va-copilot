@@ -9,7 +9,7 @@ export default async function ExtensionAuthPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?returnUrl=/extension-auth");
+    redirect("/auth/login?returnUrl=/extension-auth");
   }
 
   return <AuthBridge />;
