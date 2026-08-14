@@ -416,6 +416,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
             <Button size="sm" variant="outline" onClick={() => document.getElementById("milestones")?.scrollIntoView({ behavior: "smooth" })} className="w-full">📋 Milestones</Button>
             <Link href={`/dashboard/invoices?job=${jobId}`} className="col-span-2 sm:col-span-1"><Button size="sm" variant="outline" className="w-full">🧾 Invoice</Button></Link>
             <Link href={`/dashboard/time-tracker?job=${jobId}`} className="col-span-2 sm:col-span-1"><Button size="sm" variant="outline" className="w-full">🕐 Zeit</Button></Link>
+            <Link href={`/dashboard/clients?name=${encodeURIComponent(job.client_name || job.title || "")}`} className="col-span-2 sm:col-span-1"><Button size="sm" variant="outline" className="w-full">👤 Client anlegen</Button></Link>
             <Button size="sm" variant="outline" onClick={runScamCheck} disabled={scamChecking} className="w-full">{scamChecking ? "⏳" : "🕵️"} Scam Check</Button>
             <Button size="sm" variant="outline" onClick={() => generateToken()} disabled={generatingToken} className="w-full">{generatingToken ? "⏳" : "🔗"} Client Portal</Button>
             <Button size="sm" variant="outline" onClick={async () => {

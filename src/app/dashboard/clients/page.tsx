@@ -67,6 +67,11 @@ export default function ClientsPage() {
   const [formJobId, setFormJobId] = useState("");
 
   useEffect(() => {
+    // Prefill client name from ?name= (e.g. "Client anlegen" from a job).
+    try {
+      const name = new URLSearchParams(window.location.search).get("name");
+      if (name) setFormClientName(name);
+    } catch {}
     fetchLinks();
     fetch("/api/jobs").then(r => r.json()).then(d => setJobs(d.jobs || [])).catch(() => showToast("Failed to load jobs", "error"));
   }, []);

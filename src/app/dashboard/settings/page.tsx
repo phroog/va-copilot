@@ -637,15 +637,6 @@ export default function SettingsPage() {
       {/* World Clock Timezones */}
       <WorldClockSettings />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">🔔 Notifications</CardTitle>
-          <CardDescription>Manage your notification preferences</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-400">Coming soon... 🚧</p>
-        </CardContent>
-      </Card>
     </div>
   );
 }
