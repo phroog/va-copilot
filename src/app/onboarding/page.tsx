@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { useToast, ToastProvider } from "@/components/toast";
 
 const VECTOR_AXES = [
   { key: "erfahrung", label: "Erfahrung", opts: ["Anfänger", "Grundkenntnisse", "Erfahren (2–4 J)", "Fortgeschritten", "Experte (5+ J)"] },
@@ -46,9 +45,9 @@ function ChipInput({ values, onChange, placeholder }: { values: string[]; onChan
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [skills, setSkills] = useState<string[]>([]);
   const [jobVector, setJobVector] = useState<number[]>([3, 3, 3, 3, 3]);
 
@@ -87,10 +86,10 @@ export default function OnboardingPage() {
         body: JSON.stringify({ skills, job_vector: jobVector }),
       });
       if (!res.ok) { const e = await res.json().catch(() => null); throw new Error(e?.error || "Speichern fehlgeschlagen"); }
-      showToast("Profil gespeichert 🎉");
-      router.replace("/dashboard");
+      setStatus({ type: "ok", text: "Profil gespeichert 🎉" });
+      setTimeout(() => router.replace("/dashboard"), 600);
     } catch (e: any) {
-      showToast(e?.message || "Speichern fehlgeschlagen", "error");
+      setStatus({ type: "err", text: e?.message || "Speichern fehlgeschlagen" });
     } finally {
       setSaving(false);
     }
@@ -107,9 +106,8 @@ export default function OnboardingPage() {
   }
 
   return (
-    <ToastProvider>
-      <div className="min-h-screen bg-[#FFF0F5] dark:bg-dark-bg flex items-center justify-center p-4">
-        <div className="w-full max-w-xl space-y-6 animate-fade-in">
+    <div className="min-h-screen bg-[#FFF0F5] dark:bg-dark-bg flex items-center justify-center p-4">
+      <div className="w-full max-w-xl space-y-6 animate-fade-in">
         <div className="text-center">
           <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">👋 Willkommen bei Sari</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
@@ -156,6 +154,11 @@ export default function OnboardingPage() {
             </div>
 
             <div className="flex flex-col gap-2">
+              {status && (
+                <p className={`text-sm text-center ${status.type === "ok" ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
+                  {status.text}
+                </p>
+              )}
               <Button onClick={save} disabled={saving || !canSave} className="w-full">
                 {saving ? "Speichere…" : "🚀 Loslegen"}
               </Button>
@@ -164,7 +167,6 @@ export default function OnboardingPage() {
           </CardContent>
         </Card>
       </div>
-      </div>
-    </ToastProvider>
+    </div>
   );
 }
