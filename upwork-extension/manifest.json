@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "Sari Job Radar",
+  "version": "0.2.0",
+  "description": "Pollt die Job-Feeds von Upwork, OnlineJobs.ph, Guru, Freelancer & Co. im Hintergrund über deren eigene Seiten/APIs und reicht neue Jobs an Sari weiter.",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Sari Job Radar"
+  },
+  "permissions": ["cookies", "storage", "alarms", "tabs", "scripting"],
+  "host_permissions": [
+    "https://*.upwork.com/*",
+    "https://www.onlinejobs.ph/*",
+    "https://www.guru.com/*",
+    "https://www.freelancer.com/*",
+    "https://*.freelancer.com/*",
+    "https://www.workingnomads.com/*",
+    "https://remoteok.com/*",
+    "https://jobspresso.co/*",
+    "https://www.peopleperhour.com/*",
+    "https://www.indeed.com/*",
+    "https://*.indeed.com/*",
+    "https://indeed.ph/*",
+    "https://hubstafftalent.net/*",
+    "https://www.reddit.com/*",
+    "https://*.facebook.com/*",
+    "https://va-copilot-theta.vercel.app/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.upwork.com/*",
+        "https://www.onlinejobs.ph/*",
+        "https://www.guru.com/*",
+        "https://www.freelancer.com/*",
+        "https://*.freelancer.com/*",
+        "https://www.workingnomads.com/*",
+        "https://remoteok.com/*",
+        "https://jobspresso.co/*",
+        "https://www.peopleperhour.com/*",
+        "https://www.indeed.com/*",
+        "https://*.indeed.com/*",
+        "https://indeed.ph/*",
+        "https://hubstafftalent.net/*",
+        "https://www.reddit.com/*",
+        "https://*.facebook.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

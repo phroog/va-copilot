@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { width: 340px; font: 13px system-ui; padding: 12px; }
+    h1 { font-size: 15px; margin: 0 0 10px; }
+    h2 { font-size: 13px; margin: 14px 0 6px; }
+    label { display: block; margin: 8px 0 3px; font-weight: 600; }
+    input { width: 100%; box-sizing: border-box; padding: 4px 6px; }
+    .prow { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+    .prow input[type="checkbox"] { width: auto; flex: none; }
+    .pname { min-width: 92px; font-weight: 600; }
+    .purl { flex: 1; font-size: 11px; }
+    .pid { font-size: 11px; color: #3a8a4f; white-space: nowrap; }
+    .actions { margin-top: 12px; display: flex; gap: 8px; }
+    button { flex: 1; padding: 6px; cursor: pointer; }
+    #status { margin-top: 12px; padding: 8px; background: #f2f4f7; border-radius: 6px; white-space: pre-wrap; font-size: 11px; max-height: 220px; overflow: auto; }
+    #status.ok { background: #e3f7e8; }
+    #status.err { background: #fde9e9; }
+  </style>
+</head>
+<body>
+  <h1>Sari Job Radar</h1>
+  <label>Enabled <input type="checkbox" id="enabled" /></label>
+  <label>Sari API URL</label>
+  <input id="apiUrl" type="text" />
+  <label>Admin Secret</label>
+  <input id="adminSecret" type="password" />
+  <div class="row" style="display:flex; gap:8px;">
+    <div style="flex:1;">
+      <label>Intervall (Min, z. B. 1.5)</label>
+      <input id="intervalMin" type="number" min="0.5" step="0.5" />
+    </div>
+    <div style="flex:1;">
+      <label>Upwork-Jobs/Poll</label>
+      <input id="count" type="number" min="1" max="200" />
+    </div>
+  </div>
+  <h2>Plattformen (Source-IDs werden automatisch aus dem Backend geholt)</h2>
+  <div id="platforms"></div>
+  <div class="actions">
+    <button id="save">Save &amp; Poll</button>
+    <button id="now">Check now</button>
+    <button id="test">Test API</button>
+    <button id="cleanup" title="Löscht Jobs mit posted_at in der Zukunft">Cleanup</button>
+  </div>
+  <div id="status">Loading…</div>
+  <script src="popup.js"></script>
+</body>
+</html>
