@@ -307,7 +307,7 @@ async function fetchRedditWorker(cfg) {
 }
 
 async function uploadJobs(cfg, jobs, sourceId) {
-  if (!cfg.adminSecret) throw new Error("Kein ADMIN_SECRET konfiguriert");
+  if (!cfg.adminSecret) throw new Error("Kein ADMIN_SECRET konfiguriert (gespeicherte Länge: " + String(cfg.adminSecret || "").length + ")");
   if (!jobs.length) return { inserted: 0 };
   const payload = { jobs };
   if (sourceId && UUID_RE.test(sourceId.trim())) payload.sourceId = sourceId.trim();
@@ -317,7 +317,7 @@ async function uploadJobs(cfg, jobs, sourceId) {
     body: JSON.stringify(payload),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error("upload-web HTTP " + res.status + ": " + (text || "").slice(0, 300));
+  if (!res.ok) throw new Error("upload-web HTTP " + res.status + ": " + (text || "").slice(0, 200) + " (secret: …" + String(cfg.adminSecret).slice(-3) + ")");
   try { return JSON.parse(text); } catch { return { inserted: 0 }; }
 }
 
@@ -338,36 +338,75 @@ async function testApi(cfg) {
   }
 }
 
+/* Fetch platform data once (per-platform branch). */
+async function fetchPlatformData(key, p, cfg) {
+  if (key === "upwork") {
+    // Periodic session keep-alive: re-open the tab so Upwork rotates the
+    // visitor token before it goes stale.
+    if (Date.now() - (await getLastRefresh(key)) > SESSION_REFRESH_MIN * 60 * 1000) {
+      const didRefresh = await refreshSessionTab(key, p);
+      if (didRefresh) {
+        await setLastRefresh(key, Date.now());
+        await setCooldown(key, 0);
+      }
+    }
+    let data = await fetchViaTab(key, p.url, cfg);
+    if (data) return { data, mode: "tab" };
+    const w = await fetchUpworkWorker(cfg);
+    if (w) return { data: w, mode: "worker" };
+    throw new Error("Upwork-Daten nicht abrufbar");
+  }
+  if (key === "reddit") {
+    let data = await fetchViaTab(key, p.url, cfg);
+    if (data) return { data, mode: "tab" };
+    const w = await fetchRedditWorker(cfg);
+    if (w) return { data: w, mode: "worker" };
+    throw new Error("Reddit-Daten nicht abrufbar");
+  }
+  if (key === "facebook") {
+    const data = await fetchViaTab(key, p.url, cfg);
+    if (!data || !data.posts) throw new Error("Kein Facebook-Tab offen (Groups-Feed öffnen)");
+    return { data, mode: "tab" };
+  }
+  // HTML/DOM platforms need an open tab (same-origin fetch / DOM reader).
+  const data = await fetchViaTab(key, p.url, cfg);
+  if (!data) throw new Error("Kein " + p.name + "-Tab offen");
+  return { data, mode: "tab" };
+}
+
+/* Fetch with one automatic session-refresh retry: if the platform fetch fails
+   with a session/block signal (401, auth failed, blocked, missing tab), re-open
+   the tab (new tab, close old) and try once more — a stale session self-heals
+   without user interaction. */
+async function fetchWithSessionRetry(key, p, cfg) {
+  try {
+    return await fetchPlatformData(key, p, cfg);
+  } catch (err) {
+    const msg = err.message || "";
+    const isSession = /401|authentication failed|auth failed|blocked|unreachable|Kein .*Tab offen/i.test(msg);
+    if (isSession) {
+      log(key, "fetch fehlgeschlagen → Session-Refresh: " + msg.slice(0, 80));
+      const refreshed = await refreshSessionTab(key, p);
+      if (refreshed) {
+        await setLastRefresh(key, Date.now());
+        await setCooldown(key, 0);
+        await new Promise((r) => setTimeout(r, 2500));
+        return await fetchPlatformData(key, p, cfg); // one retry with the fresh tab
+      }
+    }
+    throw err;
+  }
+}
+
 async function pollPlatform(key, p, cfg) {
   const result = { ok: true, mode: "tab", got: 0, fresh: 0, total: null, inserted: 0, error: null };
   try {
-    let data = null;
-    if (key === "upwork") {
-      // Periodic session keep-alive: re-open the tab so Upwork rotates the
-      // visitor token before it goes stale.
-      if (Date.now() - (await getLastRefresh(key)) > SESSION_REFRESH_MIN * 60 * 1000) {
-        await refreshSessionTab(key, p);
-        await setLastRefresh(key, Date.now());
-      }
-      data = await fetchViaTab(key, p.url, cfg);
-      if (!data) {
-        data = await fetchUpworkWorker(cfg);
-        result.mode = "worker";
-      }
-    } else if (key === "reddit") {
-      data = await fetchViaTab(key, p.url, cfg);
-      if (!data) {
-        data = await fetchRedditWorker(cfg);
-        result.mode = "worker";
-      }
-    } else if (key === "facebook") {
-      // Facebook: read the rendered groups feed on the open tab; OCR + filter
-      // happen in the backend (/api/jobs/facebook). Only NEW posts are sent so
-      // images are not re-OCR'd every poll.
-      data = await fetchViaTab(key, p.url, cfg);
-      if (!data || !data.posts) {
-        throw new Error("Kein Facebook-Tab offen (Groups-Feed öffnen: " + (p.url || "") + ")");
-      }
+    const { data, mode } = await fetchWithSessionRetry(key, p, cfg);
+    result.mode = mode;
+
+    if (key === "facebook") {
+      // Facebook: OCR + filter happen in the backend. Only NEW posts are sent
+      // so images are not re-OCR'd every poll.
       const seen = await getSeen(key);
       const posts = data.posts.filter((post) => post.url && !seen.has(post.url));
       result.total = data.posts.length;
@@ -389,12 +428,8 @@ async function pollPlatform(key, p, cfg) {
       }
       await setCooldown(key, 0);
       return result;
-    } else {
-      data = await fetchViaTab(key, p.url, cfg);
-      if (!data) {
-        throw new Error("Kein " + p.name + "-Tab offen (Content-Script-Fetch braucht einen Tab)");
-      }
     }
+
     result.total = data.total;
     result.got = data.jobs.length;
 
@@ -409,21 +444,10 @@ async function pollPlatform(key, p, cfg) {
     await setCooldown(key, 0); // success resets any backoff
   } catch (err) {
     result.ok = false;
-    const msg = err.message || "";
-    if (key === "upwork" && /401|authentication failed/i.test(msg)) {
-      // Session expired → re-open the tab in a fresh navigation and retry soon.
-      result.error = "⚠ Upwork-Session abgelaufen – Tab wird neu geöffnet …";
-      const refreshed = await refreshSessionTab(key, p);
-      if (refreshed) {
-        await setLastRefresh(key, Date.now());
-        result.error = "Upwork-Tab neu geladen (Session-Refresh) – nächster Poll testet wieder.";
-        await setCooldown(key, 5);
-      } else {
-        result.error = "⚠ Upwork-Session abgelaufen – bitte neu einloggen (Upwork-Tab öffnen). Poll pausiert für 30 Min.";
-        await setCooldown(key, 30);
-      }
-    } else {
-      result.error = msg;
+    result.error = err.message || "unbekannt";
+    if (key === "upwork" && /401|authentication failed/i.test(result.error)) {
+      result.error = "⚠ Upwork-Session abgelaufen – bitte neu einloggen (Upwork-Tab öffnen).";
+      await setCooldown(key, 30);
     }
   }
   return result;
@@ -443,7 +467,8 @@ async function poll() {
     if (!p || p.enabled === false) continue;
     const until = await getCooldown(key);
     if (until > Date.now()) {
-      results[key] = { ok: false, mode: null, got: 0, fresh: 0, total: null, inserted: 0, error: key === "upwork" ? "⏸ Upwork pausiert (Session abgelaufen – neu einloggen)" : "⏸ pausiert" };
+      const mins = Math.max(1, Math.ceil((until - Date.now()) / 60000));
+      results[key] = { ok: false, mode: null, got: 0, fresh: 0, total: null, inserted: 0, error: key === "upwork" ? `⏸ Upwork pausiert (Retry in ${mins} Min)` : `⏸ ${key} pausiert (Retry in ${mins} Min)` };
       any = true;
       continue;
     }
@@ -507,7 +532,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       await schedule(next);
       await poll();
       const s = await chrome.storage.local.get(STATUS_KEY);
-      sendResponse({ ok: true, status: s[STATUS_KEY] || {}, cfg: next });
+      sendResponse({ ok: true, status: s[STATUS_KEY] || {}, cfg: next, savedSecretLen: String(next.adminSecret || "").length });
     })().catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
   }
