@@ -70,10 +70,59 @@ async function setLastRefresh(key, ts) {
   await chrome.storage.local.set({ [REFRESH_KEY]: { ...(s[REFRESH_KEY] || {}), [key]: ts } });
 }
 
+/* Find the platform's open tab id (for CF-solving etc.). */
+async function findPlatformTabId(key) {
+  const pattern = HOST_PATTERNS[key];
+  if (!pattern) return null;
+  const tabs = await chrome.tabs.query({ url: Array.isArray(pattern) ? pattern : [pattern] });
+  const t = tabs.find((x) => x.active) || tabs[0];
+  return t ? t.id : null;
+}
+
+/* One gentle click on a Cloudflare/Turnstile checkbox, across ALL frames
+   (CF hosts it in a cross-origin iframe). Conservative: one click, no loops. */
+async function clickCloudflareCheckbox(tabId) {
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId, allFrames: true },
+      func: () => {
+        const all = Array.from(document.querySelectorAll('input[type="checkbox"], [role="checkbox"], [class*="cb-i-frame"]'));
+        const visible = all.filter((e) => e.offsetParent !== null && (e.offsetWidth > 0 || e.offsetHeight > 0));
+        const target = visible[0] || all[0];
+        if (!target) return false;
+        const r = target.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        const opts = { bubbles: true, cancelable: true, clientX: cx, clientY: cy, view: window };
+        target.dispatchEvent(new MouseEvent("mousedown", opts));
+        target.dispatchEvent(new MouseEvent("mouseup", opts));
+        target.dispatchEvent(new MouseEvent("click", opts));
+        try { if (typeof target.click === "function") target.click(); } catch {}
+        return true;
+      },
+    });
+    return Array.isArray(results) && results.some((r) => r.result === true);
+  } catch {
+    return false;
+  }
+}
+
+/* Is this tab currently on a Cloudflare challenge? */
+async function isCloudflareTab(tabId) {
+  try {
+    const t = await chrome.tabs.get(tabId);
+    const u = (t.url || "") + " " + (t.title || "");
+    return /__cf_chl|just a moment|attention required|captcha|verify you are human/i.test(u);
+  } catch {
+    return false;
+  }
+}
+
 /* Re-open the platform tab in the SAME window: create a fresh FOREGROUND tab
    with the current URL, wait for it to load (and for a Cloudflare challenge to
-   auto-solve), then close the old one. A background tab would stay white
-   (Chrome throttles background rendering), so we open it active. */
+   auto-solve, clicking its checkbox once), then close the old one. A background
+   tab would stay white (Chrome throttles background rendering), so we open it
+   active. */
 async function refreshSessionTab(key, p) {
   try {
     const pattern = HOST_PATTERNS[key];
@@ -85,9 +134,10 @@ async function refreshSessionTab(key, p) {
     const tab = await chrome.tabs.create({ url, windowId: old.windowId, active: true });
 
     // Wait for a real load, tolerating a Cloudflare "Just a moment" challenge
-    // that usually auto-solves within a few seconds.
+    // that usually auto-solves (click the checkbox once if it needs one).
     const deadline = Date.now() + 45000;
     let loaded = false;
+    let clicked = false;
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 1500));
       try {
@@ -95,7 +145,12 @@ async function refreshSessionTab(key, p) {
         const u = t.url || "";
         const title = t.title || "";
         if (/__cf_chl|just a moment|attention required|captcha|verify you are human/i.test(u + " " + title)) {
-          continue; // challenge in progress — keep waiting for auto-solve
+          if (!clicked) {
+            clicked = true;
+            log(key, "Cloudflare-Challenge erkannt → Checkbox-Klick versucht");
+            await clickCloudflareCheckbox(tab.id);
+          }
+          continue; // keep waiting for auto-solve
         }
         if (t.status === "complete" && u.startsWith("http")) {
           loaded = true;
@@ -398,6 +453,17 @@ async function fetchWithSessionRetry(key, p, cfg) {
     const msg = err.message || "";
     const isSession = /401|authentication failed|auth failed|blocked|unreachable|Kein .*Tab offen/i.test(msg);
     if (isSession) {
+      // Case 1: the open tab is stuck on a Cloudflare challenge — click its
+      // checkbox once and retry directly (no new tab needed).
+      const tabId = await findPlatformTabId(key);
+      if (tabId && (await isCloudflareTab(tabId))) {
+        log(key, "CF-Challenge auf offenem Tab → Checkbox-Klick + Retry");
+        await clickCloudflareCheckbox(tabId);
+        await new Promise((r) => setTimeout(r, 4000));
+        const retried = await fetchPlatformData(key, p, cfg).catch(() => null);
+        if (retried) return retried;
+      }
+      // Case 2: re-open the tab (new tab + close old) and retry once.
       log(key, "fetch fehlgeschlagen → Session-Refresh: " + msg.slice(0, 80));
       const refreshed = await refreshSessionTab(key, p);
       if (refreshed) {

@@ -27,6 +27,7 @@
     "https://hubstafftalent.net/*",
     "https://www.reddit.com/*",
     "https://*.facebook.com/*",
+    "https://challenges.cloudflare.com/*",
     "https://va-copilot-theta.vercel.app/*"
   ],
   "content_scripts": [
