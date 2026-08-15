@@ -41,7 +41,12 @@ const HOST_PATTERNS = {
 const STATUS_KEY = "lastStatus";
 const SEEN_KEY = "seenIds";
 const COOLDOWN_KEY = "cooldowns";
+const REFRESH_KEY = "sessionRefreshes";
 const UUID_RE = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+
+/* How often to re-open the Upwork tab to keep the session token warm
+   (Upwork rotates UniversalSearchNuxt_vt on page load). */
+const SESSION_REFRESH_MIN = 60;
 
 async function getCooldown(key) {
   const s = await chrome.storage.local.get(COOLDOWN_KEY);
@@ -53,6 +58,53 @@ async function setCooldown(key, minutes) {
   const all = s[COOLDOWN_KEY] || {};
   all[key] = Date.now() + minutes * 60 * 1000;
   await chrome.storage.local.set({ [COOLDOWN_KEY]: all });
+}
+
+async function getLastRefresh(key) {
+  const s = await chrome.storage.local.get(REFRESH_KEY);
+  return (s[REFRESH_KEY] || {})[key] || 0;
+}
+
+async function setLastRefresh(key, ts) {
+  const s = await chrome.storage.local.get(REFRESH_KEY);
+  await chrome.storage.local.set({ [REFRESH_KEY]: { ...(s[REFRESH_KEY] || {}), [key]: ts } });
+}
+
+/* Re-open the platform tab in the SAME window: create a fresh tab with the
+   current URL, wait for it to load, then close the old one. Mimics a manual
+   refresh and re-runs the site's JS (rotates session cookies/tokens). */
+async function refreshSessionTab(key, p) {
+  try {
+    const pattern = HOST_PATTERNS[key];
+    if (!pattern) return false;
+    const tabs = await chrome.tabs.query({ url: Array.isArray(pattern) ? pattern : [pattern] });
+    const old = tabs.find((t) => t.active) || tabs[0];
+    if (!old) return false;
+    const url = old.url || p.url;
+    const tab = await chrome.tabs.create({ url, windowId: old.windowId, active: false });
+    const started = Date.now();
+    await new Promise((resolve) => {
+      const iv = setInterval(async () => {
+        try {
+          const t = await chrome.tabs.get(tab.id);
+          if (t.status === "complete" || Date.now() - started > 25000) {
+            clearInterval(iv);
+            resolve();
+          }
+        } catch {
+          clearInterval(iv);
+          resolve();
+        }
+      }, 1200);
+    });
+    await new Promise((r) => setTimeout(r, 4000));
+    await chrome.tabs.remove(old.id).catch(() => {});
+    log(key, "session tab refreshed:", url);
+    return true;
+  } catch (err) {
+    log(key, "refresh failed:", err.message);
+    return false;
+  }
 }
 
 function log(...a) {
@@ -291,6 +343,12 @@ async function pollPlatform(key, p, cfg) {
   try {
     let data = null;
     if (key === "upwork") {
+      // Periodic session keep-alive: re-open the tab so Upwork rotates the
+      // visitor token before it goes stale.
+      if (Date.now() - (await getLastRefresh(key)) > SESSION_REFRESH_MIN * 60 * 1000) {
+        await refreshSessionTab(key, p);
+        await setLastRefresh(key, Date.now());
+      }
       data = await fetchViaTab(key, p.url, cfg);
       if (!data) {
         data = await fetchUpworkWorker(cfg);
@@ -353,8 +411,17 @@ async function pollPlatform(key, p, cfg) {
     result.ok = false;
     const msg = err.message || "";
     if (key === "upwork" && /401|authentication failed/i.test(msg)) {
-      result.error = "⚠ Upwork-Session abgelaufen – Upwork-Tab öffnen und neu einloggen. Poll pausiert für 30 Min.";
-      await setCooldown(key, 30);
+      // Session expired → re-open the tab in a fresh navigation and retry soon.
+      result.error = "⚠ Upwork-Session abgelaufen – Tab wird neu geöffnet …";
+      const refreshed = await refreshSessionTab(key, p);
+      if (refreshed) {
+        await setLastRefresh(key, Date.now());
+        result.error = "Upwork-Tab neu geladen (Session-Refresh) – nächster Poll testet wieder.";
+        await setCooldown(key, 5);
+      } else {
+        result.error = "⚠ Upwork-Session abgelaufen – bitte neu einloggen (Upwork-Tab öffnen). Poll pausiert für 30 Min.";
+        await setCooldown(key, 30);
+      }
     } else {
       result.error = msg;
     }
