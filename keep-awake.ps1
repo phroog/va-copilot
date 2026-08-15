@@ -10,18 +10,18 @@ public static class KeepAwake {
 "@
 
 # ES_CONTINUOUS (0x80000000) | ES_SYSTEM_REQUIRED (0x00000001)
-[KeepAwake]::SetThreadExecutionState(0x80000001) | Out-Null
+[KeepAwake]::SetThreadExecutionState([uint32]0x80000001) | Out-Null
 Write-Host "Keep-awake aktiv – das System kann jetzt NICHT schlafen." -ForegroundColor Green
 Write-Host "Display darf ausgehen. Fenster offen lassen. Beenden mit Strg+C."
 
 try {
     while ($true) {
         Start-Sleep -Seconds 30
-        [KeepAwake]::SetThreadExecutionState(0x80000001) | Out-Null
+        [KeepAwake]::SetThreadExecutionState([uint32]0x80000001) | Out-Null
     }
 }
 finally {
     # clear the flag (ES_CONTINUOUS)
-    [KeepAwake]::SetThreadExecutionState(0x80000000) | Out-Null
+    [KeepAwake]::SetThreadExecutionState([uint32]0x80000000) | Out-Null
     Write-Host "Keep-awake beendet."
 }
