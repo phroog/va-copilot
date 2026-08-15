@@ -2,13 +2,15 @@
 # The display may still turn off; the system stays awake.
 # Run the FILE, don't paste into the console:
 #   & "C:\Users\Surface\Desktop\Sari\keep-awake.ps1"
-Add-Type -TypeDefinition @"
+if (-not ('KeepAwake' -as [type])) {
+    Add-Type -TypeDefinition @"
 using System.Runtime.InteropServices;
 public static class KeepAwake {
     [DllImport("kernel32.dll")]
     public static extern uint SetThreadExecutionState(uint esFlags);
 }
 "@
+}
 
 # ES_CONTINUOUS = 0x80000000, ES_SYSTEM_REQUIRED = 0x00000001
 $ES_CONTINUOUS = [uint32]2147483648
