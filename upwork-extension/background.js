@@ -70,9 +70,10 @@ async function setLastRefresh(key, ts) {
   await chrome.storage.local.set({ [REFRESH_KEY]: { ...(s[REFRESH_KEY] || {}), [key]: ts } });
 }
 
-/* Re-open the platform tab in the SAME window: create a fresh tab with the
-   current URL, wait for it to load, then close the old one. Mimics a manual
-   refresh and re-runs the site's JS (rotates session cookies/tokens). */
+/* Re-open the platform tab in the SAME window: create a fresh FOREGROUND tab
+   with the current URL, wait for it to load (and for a Cloudflare challenge to
+   auto-solve), then close the old one. A background tab would stay white
+   (Chrome throttles background rendering), so we open it active. */
 async function refreshSessionTab(key, p) {
   try {
     const pattern = HOST_PATTERNS[key];
@@ -81,26 +82,38 @@ async function refreshSessionTab(key, p) {
     const old = tabs.find((t) => t.active) || tabs[0];
     if (!old) return false;
     const url = old.url || p.url;
-    const tab = await chrome.tabs.create({ url, windowId: old.windowId, active: false });
-    const started = Date.now();
-    await new Promise((resolve) => {
-      const iv = setInterval(async () => {
-        try {
-          const t = await chrome.tabs.get(tab.id);
-          if (t.status === "complete" || Date.now() - started > 25000) {
-            clearInterval(iv);
-            resolve();
-          }
-        } catch {
-          clearInterval(iv);
-          resolve();
+    const tab = await chrome.tabs.create({ url, windowId: old.windowId, active: true });
+
+    // Wait for a real load, tolerating a Cloudflare "Just a moment" challenge
+    // that usually auto-solves within a few seconds.
+    const deadline = Date.now() + 45000;
+    let loaded = false;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 1500));
+      try {
+        const t = await chrome.tabs.get(tab.id);
+        const u = t.url || "";
+        const title = t.title || "";
+        if (/__cf_chl|just a moment|attention required|captcha|verify you are human/i.test(u + " " + title)) {
+          continue; // challenge in progress — keep waiting for auto-solve
         }
-      }, 1200);
-    });
-    await new Promise((r) => setTimeout(r, 4000));
-    await chrome.tabs.remove(old.id).catch(() => {});
-    log(key, "session tab refreshed:", url);
-    return true;
+        if (t.status === "complete" && u.startsWith("http")) {
+          loaded = true;
+          break;
+        }
+      } catch {
+        break; // tab closed meanwhile
+      }
+    }
+    await new Promise((r) => setTimeout(r, 2500));
+    if (loaded) {
+      await chrome.tabs.remove(old.id).catch(() => {});
+      log(key, "session tab refreshed:", url);
+      return true;
+    }
+    await chrome.tabs.remove(tab.id).catch(() => {}); // unusable white tab — drop it, keep the old one
+    log(key, "refresh incomplete (challenge not resolved), kept old tab");
+    return false;
   } catch (err) {
     log(key, "refresh failed:", err.message);
     return false;
