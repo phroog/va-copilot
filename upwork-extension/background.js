@@ -502,7 +502,10 @@ async function schedule(cfg) {
     const minutes = Math.max(0.5, parseFloat(cfg.intervalMin) || DEFAULTS.intervalMin);
     const delayMin = nextDelayMs(minutes) / 60000;
     chrome.alarms.create("sari-poll", { delayInMinutes: delayMin });
+    chrome.alarms.create("sari-watchdog", { periodInMinutes: 15 });
     log("next poll in ~", Math.round(delayMin * 60), "s (±Jitter)");
+  } else {
+    await chrome.alarms.clear("sari-watchdog");
   }
 }
 
@@ -524,6 +527,12 @@ chrome.runtime.onStartup.addListener(async () => {
 
 let pollingBusy = false;
 chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === "sari-watchdog") {
+    // Safety net: if the poll alarm was ever lost, re-create it.
+    const existing = await chrome.alarms.get("sari-poll");
+    if (!existing) await scheduleNext();
+    return;
+  }
   if (alarm.name !== "sari-poll" || pollingBusy) return;
   pollingBusy = true;
   try {
