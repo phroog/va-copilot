@@ -486,13 +486,28 @@ async function poll() {
   await setStatus({ ok: allOk, platforms: results, ts: Date.now() });
 }
 
+/* Human-like poll timing: each poll schedules the NEXT one with a random
+   delay (jitter ±35% + occasional longer pauses), so requests never happen at
+   a fixed machine-precise rhythm. */
+function nextDelayMs(minutes) {
+  const base = minutes * 60000;
+  let d = base * (1 + (Math.random() * 0.7 - 0.35)); // ±35% around the interval
+  if (Math.random() < 0.15) d *= 2 + Math.random(); // occasional longer human pause
+  return Math.max(30000, Math.round(d)); // never below 30s
+}
+
 async function schedule(cfg) {
   await chrome.alarms.clear("sari-poll");
   if (cfg.enabled) {
     const minutes = Math.max(0.5, parseFloat(cfg.intervalMin) || DEFAULTS.intervalMin);
-    chrome.alarms.create("sari-poll", { periodInMinutes: minutes });
-    log("alarm scheduled every", minutes, "min");
+    const delayMin = nextDelayMs(minutes) / 60000;
+    chrome.alarms.create("sari-poll", { delayInMinutes: delayMin });
+    log("next poll in ~", Math.round(delayMin * 60), "s (±Jitter)");
   }
+}
+
+async function scheduleNext() {
+  await schedule(await config());
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -507,8 +522,17 @@ chrome.runtime.onStartup.addListener(async () => {
   await schedule(await config());
 });
 
+let pollingBusy = false;
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === "sari-poll") await poll();
+  if (alarm.name !== "sari-poll" || pollingBusy) return;
+  pollingBusy = true;
+  try {
+    await scheduleNext(); // ensure a pending alarm even if the SW dies mid-poll
+    await poll();
+  } finally {
+    pollingBusy = false;
+    await scheduleNext(); // re-schedule with a fresh random delay
+  }
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
