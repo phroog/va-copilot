@@ -42,6 +42,7 @@ const STATUS_KEY = "lastStatus";
 const SEEN_KEY = "seenIds";
 const COOLDOWN_KEY = "cooldowns";
 const REFRESH_KEY = "sessionRefreshes";
+const TAB_IDS_KEY = "platformTabIds";
 const UUID_RE = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 /* How often to re-open the Upwork tab to keep the session token warm
@@ -70,8 +71,28 @@ async function setLastRefresh(key, ts) {
   await chrome.storage.local.set({ [REFRESH_KEY]: { ...(s[REFRESH_KEY] || {}), [key]: ts } });
 }
 
-/* Find the platform's open tab id (for CF-solving etc.). */
+/* Remember which tab belongs to a platform so we can still find it while it is
+   mid-load on a Cloudflare challenge URL (which no longer matches the host
+   pattern). */
+async function getRememberedTabId(key) {
+  const s = await chrome.storage.local.get(TAB_IDS_KEY);
+  return (s[TAB_IDS_KEY] || {})[key] || null;
+}
+async function rememberTabId(key, tabId) {
+  const s = await chrome.storage.local.get(TAB_IDS_KEY);
+  await chrome.storage.local.set({ [TAB_IDS_KEY]: { ...(s[TAB_IDS_KEY] || {}), [key]: tabId } });
+}
+
+/* Find the platform's open tab id (for CF-solving etc.). Tries the remembered
+   id first (works even mid-CF-challenge), then falls back to the host pattern. */
 async function findPlatformTabId(key) {
+  const remembered = await getRememberedTabId(key);
+  if (remembered) {
+    try {
+      const t = await chrome.tabs.get(remembered);
+      if (t && (t.url || "").startsWith("http")) return remembered;
+    } catch { /* closed */ }
+  }
   const pattern = HOST_PATTERNS[key];
   if (!pattern) return null;
   const tabs = await chrome.tabs.query({ url: Array.isArray(pattern) ? pattern : [pattern] });
@@ -132,12 +153,14 @@ async function refreshSessionTab(key, p) {
     if (!old) return false;
     const url = old.url || p.url;
     const tab = await chrome.tabs.create({ url, windowId: old.windowId, active: true });
+    await rememberTabId(key, tab.id);
 
     // Wait for a real load, tolerating a Cloudflare "Just a moment" challenge
-    // that usually auto-solves (click the checkbox once if it needs one).
+    // that usually auto-solves (click its checkbox a few times if it needs one).
     const deadline = Date.now() + 45000;
     let loaded = false;
-    let clicked = false;
+    let clicks = 0;
+    let lastClickAt = 0;
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 1500));
       try {
@@ -145,9 +168,10 @@ async function refreshSessionTab(key, p) {
         const u = t.url || "";
         const title = t.title || "";
         if (/__cf_chl|just a moment|attention required|captcha|verify you are human/i.test(u + " " + title)) {
-          if (!clicked) {
-            clicked = true;
-            log(key, "Cloudflare-Challenge erkannt → Checkbox-Klick versucht");
+          if (clicks < 3 && Date.now() - lastClickAt > 2500) {
+            clicks++;
+            lastClickAt = Date.now();
+            log(key, "Cloudflare-Challenge → Checkbox-Klick " + clicks);
             await clickCloudflareCheckbox(tab.id);
           }
           continue; // keep waiting for auto-solve
@@ -241,19 +265,34 @@ async function addSeen(key, ids) {
 
 /* Fetch one platform's feed from an open tab (page context). */
 async function fetchViaTab(key, url, cfg) {
+  // Candidate tab ids: the remembered one (works even on a CF challenge URL)
+  // plus any tabs currently matching the host pattern.
+  const ids = new Set();
+  const remembered = await getRememberedTabId(key);
+  if (remembered) ids.add(remembered);
   const pattern = HOST_PATTERNS[key];
-  if (!pattern) return null;
-  const tabs = await chrome.tabs.query({ url: Array.isArray(pattern) ? pattern : [pattern] });
-  if (!tabs.length) return null;
-  const ordered = [...tabs].sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
-  for (const tab of ordered) {
+  if (pattern) {
+    const tabs = await chrome.tabs.query({ url: Array.isArray(pattern) ? pattern : [pattern] });
+    for (const t of tabs) ids.add(t.id);
+  }
+  if (ids.size === 0) return null;
+
+  const withMeta = [];
+  for (const id of ids) {
+    try {
+      const t = await chrome.tabs.get(id);
+      if (t) withMeta.push({ id, active: t.active });
+    } catch { /* tab closed */ }
+  }
+  const ordered = withMeta.sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
+  for (const meta of ordered) {
     try {
       let resp;
       try {
-        resp = await chrome.tabs.sendMessage(tab.id, { type: "FETCH_FEED", platform: key, url, count: cfg.count });
+        resp = await chrome.tabs.sendMessage(meta.id, { type: "FETCH_FEED", platform: key, url, count: cfg.count });
       } catch {
-        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content.js"] });
-        resp = await chrome.tabs.sendMessage(tab.id, { type: "FETCH_FEED", platform: key, url, count: cfg.count });
+        await chrome.scripting.executeScript({ target: { tabId: meta.id }, files: ["content.js"] });
+        resp = await chrome.tabs.sendMessage(meta.id, { type: "FETCH_FEED", platform: key, url, count: cfg.count });
       }
       if (resp && resp.ok) return resp;
       if (resp && resp.error) log(key, "tab error:", resp.error);
