@@ -443,7 +443,15 @@ const DETAIL_SELECTORS = {
   guru: [".jobRecord__description", "[class*='description']", "article"],
   freelancer: [".project-details", "[class*='description']", "article"],
   hubstaff: [".job-description", "[class*='description']", "article"],
-  indeed: [".jobsearch-JobComponent-description", ".jobsearch-jobDescriptionText", "[class*='description']", "article"],
+  indeed: [
+    "#jobDescriptionText",
+    ".jobsearch-JobComponent-description",
+    ".jobsearch-jobDescriptionText",
+    '[data-testid="jobDescriptionText"]',
+    ".showMoreContent",
+    "[class*='description']",
+    "article",
+  ],
 };
 
 async function fetchJobDetail(url, platform) {
@@ -451,6 +459,9 @@ async function fetchJobDetail(url, platform) {
   if (!res.ok) throw new Error("HTTP " + res.status);
   const html = await res.text();
   const doc = new DOMParser().parseFromString(html, "text/html");
+
+  // Drop all CSS/JS so it can never be picked as "text".
+  doc.querySelectorAll("style, script, noscript, link, meta, svg").forEach((el) => el.remove());
 
   const sels = DETAIL_SELECTORS[platform] || ["article", "[class*='description']", "main"];
   let description = "";
@@ -462,7 +473,7 @@ async function fetchJobDetail(url, platform) {
   if (!description) {
     let best = "";
     let bestLen = 0;
-    doc.querySelectorAll("p, .description, article, main").forEach((el) => {
+    doc.querySelectorAll("p, li, div, article, main, h1, h2, h3").forEach((el) => {
       const t = clean(el.textContent);
       if (t.length > bestLen && t.length < 12000) { bestLen = t.length; best = t; }
     });

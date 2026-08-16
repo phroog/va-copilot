@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   const { data, error } = await supabase
     .from("global_jobs")
     .select("id, external_id, url")
-    .is("detail", null)
+    .or("detail.is.null,detail->>description.like.%{%")
     .not("url", "is", null)
     .order("collected_at", { ascending: false })
     .limit(limit);
