@@ -13,7 +13,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const { data: job } = await supabase.from("global_jobs").select("id, url, title").eq("id", id).maybeSingle();
+  const { data: job } = await supabase.from("global_jobs").select("id, url, title, description, detail").eq("id", id).maybeSingle();
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
   const credit = await checkCredits(user.id);
@@ -26,5 +26,6 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Insufficient AI credits. You have 0 credits remaining." }, { status: 402 });
   }
 
-  return NextResponse.json({ url: job.url, title: job.title });
+  const description = (job.detail && (job.detail as any).description) || job.description || "";
+  return NextResponse.json({ url: job.url, title: job.title, description });
 }

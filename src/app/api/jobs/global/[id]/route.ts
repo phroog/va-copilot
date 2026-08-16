@@ -28,10 +28,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const userVec = profile?.job_vector ? validateUserVector(profile.job_vector) : null;
   const scam = scamScore(job);
 
-  const { url: _url, ...rest } = job;
+  // Free tier: everything except the full description and the URL — those are
+  // unlocked together for 1 credit (fair + consistent across platforms).
+  const { url: _url, detail: _detail, description: _desc, ...rest } = job;
   return NextResponse.json({
     job: {
       ...rest,
+      description_preview: (job.detail?.description || job.description || "").slice(0, 300),
       profile_vector: profileVector,
       profile_match: userVec ? matchVectors(userVec, profileVector).score : null,
       scam_risk: scam.risk,

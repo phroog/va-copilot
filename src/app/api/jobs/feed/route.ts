@@ -92,10 +92,13 @@ export async function GET(request: Request) {
     const match = userVec ? matchVectors(userVec, profileVector) : null;
     const scored = profileHasData ? computeScore(job, profile) : null;
     const scam = scamScore(job);
-    // The original URL is credit-gated (reveal endpoint) — never expose it here.
-    const { url: _url, ...jobRest } = job;
+    // The original URL is credit-gated (reveal endpoint) — never expose it.
+    // The full description is also part of the paid unlock; the feed only gets
+    // a preview snippet so the free tier is identical for every platform.
+    const { url: _url, detail: _detail, ...jobRest } = job;
     return {
       ...jobRest,
+      description: (job.description || "").slice(0, 300),
       profile_vector: profileVector,
       profile_match: match ? match.score : null,
       matching_score: scored?.score ?? null,

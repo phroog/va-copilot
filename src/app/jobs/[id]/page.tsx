@@ -20,6 +20,7 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState("");
   const [revealing, setRevealing] = useState(false);
   const [revealMsg, setRevealMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [fullDescription, setFullDescription] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -38,16 +39,6 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
     try { return window.localStorage.getItem("sari_ext_id"); } catch { return null; }
   }
 
-  function openOriginal() {
-    const eid = extId();
-    const c = (window as any).chrome;
-    if (eid && c && c.runtime) {
-      c.runtime.sendMessage(eid, { type: "OPEN_JOB_BY_ID", id }).catch(() => {});
-    } else {
-      window.postMessage({ type: "SARI_OPEN_JOB", id }, "*");
-    }
-  }
-
   const reveal = async () => {
     if (!id) return;
     setRevealing(true);
@@ -59,7 +50,8 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
         setRevealMsg({ type: "err", text: data?.error || "Fehlgeschlagen (Credits?)" });
         return;
       }
-      setRevealMsg({ type: "ok", text: "Link freigeschaltet – wird geöffnet …" });
+      setFullDescription(data.description || "");
+      setRevealMsg({ type: "ok", text: "Freigeschaltet – Link wird geöffnet …" });
       window.open(data.url, "_blank", "noopener,noreferrer");
     } catch {
       setRevealMsg({ type: "err", text: "Netzwerkfehler" });
@@ -116,32 +108,26 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
         <Card>
           <CardContent className="p-6">
             <h2 className="font-extrabold text-sm uppercase tracking-wider text-slate-500 mb-3">Beschreibung</h2>
-            <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-              {(job.detail?.description || job.description || "Keine Beschreibung vorhanden.")}
-            </p>
+            {revealMsg?.type === "ok" ? (
+              <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{fullDescription}</p>
+            ) : (
+              <>
+                <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                  {job.description_preview || "Keine Vorschau verfügbar."}
+                </p>
+                <div className="mt-4 rounded-2xl border border-dashed border-kawaii-purple/40 bg-kawaii-purple/5 dark:bg-kawaii-purple/10 p-4 text-center">
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">🔒 Volle Beschreibung + Bewerbungs-Link</p>
+                  <p className="text-xs text-slate-400 mt-1 mb-3">Mit 1 Credit freischalten — sobald du den Job wirklich verfolgen willst.</p>
+                  <Button onClick={reveal} disabled={revealing}>
+                    {revealing ? "Öffne…" : "🔓 Freischalten (1🪙)"}
+                  </Button>
+                </div>
+              </>
+            )}
+            {revealMsg && revealMsg.type === "err" && (
+              <p className="text-sm text-red-500 mt-2">{revealMsg.text}</p>
+            )}
           </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div>
-              <p className="font-bold text-slate-700 dark:text-slate-200">🔗 Original ansehen (Link versteckt)</p>
-              <p className="text-xs text-slate-400 mt-1">Öffnet die echte Seite ohne sichtbaren Link. Link freischalten: 1 Credit.</p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={openOriginal} title="Original-Seite in verstecktem Fenster öffnen">
-                🔍 Original ansehen
-              </Button>
-              <Button onClick={reveal} disabled={revealing}>
-                {revealing ? "Öffne…" : "🔗 Link freischalten (1🪙)"}
-              </Button>
-            </div>
-          </CardContent>
-          {revealMsg && (
-            <CardContent className="pt-0">
-              <p className={`text-sm ${revealMsg.type === "ok" ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>{revealMsg.text}</p>
-            </CardContent>
-          )}
         </Card>
       </div>
     </div>
