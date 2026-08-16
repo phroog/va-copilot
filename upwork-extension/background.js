@@ -493,6 +493,73 @@ function platformForUrl(url) {
   } catch { return null; }
 }
 
+/* Robust detail fetch: open the real job link in a background tab, let it
+   render, extract the description from the live DOM, close the tab. No need
+   for the platform's list tab to be open. */
+const DETAIL_EXTRACT_FN = () => {
+  document.querySelectorAll("style, script, noscript, link, meta, svg").forEach((el) => el.remove());
+  const clean = (t) => (t || "").replace(/\uFFFD/g, "").trim();
+  const sels = [
+    "#jobDescriptionText",
+    ".jobsearch-JobComponent-description",
+    ".jobsearch-jobDescriptionText",
+    '[data-testid="jobDescriptionText"]',
+    ".job-desc",
+    ".jobRecord__description",
+    ".project-details",
+    ".job-description",
+    ".showMoreContent",
+    "[class*='description']",
+    "article",
+  ];
+  let description = "";
+  for (const s of sels) {
+    const el = document.querySelector(s);
+    const t = el ? clean(el.textContent) : "";
+    if (t.length > 80) { description = t.slice(0, 10000); break; }
+  }
+  if (!description) {
+    let best = "";
+    let bestLen = 0;
+    document.querySelectorAll("p, li, div, article, main, h1, h2, h3").forEach((el) => {
+      const t = clean(el.textContent);
+      if (t.length > bestLen && t.length < 12000) { bestLen = t.length; best = t; }
+    });
+    description = best.slice(0, 10000);
+  }
+  return { description };
+};
+
+async function fetchDetailByUrl(url) {
+  let tab = null;
+  try {
+    tab = await chrome.tabs.create({ url, active: false });
+    const deadline = Date.now() + 20000;
+    await new Promise((resolve) => {
+      const iv = setInterval(async () => {
+        try {
+          const t = await chrome.tabs.get(tab.id);
+          if (t.status === "complete" || Date.now() > deadline) {
+            clearInterval(iv);
+            resolve();
+          }
+        } catch {
+          clearInterval(iv);
+          resolve();
+        }
+      }, 800);
+    });
+    await new Promise((r) => setTimeout(r, 1200));
+    const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: DETAIL_EXTRACT_FN });
+    const desc = results && results[0] && results[0].result ? results[0].result.description : "";
+    return desc ? { description: desc } : null;
+  } catch {
+    return null;
+  } finally {
+    if (tab) await chrome.tabs.remove(tab.id).catch(() => {});
+  }
+}
+
 /* Proactive backfill: fetch real detail pages for jobs missing details, in
    small bounded batches with human pauses. Runs on its own alarm. */
 async function runDetailBackfill() {
@@ -506,9 +573,8 @@ async function runDetailBackfill() {
     const { jobs } = await res.json();
     for (const job of (jobs || [])) {
       try {
-        const key = platformForUrl(job.url);
-        if (!key) continue;
-        const detail = await fetchDetailViaTab(key, job.url, cfg);
+        if (!job.url) continue;
+        const detail = await fetchDetailByUrl(job.url);
         if (detail && detail.description) {
           await fetch(cfg.apiUrl + "/api/jobs/global/details", {
             method: "POST",
