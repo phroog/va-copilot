@@ -145,12 +145,17 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
         <Card>
           <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div>
-              <p className="font-bold text-slate-700 dark:text-slate-200">🔗 Original-Link freischalten</p>
-              <p className="text-xs text-slate-400 mt-1">Kostet 1 Credit — Details oben sind kostenlos.</p>
+              <p className="font-bold text-slate-700 dark:text-slate-200">🔗 Original ansehen (Link versteckt)</p>
+              <p className="text-xs text-slate-400 mt-1">Öffnet die echte Seite ohne sichtbaren Link. Link freischalten: 1 Credit.</p>
             </div>
-            <Button onClick={reveal} disabled={revealing}>
-              {revealing ? "Öffne…" : "🔗 Original öffnen (1🪙)"}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => window.postMessage({ type: "SARI_OPEN_JOB", id }, "*")} title="Original-Seite in verstecktem Fenster öffnen">
+                🔍 Original ansehen
+              </Button>
+              <Button onClick={reveal} disabled={revealing}>
+                {revealing ? "Öffne…" : "🔗 Link freischalten (1🪙)"}
+              </Button>
+            </div>
           </CardContent>
           {revealMsg && (
             <CardContent className="pt-0">

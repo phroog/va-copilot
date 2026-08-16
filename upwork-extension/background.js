@@ -863,6 +863,21 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     })();
     return true;
   }
+  if (msg.type === "OPEN_JOB_BY_ID") {
+    (async () => {
+      try {
+        const url = await getJobUrlById(msg.id);
+        if (!url) { sendResponse({ ok: false, error: "keine URL bekannt (Job noch nicht gepollt)" }); return; }
+        // Popup window WITHOUT an address bar: the user sees the real page,
+        // but the link stays hidden until a credit reveals it.
+        await chrome.windows.create({ url, type: "popup", width: 1100, height: 820 });
+        sendResponse({ ok: true });
+      } catch (e) {
+        sendResponse({ ok: false, error: e.message });
+      }
+    })();
+    return true;
+  }
   if (msg.type === "POLL_NOW") {
     poll()
       .then(() => chrome.storage.local.get(STATUS_KEY))
