@@ -1,4 +1,4 @@
-/* Sari Job Radar — content script. Runs on every supported platform and
+﻿/* Sari Job Radar â€” content script. Runs on every supported platform and
    fetches jobs in the page context (real cookies/headers = same as a normal
    tab request). Background asks via chrome.tabs.sendMessage. */
 
@@ -6,10 +6,10 @@ const PLATFORMS = {
   upwork: { name: "Upwork", kind: "graphql", host: "upwork.com" },
   onlinejobs: { name: "OnlineJobs.ph", kind: "html", host: "onlinejobs.ph" },
   guru: { name: "Guru", kind: "html", host: "guru.com" },
-  freelancer: { name: "Freelancer", kind: "html", host: "freelancer.com" },
-  workingnomads: { name: "WorkingNomads", kind: "html", host: "workingnomads.com" },
-  remoteok: { name: "RemoteOK", kind: "html", host: "remoteok.com" },
-  jobspresso: { name: "Jobspresso", kind: "html", host: "jobspresso.co" },
+  freelancer: { name: "Freelancer", kind: "api", host: "freelancer.com" },
+  workingnomads: { name: "WorkingNomads", kind: "api", host: "workingnomads.com" },
+  remoteok: { name: "RemoteOK", kind: "api", host: "remoteok.com" },
+  jobspresso: { name: "Jobspresso", kind: "rss", host: "jobspresso.co" },
   peopleperhour: { name: "PeoplePerHour", kind: "html", host: "peopleperhour.com" },
   indeed: { name: "Indeed", kind: "html", host: "indeed.com" },
   reddit: { name: "Reddit", kind: "reddit", host: "reddit.com" },
@@ -245,7 +245,7 @@ async function fetchUpwork(count) {
 async function fetchHtml(platform, url) {
   // Same-origin guarantee: if the configured URL is on a different host than
   // the open tab (e.g. www.indeed.com vs at.indeed.com), fetch the tab's own
-  // URL instead — that also reflects the user's chosen locale/search.
+  // URL instead â€” that also reflects the user's chosen locale/search.
   let targetUrl = url;
   try {
     if (!targetUrl || new URL(targetUrl).hostname !== location.hostname) targetUrl = location.href;
@@ -334,7 +334,7 @@ async function fetchReddit(url, count) {
 
 /* ---------- Facebook (reads the rendered groups feed on the open tab) ---------- */
 
-/* No network calls to Facebook — we only read what is already rendered.
+/* No network calls to Facebook â€” we only read what is already rendered.
    Returns raw posts + debug info; OCR + filtering happen in the backend. */
 async function fetchFacebookFeed() {
   const posts = [];
@@ -400,7 +400,7 @@ async function fetchFacebookFeed() {
 /* ---------- Hubstaff Talent (reads the rendered job list on the open tab) ---------- */
 
 /* The job list is loaded via JS, so we read the live DOM (like the Facebook
-   reader) instead of fetching — no extra network calls to the site. */
+   reader) instead of fetching â€” no extra network calls to the site. */
 async function fetchHubstaffDom() {
   const out = [];
   const seen = new Set();
@@ -436,52 +436,6 @@ async function fetchHubstaffDom() {
   return { total: out.length, jobs: out };
 }
 
-/* ---------- Detail enrichment (full description from the job detail page) ---------- */
-
-const DETAIL_SELECTORS = {
-  onlinejobs: [".job-desc", ".desc", "[class*='description']", "article"],
-  guru: [".jobRecord__description", "[class*='description']", "article"],
-  freelancer: [".project-details", "[class*='description']", "article"],
-  hubstaff: [".job-description", "[class*='description']", "article"],
-  indeed: [
-    "#jobDescriptionText",
-    ".jobsearch-JobComponent-description",
-    ".jobsearch-jobDescriptionText",
-    '[data-testid="jobDescriptionText"]',
-    ".showMoreContent",
-    "[class*='description']",
-    "article",
-  ],
-};
-
-async function fetchJobDetail(url, platform) {
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) throw new Error("HTTP " + res.status);
-  const html = await res.text();
-  const doc = new DOMParser().parseFromString(html, "text/html");
-
-  // Drop all CSS/JS so it can never be picked as "text".
-  doc.querySelectorAll("style, script, noscript, link, meta, svg").forEach((el) => el.remove());
-
-  const sels = DETAIL_SELECTORS[platform] || ["article", "[class*='description']", "main"];
-  let description = "";
-  for (const s of sels) {
-    const el = doc.querySelector(s);
-    const t = el ? clean(el.textContent) : "";
-    if (t.length > 80) { description = t.slice(0, 10000); break; }
-  }
-  if (!description) {
-    let best = "";
-    let bestLen = 0;
-    doc.querySelectorAll("p, li, div, article, main, h1, h2, h3").forEach((el) => {
-      const t = clean(el.textContent);
-      if (t.length > bestLen && t.length < 12000) { bestLen = t.length; best = t; }
-    });
-    description = best.slice(0, 10000);
-  }
-  return { description };
-}
-
 /* ---------- Dispatcher ---------- */
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -500,14 +454,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             ? fetchFacebookFeed()
             : platform.kind === "hubstaff"
               ? fetchHubstaffDom()
-              : fetchHtml(msg.platform, msg.url);
+              : platform.kind === "api"
+                ? msg.platform === "workingnomads"
+                  ? fetchWorkingNomads()
+                  : msg.platform === "remoteok"
+                    ? fetchRemoteOkApi()
+                    : fetchFreelancerApi()
+                : platform.kind === "rss"
+                  ? fetchJobspressoRss()
+                  : fetchHtml(msg.platform, msg.url);
     p.then((data) => sendResponse({ ok: true, ...data }))
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-  if (msg && msg.type === "FETCH_DETAIL") {
-    fetchJobDetail(msg.url, msg.platform)
-      .then((detail) => sendResponse({ ok: true, detail }))
       .catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
   }

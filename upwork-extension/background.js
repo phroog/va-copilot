@@ -304,31 +304,6 @@ async function fetchViaTab(key, url, cfg) {
   return null;
 }
 
-/* Ask the platform tab's content script to fetch a job's real detail page. */
-async function fetchDetailViaTab(key, url, cfg) {
-  const ids = new Set();
-  const remembered = await getRememberedTabId(key);
-  if (remembered) ids.add(remembered);
-  const pattern = HOST_PATTERNS[key];
-  if (pattern) {
-    const tabs = await chrome.tabs.query({ url: Array.isArray(pattern) ? pattern : [pattern] });
-    for (const t of tabs) ids.add(t.id);
-  }
-  for (const id of ids) {
-    try {
-      let resp;
-      try {
-        resp = await chrome.tabs.sendMessage(id, { type: "FETCH_DETAIL", url, platform: key });
-      } catch {
-        await chrome.scripting.executeScript({ target: { tabId: id }, files: ["content.js"] });
-        resp = await chrome.tabs.sendMessage(id, { type: "FETCH_DETAIL", url, platform: key });
-      }
-      if (resp && resp.ok) return resp.detail;
-    } catch {}
-  }
-  return null;
-}
-
 /* Upwork fallback from the service worker (no open tab needed). */
 async function fetchUpworkWorker(cfg) {
   const cookie = await chrome.cookies.get({ url: "https://www.upwork.com/", name: "UniversalSearchNuxt_vt" });
@@ -472,16 +447,6 @@ async function getJobUrlById(globalId) {
   return (s[JOB_URLS_KEY] || {})[globalId] || null;
 }
 
-/* On-demand: fetch a job's real detail page by its global id. The URL is looked
-   up from the stored mapping and opened in a HIDDEN background tab (parsed,
-   closed immediately) — the user only ever sees the Sari page. */
-async function handleDetailById(globalId) {
-  const url = await getJobUrlById(globalId);
-  if (!url) return { ok: false, error: "keine URL bekannt (Job noch nicht gepollt)" };
-  const detail = await fetchDetailByUrl(url);
-  return detail ? { ok: true, detail } : { ok: false, error: "Detail nicht abrufbar" };
-}
-
 function platformForUrl(url) {
   try {
     const h = new URL(url).hostname.toLowerCase();
@@ -490,102 +455,6 @@ function platformForUrl(url) {
     }
     return null;
   } catch { return null; }
-}
-
-/* Robust detail fetch: open the real job link in a background tab, let it
-   render, extract the description from the live DOM, close the tab. No need
-   for the platform's list tab to be open. */
-const DETAIL_EXTRACT_FN = () => {
-  document.querySelectorAll("style, script, noscript, link, meta, svg").forEach((el) => el.remove());
-  const clean = (t) => (t || "").replace(/\uFFFD/g, "").trim();
-  const sels = [
-    "#jobDescriptionText",
-    ".jobsearch-JobComponent-description",
-    ".jobsearch-jobDescriptionText",
-    '[data-testid="jobDescriptionText"]',
-    ".job-desc",
-    ".jobRecord__description",
-    ".project-details",
-    ".job-description",
-    ".showMoreContent",
-    "[class*='description']",
-    "article",
-  ];
-  let description = "";
-  for (const s of sels) {
-    const el = document.querySelector(s);
-    const t = el ? clean(el.textContent) : "";
-    if (t.length > 80) { description = t.slice(0, 10000); break; }
-  }
-  if (!description) {
-    let best = "";
-    let bestLen = 0;
-    document.querySelectorAll("p, li, div, article, main, h1, h2, h3").forEach((el) => {
-      const t = clean(el.textContent);
-      if (t.length > bestLen && t.length < 12000) { bestLen = t.length; best = t; }
-    });
-    description = best.slice(0, 10000);
-  }
-  return { description };
-};
-
-async function fetchDetailByUrl(url) {
-  let tab = null;
-  try {
-    tab = await chrome.tabs.create({ url, active: false });
-    const deadline = Date.now() + 20000;
-    await new Promise((resolve) => {
-      const iv = setInterval(async () => {
-        try {
-          const t = await chrome.tabs.get(tab.id);
-          if (t.status === "complete" || Date.now() > deadline) {
-            clearInterval(iv);
-            resolve();
-          }
-        } catch {
-          clearInterval(iv);
-          resolve();
-        }
-      }, 800);
-    });
-    await new Promise((r) => setTimeout(r, 1200));
-    const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: DETAIL_EXTRACT_FN });
-    const desc = results && results[0] && results[0].result ? results[0].result.description : "";
-    return desc ? { description: desc } : null;
-  } catch {
-    return null;
-  } finally {
-    if (tab) await chrome.tabs.remove(tab.id).catch(() => {});
-  }
-}
-
-/* Proactive backfill: fetch real detail pages for jobs missing details, in
-   small bounded batches with human pauses. Runs on its own alarm. */
-async function runDetailBackfill() {
-  const cfg = await config();
-  if (!cfg.adminSecret || !cfg.enabled) return;
-  try {
-    const res = await fetch(cfg.apiUrl + "/api/jobs/global/missing-details?limit=10", {
-      headers: { "x-admin-secret": cfg.adminSecret },
-    });
-    if (!res.ok) return;
-    const { jobs } = await res.json();
-    for (const job of (jobs || [])) {
-      try {
-        if (!job.url) continue;
-        const detail = await fetchDetailByUrl(job.url);
-        if (detail && detail.description) {
-          await fetch(cfg.apiUrl + "/api/jobs/global/details", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-admin-secret": cfg.adminSecret },
-            body: JSON.stringify({ external_id: job.external_id || job.url, detail }),
-          });
-          log("detail backfill:", (job.url || "").slice(0, 55));
-        }
-      } catch {}
-      await new Promise((r) => setTimeout(r, 2000 + Math.random() * 1500));
-    }
-  } catch {}
 }
 
 async function testApi(cfg) {
@@ -720,27 +589,6 @@ async function pollPlatform(key, p, cfg) {
 
     await addSeen(key, data.jobs.map((j) => j.external_id));
     await setCooldown(key, 0); // success resets any backoff
-
-    // Enrich jobs with missing/short descriptions from the real detail page
-    // (bounded: up to 2 per poll per platform, cached in the DB so it runs once).
-    if (key !== "upwork" && key !== "facebook" && cfg.adminSecret && Array.isArray(data.jobs)) {
-      const toEnrich = data.jobs
-        .filter((j) => !(j.description || "").trim() || (j.description || "").length < 150)
-        .slice(0, 2);
-      for (const j of toEnrich) {
-        try {
-          const detail = await fetchDetailViaTab(key, j.external_id || j.url, cfg);
-          if (detail && detail.description) {
-            await fetch(cfg.apiUrl + "/api/jobs/global/details", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "x-admin-secret": cfg.adminSecret },
-              body: JSON.stringify({ external_id: j.external_id || j.url, detail }),
-            });
-            log(key, "detail angereichert:", (j.title || "").slice(0, 40));
-          }
-        } catch {}
-      }
-    }
   } catch (err) {
     result.ok = false;
     result.error = err.message || "unbekannt";
@@ -797,13 +645,11 @@ function nextDelayMs(minutes) {
 
 async function schedule(cfg) {
   await chrome.alarms.clear("sari-poll");
-  await chrome.alarms.clear("sari-backfill");
   if (cfg.enabled) {
     const minutes = Math.max(0.5, parseFloat(cfg.intervalMin) || DEFAULTS.intervalMin);
     const delayMin = nextDelayMs(minutes) / 60000;
     chrome.alarms.create("sari-poll", { delayInMinutes: delayMin });
     chrome.alarms.create("sari-watchdog", { periodInMinutes: 15 });
-    chrome.alarms.create("sari-backfill", { periodInMinutes: 15 });
     log("next poll in ~", Math.round(delayMin * 60), "s (±Jitter)");
   } else {
     await chrome.alarms.clear("sari-watchdog");
@@ -820,20 +666,14 @@ chrome.runtime.onInstalled.addListener(async () => {
   await store(cfg);
   await schedule(cfg);
   await poll();
-  runDetailBackfill();
 });
 
 chrome.runtime.onStartup.addListener(async () => {
   await schedule(await config());
-  runDetailBackfill();
 });
 
 let pollingBusy = false;
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === "sari-backfill") {
-    await runDetailBackfill();
-    return;
-  }
   if (alarm.name === "sari-watchdog") {
     // Safety net: if the poll alarm was ever lost, re-create it.
     const existing = await chrome.alarms.get("sari-poll");
@@ -854,17 +694,13 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 /* Direct messaging from the Sari web app (externally_connectable) — the page
    can reach the extension without a content-script bridge. */
 chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
-  if (msg && (msg.type === "OPEN_JOB_BY_ID" || msg.type === "FETCH_DETAIL_BY_ID")) {
+  if (msg && msg.type === "OPEN_JOB_BY_ID") {
     (async () => {
       try {
-        if (msg.type === "OPEN_JOB_BY_ID") {
-          const url = await getJobUrlById(msg.id);
-          if (!url) { sendResponse({ ok: false, error: "keine URL bekannt" }); return; }
-          await chrome.windows.create({ url, type: "popup", width: 1100, height: 820 });
-          sendResponse({ ok: true });
-        } else {
-          sendResponse(await handleDetailById(msg.id));
-        }
+        const url = await getJobUrlById(msg.id);
+        if (!url) { sendResponse({ ok: false, error: "keine URL bekannt" }); return; }
+        await chrome.windows.create({ url, type: "popup", width: 1100, height: 820 });
+        sendResponse({ ok: true });
       } catch (e) {
         sendResponse({ ok: false, error: e.message });
       }
@@ -873,17 +709,7 @@ chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
   }
 });
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {  if (msg.type === "FETCH_DETAIL_BY_ID") {
-    (async () => {
-      try {
-        const r = await handleDetailById(msg.id);
-        sendResponse(r);
-      } catch (e) {
-        sendResponse({ ok: false, error: e.message });
-      }
-    })();
-    return true;
-  }
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "OPEN_JOB_BY_ID") {
     (async () => {
       try {

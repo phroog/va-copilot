@@ -20,7 +20,6 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState("");
   const [revealing, setRevealing] = useState(false);
   const [revealMsg, setRevealMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [enrich, setEnrich] = useState<{ state: "idle" | "loading" | "ok" | "err"; text?: string }>({ state: "idle" });
 
   useEffect(() => {
     (async () => {
@@ -31,9 +30,6 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
         if (!res.ok) { setError("Job nicht gefunden"); return; }
         const data = await res.json();
         setJob(data.job);
-        // If no enriched detail is cached yet, ask the extension to fetch it
-        // live from the platform (via the bridge), then cache it.
-        if (!data.job?.detail) requestDetail(jobId);
       } catch { setError("Laden fehlgeschlagen"); } finally { setLoading(false); }
     })();
   }, [params]);
@@ -49,49 +45,6 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
       c.runtime.sendMessage(eid, { type: "OPEN_JOB_BY_ID", id }).catch(() => {});
     } else {
       window.postMessage({ type: "SARI_OPEN_JOB", id }, "*");
-    }
-  }
-
-  function requestDetail(jobId: string) {
-    const requestId = "d" + Date.now();
-    setEnrich({ state: "loading", text: "Lade Details über die Extension…" });
-    const onResult = (m: any) => {
-      if (m.ok && m.detail) {
-        setJob((prev: any) => ({ ...prev, detail: m.detail }));
-        setEnrich({ state: "ok" });
-        fetch(`/api/jobs/global/${jobId}/detail`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ detail: m.detail }),
-        }).catch(() => {});
-      } else {
-        setEnrich({ state: "err", text: m.error || "Details nicht abrufbar" });
-      }
-    };
-    const done = () => {
-      window.removeEventListener("message", onBridge);
-      setEnrich((e) => (e.state === "loading" ? { state: "err", text: "Extension nicht erreichbar – ist die Scanner-Extension geladen & eingestellt (Extension-ID)?" } : e));
-    };
-    const timeout = setTimeout(done, 12000);
-    const onBridge = (event: MessageEvent) => {
-      const m = event.data || {};
-      if (m.type !== "SARI_FETCH_DETAIL_RESULT" || m.requestId !== requestId) return;
-      clearTimeout(timeout);
-      window.removeEventListener("message", onBridge);
-      onResult(m);
-    };
-    window.addEventListener("message", onBridge);
-
-    // Prefer direct messaging (externally_connectable); fall back to the bridge.
-    const eid = extId();
-    const c = (window as any).chrome;
-    if (eid && c && c.runtime) {
-      c.runtime
-        .sendMessage(eid, { type: "FETCH_DETAIL_BY_ID", id: jobId })
-        .then((resp: any) => { clearTimeout(timeout); window.removeEventListener("message", onBridge); onResult({ ok: !!(resp && resp.ok), detail: resp && resp.detail, error: resp && resp.error }); })
-        .catch(() => { window.postMessage({ type: "SARI_FETCH_DETAIL", id: jobId, requestId }, "*"); });
-    } else {
-      window.postMessage({ type: "SARI_FETCH_DETAIL", id: jobId, requestId }, "*");
     }
   }
 
@@ -166,8 +119,6 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
             <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
               {(job.detail?.description || job.description || "Keine Beschreibung vorhanden.")}
             </p>
-            {enrich.state === "loading" && <p className="text-xs text-slate-400 mt-2 animate-pulse">🔍 {enrich.text}</p>}
-            {enrich.state === "err" && <p className="text-xs text-red-500 mt-2">⚠️ {enrich.text}</p>}
           </CardContent>
         </Card>
 
