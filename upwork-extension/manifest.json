@@ -51,6 +51,14 @@
       ],
       "js": ["content.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://va-copilot-theta.vercel.app/*",
+        "http://localhost:3000/*"
+      ],
+      "js": ["sari-bridge.js"],
+      "run_at": "document_idle"
     }
   ]
 }
