@@ -493,6 +493,36 @@ function platformForUrl(url) {
   } catch { return null; }
 }
 
+/* Proactive backfill: fetch real detail pages for jobs missing details, in
+   small bounded batches with human pauses. Runs on its own alarm. */
+async function runDetailBackfill() {
+  const cfg = await config();
+  if (!cfg.adminSecret || !cfg.enabled) return;
+  try {
+    const res = await fetch(cfg.apiUrl + "/api/jobs/global/missing-details?limit=10", {
+      headers: { "x-admin-secret": cfg.adminSecret },
+    });
+    if (!res.ok) return;
+    const { jobs } = await res.json();
+    for (const job of (jobs || [])) {
+      try {
+        const key = platformForUrl(job.url);
+        if (!key) continue;
+        const detail = await fetchDetailViaTab(key, job.url, cfg);
+        if (detail && detail.description) {
+          await fetch(cfg.apiUrl + "/api/jobs/global/details", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-admin-secret": cfg.adminSecret },
+            body: JSON.stringify({ external_id: job.external_id || job.url, detail }),
+          });
+          log("detail backfill:", (job.url || "").slice(0, 55));
+        }
+      } catch {}
+      await new Promise((r) => setTimeout(r, 2000 + Math.random() * 1500));
+    }
+  } catch {}
+}
+
 async function testApi(cfg) {
   if (!cfg.adminSecret) return { ok: false, error: "Kein ADMIN_SECRET konfiguriert" };
   try {
@@ -702,11 +732,13 @@ function nextDelayMs(minutes) {
 
 async function schedule(cfg) {
   await chrome.alarms.clear("sari-poll");
+  await chrome.alarms.clear("sari-backfill");
   if (cfg.enabled) {
     const minutes = Math.max(0.5, parseFloat(cfg.intervalMin) || DEFAULTS.intervalMin);
     const delayMin = nextDelayMs(minutes) / 60000;
     chrome.alarms.create("sari-poll", { delayInMinutes: delayMin });
     chrome.alarms.create("sari-watchdog", { periodInMinutes: 15 });
+    chrome.alarms.create("sari-backfill", { periodInMinutes: 15 });
     log("next poll in ~", Math.round(delayMin * 60), "s (±Jitter)");
   } else {
     await chrome.alarms.clear("sari-watchdog");
@@ -723,14 +755,20 @@ chrome.runtime.onInstalled.addListener(async () => {
   await store(cfg);
   await schedule(cfg);
   await poll();
+  runDetailBackfill();
 });
 
 chrome.runtime.onStartup.addListener(async () => {
   await schedule(await config());
+  runDetailBackfill();
 });
 
 let pollingBusy = false;
 chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === "sari-backfill") {
+    await runDetailBackfill();
+    return;
+  }
   if (alarm.name === "sari-watchdog") {
     // Safety net: if the poll alarm was ever lost, re-create it.
     const existing = await chrome.alarms.get("sari-poll");
