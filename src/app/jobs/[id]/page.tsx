@@ -38,13 +38,24 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
     })();
   }, [params]);
 
+  function extId() {
+    try { return window.localStorage.getItem("sari_ext_id"); } catch { return null; }
+  }
+
+  function openOriginal() {
+    const eid = extId();
+    const c = (window as any).chrome;
+    if (eid && c && c.runtime) {
+      c.runtime.sendMessage(eid, { type: "OPEN_JOB_BY_ID", id }).catch(() => {});
+    } else {
+      window.postMessage({ type: "SARI_OPEN_JOB", id }, "*");
+    }
+  }
+
   function requestDetail(jobId: string) {
     const requestId = "d" + Date.now();
     setEnrich({ state: "loading", text: "Lade Details über die Extension…" });
-    const onResult = (event: MessageEvent) => {
-      const m = event.data || {};
-      if (m.type !== "SARI_FETCH_DETAIL_RESULT" || m.requestId !== requestId) return;
-      window.removeEventListener("message", onResult);
+    const onResult = (m: any) => {
       if (m.ok && m.detail) {
         setJob((prev: any) => ({ ...prev, detail: m.detail }));
         setEnrich({ state: "ok" });
@@ -57,13 +68,31 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
         setEnrich({ state: "err", text: m.error || "Details nicht abrufbar" });
       }
     };
-    window.addEventListener("message", onResult);
-    window.postMessage({ type: "SARI_FETCH_DETAIL", id: jobId, requestId }, "*");
-    // timeout guard so the status doesn't spin forever
-    setTimeout(() => {
-      window.removeEventListener("message", onResult);
-      setEnrich((e) => (e.state === "loading" ? { state: "err", text: "Timeout – Extension/Bridge nicht erreichbar?" } : e));
-    }, 15000);
+    const done = () => {
+      window.removeEventListener("message", onBridge);
+      setEnrich((e) => (e.state === "loading" ? { state: "err", text: "Extension nicht erreichbar – ist die Scanner-Extension geladen & eingestellt (Extension-ID)?" } : e));
+    };
+    const timeout = setTimeout(done, 12000);
+    const onBridge = (event: MessageEvent) => {
+      const m = event.data || {};
+      if (m.type !== "SARI_FETCH_DETAIL_RESULT" || m.requestId !== requestId) return;
+      clearTimeout(timeout);
+      window.removeEventListener("message", onBridge);
+      onResult(m);
+    };
+    window.addEventListener("message", onBridge);
+
+    // Prefer direct messaging (externally_connectable); fall back to the bridge.
+    const eid = extId();
+    const c = (window as any).chrome;
+    if (eid && c && c.runtime) {
+      c.runtime
+        .sendMessage(eid, { type: "FETCH_DETAIL_BY_ID", id: jobId })
+        .then((resp: any) => { clearTimeout(timeout); window.removeEventListener("message", onBridge); onResult({ ok: !!(resp && resp.ok), detail: resp && resp.detail, error: resp && resp.error }); })
+        .catch(() => { window.postMessage({ type: "SARI_FETCH_DETAIL", id: jobId, requestId }, "*"); });
+    } else {
+      window.postMessage({ type: "SARI_FETCH_DETAIL", id: jobId, requestId }, "*");
+    }
   }
 
   const reveal = async () => {
@@ -149,7 +178,7 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
               <p className="text-xs text-slate-400 mt-1">Öffnet die echte Seite ohne sichtbaren Link. Link freischalten: 1 Credit.</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => window.postMessage({ type: "SARI_OPEN_JOB", id }, "*")} title="Original-Seite in verstecktem Fenster öffnen">
+              <Button variant="outline" onClick={openOriginal} title="Original-Seite in verstecktem Fenster öffnen">
                 🔍 Original ansehen
               </Button>
               <Button onClick={reveal} disabled={revealing}>

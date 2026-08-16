@@ -851,8 +851,29 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   }
 });
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.type === "FETCH_DETAIL_BY_ID") {
+/* Direct messaging from the Sari web app (externally_connectable) — the page
+   can reach the extension without a content-script bridge. */
+chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
+  if (msg && (msg.type === "OPEN_JOB_BY_ID" || msg.type === "FETCH_DETAIL_BY_ID")) {
+    (async () => {
+      try {
+        if (msg.type === "OPEN_JOB_BY_ID") {
+          const url = await getJobUrlById(msg.id);
+          if (!url) { sendResponse({ ok: false, error: "keine URL bekannt" }); return; }
+          await chrome.windows.create({ url, type: "popup", width: 1100, height: 820 });
+          sendResponse({ ok: true });
+        } else {
+          sendResponse(await handleDetailById(msg.id));
+        }
+      } catch (e) {
+        sendResponse({ ok: false, error: e.message });
+      }
+    })();
+    return true;
+  }
+});
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {  if (msg.type === "FETCH_DETAIL_BY_ID") {
     (async () => {
       try {
         const r = await handleDetailById(msg.id);

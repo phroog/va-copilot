@@ -11,6 +11,9 @@
     "default_title": "Sari Job Radar"
   },
   "permissions": ["cookies", "storage", "alarms", "tabs", "scripting"],
+  "externally_connectable": {
+    "matches": ["https://va-copilot-theta.vercel.app/*", "http://localhost:3000/*"]
+  },
   "host_permissions": [
     "https://*.upwork.com/*",
     "https://www.onlinejobs.ph/*",
