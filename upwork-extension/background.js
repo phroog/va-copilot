@@ -472,15 +472,14 @@ async function getJobUrlById(globalId) {
   return (s[JOB_URLS_KEY] || {})[globalId] || null;
 }
 
-/* On-demand: fetch a job's real detail page by its global id (URL looked up
-   from the stored mapping, so the URL never passes through the web API). */
+/* On-demand: fetch a job's real detail page by its global id. The URL is looked
+   up from the stored mapping and opened in a HIDDEN background tab (parsed,
+   closed immediately) — the user only ever sees the Sari page. */
 async function handleDetailById(globalId) {
   const url = await getJobUrlById(globalId);
   if (!url) return { ok: false, error: "keine URL bekannt (Job noch nicht gepollt)" };
-  const key = platformForUrl(url);
-  if (!key) return { ok: false, error: "unbekannte Plattform" };
-  const detail = await fetchDetailViaTab(key, url, {});
-  return detail ? { ok: true, detail } : { ok: false, error: "Detail nicht abrufbar (Tab offen?)" };
+  const detail = await fetchDetailByUrl(url);
+  return detail ? { ok: true, detail } : { ok: false, error: "Detail nicht abrufbar" };
 }
 
 function platformForUrl(url) {
