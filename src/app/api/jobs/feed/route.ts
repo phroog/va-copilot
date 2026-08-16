@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { classifyJobVector, matchVectors, validateUserVector, type Vector } from "@/lib/jobs/profile-vector";
 import { computeScore } from "@/lib/jobs/scoring";
 import { scamScore } from "@/lib/jobs/scam-score";
+import { PLANS, type PlanKey } from "@/lib/payments";
 
 const WINDOW_CAP = 4000;
 
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
   const risk = url.searchParams.get("risk") || "all";
   const sort = url.searchParams.get("sort") || "newest";
   const hours = Math.max(1, Math.min(168, num(url.searchParams.get("hours"), 24)));
+  const countViews = url.searchParams.get("count_views") === "1";
   const cutoff = new Date(Date.now() - hours * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
 
   // Sources toggled off in Live Feed settings are hidden.
@@ -132,5 +134,54 @@ export async function GET(request: Request) {
 
   const total = rows.length;
   const page = rows.slice(offset, offset + limit);
-  return NextResponse.json({ jobs: page, total, hasMore: offset + limit < total, offset, platforms, categories });
+
+  // ── Tiered daily job-view limits ──────────────────────────────────
+  // Views are counted only on user-initiated loads (count_views=1). Background
+  // merge refreshes (count_views=0) re-show already-seen jobs without charging.
+  const { data: sub } = await supabase.from("subscriptions").select("plan, status").eq("user_id", user.id).maybeSingle();
+  const plan = ((sub?.plan as PlanKey) || "free");
+  const dailyLimit = PLANS[plan].dailyJobLimit; // null = unlimited (pro)
+  const today = new Date().toISOString().slice(0, 10);
+  let usedToday = 0;
+  if (dailyLimit != null) {
+    const { data: view } = await supabase
+      .from("user_job_views")
+      .select("count")
+      .eq("user_id", user.id)
+      .eq("view_date", today)
+      .maybeSingle();
+    usedToday = view?.count ?? 0;
+  }
+
+  if (dailyLimit != null && countViews && usedToday >= dailyLimit) {
+    return NextResponse.json({
+      jobs: [],
+      total,
+      hasMore: false,
+      limitReached: true,
+      plan,
+      used: usedToday,
+      limit: dailyLimit,
+      platforms,
+      categories,
+    });
+  }
+
+  let jobsOut = page;
+  let newUsed = 0;
+  if (dailyLimit != null && countViews) {
+    const remaining = Math.max(0, dailyLimit - usedToday);
+    jobsOut = page.slice(0, remaining);
+    newUsed = jobsOut.length;
+    const nextCount = usedToday + newUsed;
+    await supabase
+      .from("user_job_views")
+      .upsert({ user_id: user.id, view_date: today, count: nextCount }, { onConflict: "user_id,view_date" });
+  }
+
+  const used = dailyLimit != null ? usedToday + newUsed : null;
+  const limitReached = dailyLimit != null && countViews && usedToday + newUsed >= dailyLimit;
+  const hasMore = offset + limit < total && (dailyLimit == null || usedToday + limit < dailyLimit);
+
+  return NextResponse.json({ jobs: jobsOut, total, hasMore, offset, platforms, categories, plan, used, limit: dailyLimit, limitReached });
 }

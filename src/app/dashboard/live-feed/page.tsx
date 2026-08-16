@@ -92,6 +92,7 @@ export default function LiveFeedPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [platforms, setPlatforms] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [limitInfo, setLimitInfo] = useState<{ plan?: string; used?: number | null; limit?: number | null; limitReached?: boolean }>({});
   const [savingAll, setSavingAll] = useState(false);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [pitchJob, setPitchJob] = useState<FeedJob | null>(null);
@@ -136,7 +137,8 @@ export default function LiveFeedPage() {
       if (mode === "replace") setLoading(true);
       if (mode === "append") setLoadingMore(true);
       const off = mode === "append" ? offsetRef.current : 0;
-      const res = await fetch(`/api/jobs/feed?${buildQuery()}&offset=${off}`);
+      const countViews = mode === "merge" ? 0 : 1;
+      const res = await fetch(`/api/jobs/feed?${buildQuery()}&offset=${off}&count_views=${countViews}`);
       if (!res.ok) throw new Error("Failed to load feed");
       const data = await res.json();
       const mapped: FeedJob[] = (data.jobs ?? []).map(applyDefaults);
@@ -144,6 +146,7 @@ export default function LiveFeedPage() {
       setHasMore(data.hasMore ?? false);
       setPlatforms(Array.isArray(data.platforms) ? data.platforms : []);
       setCategories(Array.isArray(data.categories) ? data.categories : []);
+      setLimitInfo({ plan: data.plan, used: data.used, limit: data.limit, limitReached: data.limitReached });
       if (mode === "append") {
         setJobs((prev: FeedJob[]) => {
           const seen = new Set(prev.map((j) => j.id));
@@ -352,6 +355,28 @@ export default function LiveFeedPage() {
           </Button>
         </div>
       </div>
+
+      {/* Tier limit banner */}
+      {limitInfo.limitReached ? (
+        <div className="bg-kawaii-purple/10 border border-kawaii-purple/40 rounded-2xl p-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="font-bold text-kawaii-purple dark:text-kawaii-lavender">Du hast dein tägliches Job-Limit erreicht.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Mit Pro gibt es unbegrenzte Job-Ansichten.</p>
+          </div>
+          <Link href="/pricing"><Button size="sm" variant="primary">Upgrade</Button></Link>
+        </div>
+      ) : limitInfo.limit != null ? (
+        <div className="flex items-center justify-between rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-kawaii-lavender/25 dark:border-dark-surface px-3 py-2">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Du hast <strong>{limitInfo.used ?? 0}</strong> von <strong>{limitInfo.limit}</strong> Jobs heute gesehen.
+          </span>
+          <Link href="/pricing" className="text-xs text-kawaii-purple underline">Upgrade für mehr</Link>
+        </div>
+      ) : (
+        <div className="rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-kawaii-lavender/25 dark:border-dark-surface px-3 py-2">
+          <span className="text-xs text-slate-500 dark:text-slate-400">💎 Unbegrenzte Job-Ansichten (Pro)</span>
+        </div>
+      )}
 
       {/* Filters */}
       <Card className="border-kawaii-lavender/30 dark:border-dark-surface">

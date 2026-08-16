@@ -92,6 +92,13 @@ export default function SettingsPage() {
   // Agency visibility (paid plan later)
   const [agencyEnabled, setAgencyEnabled] = useState(false);
 
+  // Subscription / limits
+  const [sub, setSub] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/api/subscription-status").then((r) => r.ok && r.json()).then(setSub).catch(() => {});
+  }, []);
+
   // Google Calendar integration
   const [hasGoogleCal, setHasGoogleCal] = useState(false);
   const [checkingGoogle, setCheckingGoogle] = useState(true);
@@ -246,6 +253,40 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 animate-fade-in max-w-2xl">
       <h1 className="text-3xl font-extrabold">⚙️ {t("settings")}</h1>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">💎 Dein Plan</CardTitle>
+          <CardDescription>Aktueller Tarif und tägliches Job-Limit.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {sub ? (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Plan</span>
+                <span className="font-bold capitalize text-kawaii-purple">{sub.plan}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Jobs heute gesehen</span>
+                <span className="font-semibold">
+                  {sub.dailyJobLimit == null ? "Unbegrenzt 💎" : `${sub.usedToday ?? 0} / ${sub.dailyJobLimit}`}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">AI-Credits</span>
+                <span className="font-semibold">{sub.credits} ({sub.monthlyCredits}/Monat)</span>
+              </div>
+              <div className="pt-2">
+                <Link href="/pricing">
+                  <Button size="sm" variant="outline">{sub.plan === "pro" ? "Plan verwalten" : "Upgrade"}</Button>
+                </Link>
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-slate-400">Lade Plan…</p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
