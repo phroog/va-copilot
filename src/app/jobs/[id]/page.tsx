@@ -20,6 +20,7 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState("");
   const [revealing, setRevealing] = useState(false);
   const [revealMsg, setRevealMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [enrich, setEnrich] = useState<{ state: "idle" | "loading" | "ok" | "err"; text?: string }>({ state: "idle" });
 
   useEffect(() => {
     (async () => {
@@ -39,21 +40,30 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
 
   function requestDetail(jobId: string) {
     const requestId = "d" + Date.now();
+    setEnrich({ state: "loading", text: "Lade Details über die Extension…" });
     const onResult = (event: MessageEvent) => {
       const m = event.data || {};
       if (m.type !== "SARI_FETCH_DETAIL_RESULT" || m.requestId !== requestId) return;
       window.removeEventListener("message", onResult);
       if (m.ok && m.detail) {
         setJob((prev: any) => ({ ...prev, detail: m.detail }));
+        setEnrich({ state: "ok" });
         fetch(`/api/jobs/global/${jobId}/detail`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ detail: m.detail }),
         }).catch(() => {});
+      } else {
+        setEnrich({ state: "err", text: m.error || "Details nicht abrufbar" });
       }
     };
     window.addEventListener("message", onResult);
     window.postMessage({ type: "SARI_FETCH_DETAIL", id: jobId, requestId }, "*");
+    // timeout guard so the status doesn't spin forever
+    setTimeout(() => {
+      window.removeEventListener("message", onResult);
+      setEnrich((e) => (e.state === "loading" ? { state: "err", text: "Timeout – Extension/Bridge nicht erreichbar?" } : e));
+    }, 15000);
   }
 
   const reveal = async () => {
@@ -127,6 +137,8 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
             <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
               {(job.detail?.description || job.description || "Keine Beschreibung vorhanden.")}
             </p>
+            {enrich.state === "loading" && <p className="text-xs text-slate-400 mt-2 animate-pulse">🔍 {enrich.text}</p>}
+            {enrich.state === "err" && <p className="text-xs text-red-500 mt-2">⚠️ {enrich.text}</p>}
           </CardContent>
         </Card>
 
