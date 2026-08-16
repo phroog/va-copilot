@@ -303,6 +303,31 @@ async function fetchViaTab(key, url, cfg) {
   return null;
 }
 
+/* Ask the platform tab's content script to fetch a job's real detail page. */
+async function fetchDetailViaTab(key, url, cfg) {
+  const ids = new Set();
+  const remembered = await getRememberedTabId(key);
+  if (remembered) ids.add(remembered);
+  const pattern = HOST_PATTERNS[key];
+  if (pattern) {
+    const tabs = await chrome.tabs.query({ url: Array.isArray(pattern) ? pattern : [pattern] });
+    for (const t of tabs) ids.add(t.id);
+  }
+  for (const id of ids) {
+    try {
+      let resp;
+      try {
+        resp = await chrome.tabs.sendMessage(id, { type: "FETCH_DETAIL", url, platform: key });
+      } catch {
+        await chrome.scripting.executeScript({ target: { tabId: id }, files: ["content.js"] });
+        resp = await chrome.tabs.sendMessage(id, { type: "FETCH_DETAIL", url, platform: key });
+      }
+      if (resp && resp.ok) return resp.detail;
+    } catch {}
+  }
+  return null;
+}
+
 /* Upwork fallback from the service worker (no open tab needed). */
 async function fetchUpworkWorker(cfg) {
   const cookie = await chrome.cookies.get({ url: "https://www.upwork.com/", name: "UniversalSearchNuxt_vt" });
@@ -560,6 +585,27 @@ async function pollPlatform(key, p, cfg) {
 
     await addSeen(key, data.jobs.map((j) => j.external_id));
     await setCooldown(key, 0); // success resets any backoff
+
+    // Enrich jobs with missing/short descriptions from the real detail page
+    // (bounded: up to 2 per poll per platform, cached in the DB so it runs once).
+    if (key !== "upwork" && key !== "facebook" && cfg.adminSecret && Array.isArray(data.jobs)) {
+      const toEnrich = data.jobs
+        .filter((j) => !(j.description || "").trim() || (j.description || "").length < 150)
+        .slice(0, 2);
+      for (const j of toEnrich) {
+        try {
+          const detail = await fetchDetailViaTab(key, j.external_id || j.url, cfg);
+          if (detail && detail.description) {
+            await fetch(cfg.apiUrl + "/api/jobs/global/details", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-admin-secret": cfg.adminSecret },
+              body: JSON.stringify({ external_id: j.external_id || j.url, detail }),
+            });
+            log(key, "detail angereichert:", (j.title || "").slice(0, 40));
+          }
+        } catch {}
+      }
+    }
   } catch (err) {
     result.ok = false;
     result.error = err.message || "unbekannt";

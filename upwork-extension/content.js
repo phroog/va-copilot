@@ -436,6 +436,41 @@ async function fetchHubstaffDom() {
   return { total: out.length, jobs: out };
 }
 
+/* ---------- Detail enrichment (full description from the job detail page) ---------- */
+
+const DETAIL_SELECTORS = {
+  onlinejobs: [".job-desc", ".desc", "[class*='description']", "article"],
+  guru: [".jobRecord__description", "[class*='description']", "article"],
+  freelancer: [".project-details", "[class*='description']", "article"],
+  hubstaff: [".job-description", "[class*='description']", "article"],
+  indeed: [".jobsearch-JobComponent-description", ".jobsearch-jobDescriptionText", "[class*='description']", "article"],
+};
+
+async function fetchJobDetail(url, platform) {
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const html = await res.text();
+  const doc = new DOMParser().parseFromString(html, "text/html");
+
+  const sels = DETAIL_SELECTORS[platform] || ["article", "[class*='description']", "main"];
+  let description = "";
+  for (const s of sels) {
+    const el = doc.querySelector(s);
+    const t = el ? clean(el.textContent) : "";
+    if (t.length > 80) { description = t.slice(0, 10000); break; }
+  }
+  if (!description) {
+    let best = "";
+    let bestLen = 0;
+    doc.querySelectorAll("p, .description, article, main").forEach((el) => {
+      const t = clean(el.textContent);
+      if (t.length > bestLen && t.length < 12000) { bestLen = t.length; best = t; }
+    });
+    description = best.slice(0, 10000);
+  }
+  return { description };
+}
+
 /* ---------- Dispatcher ---------- */
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -456,6 +491,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
               ? fetchHubstaffDom()
               : fetchHtml(msg.platform, msg.url);
     p.then((data) => sendResponse({ ok: true, ...data }))
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true;
+  }
+  if (msg && msg.type === "FETCH_DETAIL") {
+    fetchJobDetail(msg.url, msg.platform)
+      .then((detail) => sendResponse({ ok: true, detail }))
       .catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
   }

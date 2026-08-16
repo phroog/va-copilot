@@ -103,7 +103,7 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
           <CardContent className="p-6">
             <h2 className="font-extrabold text-sm uppercase tracking-wider text-slate-500 mb-3">Beschreibung</h2>
             <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-              {job.description || "Keine Beschreibung vorhanden."}
+              {(job.detail?.description || job.description || "Keine Beschreibung vorhanden.")}
             </p>
           </CardContent>
         </Card>
