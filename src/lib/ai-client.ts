@@ -68,6 +68,27 @@ export async function checkCredits(userId: string): Promise<{ ok: boolean; balan
   return { ok: balance > 0, balance };
 }
 
+/** Spend N credits (default 1) atomically. Returns true on success. */
+export async function spendCredit(userId: string, amount = 1): Promise<boolean> {
+  const supabase = createClient();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: row } = await supabase
+      .from("ai_credits")
+      .select("balance, total_used")
+      .eq("user_id", userId)
+      .single();
+    if (!row || row.balance < amount) return false;
+    const { error } = await supabase
+      .from("ai_credits")
+      .update({ balance: row.balance - amount, total_used: (row.total_used ?? 0) + amount })
+      .eq("user_id", userId)
+      .eq("balance", row.balance);
+    if (!error) return true;
+    await sleep(200 * (attempt + 1));
+  }
+  return false;
+}
+
 export async function logUsage(
   userId: string,
   endpoint: string,

@@ -92,8 +92,10 @@ export async function GET(request: Request) {
     const match = userVec ? matchVectors(userVec, profileVector) : null;
     const scored = profileHasData ? computeScore(job, profile) : null;
     const scam = scamScore(job);
+    // The original URL is credit-gated (reveal endpoint) — never expose it here.
+    const { url: _url, ...jobRest } = job;
     return {
-      ...job,
+      ...jobRest,
       profile_vector: profileVector,
       profile_match: match ? match.score : null,
       matching_score: scored?.score ?? null,

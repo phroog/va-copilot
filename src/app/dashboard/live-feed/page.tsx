@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -551,18 +552,13 @@ function FeedJobCard({
             {job.budget && <span className="text-sm font-bold text-slate-700 dark:text-slate-200">💰 {job.budget}</span>}
           </div>
           <h3 className="font-extrabold text-base text-slate-800 dark:text-slate-100 leading-snug">
-            {job.url ? (
-              <a
-                href={job.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-kawaii-purple dark:hover:text-kawaii-lavender transition-colors"
-              >
-                {job.title} <span className="text-xs text-slate-300 dark:text-slate-500">↗</span>
-              </a>
-            ) : (
-              job.title
-            )}
+            <Link
+              href={`/jobs/${job.id}`}
+              className="hover:text-kawaii-purple dark:hover:text-kawaii-lavender transition-colors"
+              title="Details auf Sari ansehen"
+            >
+              {job.title} <span className="text-xs text-slate-300 dark:text-slate-500">↗</span>
+            </Link>
           </h3>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
             📅 {job.posted_at ? "Posted " + timeAgo(job.posted_at) : "Collected " + timeAgo(job.collected_at)}
