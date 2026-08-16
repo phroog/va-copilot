@@ -43,6 +43,7 @@ const SEEN_KEY = "seenIds";
 const COOLDOWN_KEY = "cooldowns";
 const REFRESH_KEY = "sessionRefreshes";
 const TAB_IDS_KEY = "platformTabIds";
+const JOB_URLS_KEY = "jobUrlByGlobalId";
 const UUID_RE = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 /* How often to re-open the Upwork tab to keep the session token warm
@@ -450,7 +451,46 @@ async function uploadJobs(cfg, jobs, sourceId) {
   });
   const text = await res.text();
   if (!res.ok) throw new Error("upload-web HTTP " + res.status + ": " + (text || "").slice(0, 200) + " (secret: …" + String(cfg.adminSecret).slice(-3) + ")");
-  try { return JSON.parse(text); } catch { return { inserted: 0 }; }
+  let parsed = {};
+  try { parsed = JSON.parse(text); } catch {}
+  if (parsed.mapped) await storeJobUrlMapping(parsed.mapped);
+  return { inserted: parsed.inserted || 0, duplicates: parsed.duplicates || 0 };
+}
+
+/* Remember global-job-id → original URL so on-demand detail enrichment can look
+   it up without exposing the URL through the web API. */
+async function storeJobUrlMapping(mapped) {
+  try {
+    if (!mapped || typeof mapped !== "object") return;
+    const s = await chrome.storage.local.get(JOB_URLS_KEY);
+    await chrome.storage.local.set({ [JOB_URLS_KEY]: { ...(s[JOB_URLS_KEY] || {}), ...mapped } });
+  } catch {}
+}
+
+async function getJobUrlById(globalId) {
+  const s = await chrome.storage.local.get(JOB_URLS_KEY);
+  return (s[JOB_URLS_KEY] || {})[globalId] || null;
+}
+
+/* On-demand: fetch a job's real detail page by its global id (URL looked up
+   from the stored mapping, so the URL never passes through the web API). */
+async function handleDetailById(globalId) {
+  const url = await getJobUrlById(globalId);
+  if (!url) return { ok: false, error: "keine URL bekannt (Job noch nicht gepollt)" };
+  const key = platformForUrl(url);
+  if (!key) return { ok: false, error: "unbekannte Plattform" };
+  const detail = await fetchDetailViaTab(key, url, {});
+  return detail ? { ok: true, detail } : { ok: false, error: "Detail nicht abrufbar (Tab offen?)" };
+}
+
+function platformForUrl(url) {
+  try {
+    const h = new URL(url).hostname.toLowerCase();
+    for (const k of Object.keys(HOST_PATTERNS)) {
+      if (h.includes(k)) return k;
+    }
+    return null;
+  } catch { return null; }
 }
 
 async function testApi(cfg) {
@@ -709,6 +749,17 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === "FETCH_DETAIL_BY_ID") {
+    (async () => {
+      try {
+        const r = await handleDetailById(msg.id);
+        sendResponse(r);
+      } catch (e) {
+        sendResponse({ ok: false, error: e.message });
+      }
+    })();
+    return true;
+  }
   if (msg.type === "POLL_NOW") {
     poll()
       .then(() => chrome.storage.local.get(STATUS_KEY))

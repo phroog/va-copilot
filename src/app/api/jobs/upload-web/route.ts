@@ -35,6 +35,7 @@ export async function POST(request: Request) {
 
   const supabase = createServiceRoleClient();
   const inserted: string[] = [];
+  const mapped: Record<string, string> = {};
   let duplicates = 0;
   let filtered = 0;
 
@@ -47,6 +48,8 @@ export async function POST(request: Request) {
       profile_vector: profileVector,
     });
     if (job?.id) {
+      // Keep a global-job-id → original-URL mapping for on-demand detail enrichment.
+      if (rawJob.url) mapped[job.id] = rawJob.url;
       if (isNew) {
         if (isRelevantJob(rawJob)) {
           inserted.push(job.id);
@@ -70,5 +73,5 @@ export async function POST(request: Request) {
       .eq("id", sourceId);
   }
 
-  return NextResponse.json({ ok: true, inserted: inserted.length, duplicates, filtered });
+  return NextResponse.json({ ok: true, inserted: inserted.length, duplicates, filtered, mapped });
 }

@@ -30,9 +30,31 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
         if (!res.ok) { setError("Job nicht gefunden"); return; }
         const data = await res.json();
         setJob(data.job);
+        // If no enriched detail is cached yet, ask the extension to fetch it
+        // live from the platform (via the bridge), then cache it.
+        if (!data.job?.detail) requestDetail(jobId);
       } catch { setError("Laden fehlgeschlagen"); } finally { setLoading(false); }
     })();
   }, [params]);
+
+  function requestDetail(jobId: string) {
+    const requestId = "d" + Date.now();
+    const onResult = (event: MessageEvent) => {
+      const m = event.data || {};
+      if (m.type !== "SARI_FETCH_DETAIL_RESULT" || m.requestId !== requestId) return;
+      window.removeEventListener("message", onResult);
+      if (m.ok && m.detail) {
+        setJob((prev: any) => ({ ...prev, detail: m.detail }));
+        fetch(`/api/jobs/global/${jobId}/detail`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ detail: m.detail }),
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener("message", onResult);
+    window.postMessage({ type: "SARI_FETCH_DETAIL", id: jobId, requestId }, "*");
+  }
 
   const reveal = async () => {
     if (!id) return;
