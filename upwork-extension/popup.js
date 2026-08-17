@@ -94,11 +94,28 @@ async function load() {
     $("count").value = cfg.count;
     buildRows(cfg.platforms);
     renderStatus(status);
+    const len = cfg.adminSecret ? cfg.adminSecret.length : 0;
+    $("status").textContent += `\nAdmin-Secret gespeichert: ${len === 0 ? "LEER (bitte unten eintippen)" : "Länge " + len}`;
   } catch (err) {
     $("status").textContent = "Fehler: " + err.message;
     $("status").className = "err";
   }
 }
+
+// Persist config fields immediately while typing — nothing is lost even if the
+// popup closes before "Save & Poll" is clicked.
+["adminSecret", "apiUrl", "intervalMin", "count"].forEach((id) => {
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener("input", () => {
+    const patch = {};
+    if (id === "adminSecret") patch.adminSecret = el.value.trim();
+    else if (id === "apiUrl") patch.apiUrl = el.value.trim();
+    else if (id === "intervalMin") patch.intervalMin = parseFloat(el.value) || 5;
+    else if (id === "count") patch.count = parseInt(el.value, 10) || 50;
+    chrome.storage.local.set(patch);
+  });
+});
 
 $("save").addEventListener("click", async () => {
   $("status").textContent = "Speichere & polle …";
@@ -115,6 +132,8 @@ $("save").addEventListener("click", async () => {
     const res = await sendMsg({ type: "SAVE_CONFIG", cfg });
     if (res && res.ok) {
       renderStatus(res.status);
+      $("status").textContent += `\n\nSecret gespeichert: Länge ${res.savedSecretLen} (Feld: ${cfg.adminSecret.length})`;
+      $("status").className = res.status && res.status.ok ? "ok" : "err";
     } else {
       $("status").textContent = "Fehler: " + (res && res.error ? res.error : "unbekannt");
       $("status").className = "err";

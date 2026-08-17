@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { classifyJobVector, matchVectors, validateUserVector, type Vector } from "@/lib/jobs/profile-vector";
 import { computeScore } from "@/lib/jobs/scoring";
 import { scamScore } from "@/lib/jobs/scam-score";
-import { PLANS, type PlanKey } from "@/lib/payments";
+import { PLANS, SWAP_LIMITS, MATCH_THRESHOLD, dailyBonus, type PlanKey } from "@/lib/payments";
 
 const WINDOW_CAP = 4000;
 
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   const category = url.searchParams.get("category") || "all";
   const score = url.searchParams.get("score") || "all";
   const risk = url.searchParams.get("risk") || "all";
-  const sort = url.searchParams.get("sort") || "newest";
+  const sort = url.searchParams.get("sort") || "match";
   const hours = Math.max(1, Math.min(168, num(url.searchParams.get("hours"), 24)));
   const countViews = url.searchParams.get("count_views") === "1";
   const cutoff = new Date(Date.now() - hours * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -131,56 +131,101 @@ export async function GET(request: Request) {
     rows = [...rows].sort((a: any, b: any) => (b.profile_match ?? -1) - (a.profile_match ?? -1));
   }
 
+  // ── Swap: never re-offer jobs the user traded away ──────────────────
+  const swappedIds = (interactions ?? [])
+    .filter((it: any) => it.swapped)
+    .map((it: any) => it.global_job_id);
+  if (swappedIds.length > 0) {
+    rows = rows.filter((j: any) => !swappedIds.includes(j.id));
+  }
+
   const total = rows.length;
+  // Matched jobs first (default), so the daily quota is spent on best fits.
+  const matchedRows = rows.filter((j: any) => (j.profile_match ?? 0) >= MATCH_THRESHOLD);
+  const otherRows = rows.filter((j: any) => (j.profile_match ?? 0) < MATCH_THRESHOLD);
+  rows = sort === "newest" ? rows : [...matchedRows, ...otherRows];
   const page = rows.slice(offset, offset + limit);
 
-  // ── Tiered daily job-view limits ──────────────────────────────────
-  // Views are counted only on user-initiated loads (count_views=1). Background
-  // merge refreshes (count_views=0) re-show already-seen jobs without charging.
+  // ── Tiered daily quota: matched jobs only ──────────────────────────
+  // The daily limit (plan + daily bonus) applies to matched jobs
+  // (profile_match >= MATCH_THRESHOLD). Unmatched jobs are free to browse and
+  // are exactly the ones you can "swap". Views count only on user-initiated
+  // loads (count_views=1); background merge refreshes (count_views=0) re-show
+  // already-seen jobs without charging.
   const { data: sub } = await supabase.from("subscriptions").select("plan, status").eq("user_id", user.id).maybeSingle();
   const plan = ((sub?.plan as PlanKey) || "free");
-  const dailyLimit = PLANS[plan].dailyJobLimit; // null = unlimited (pro)
+  const planLimit = PLANS[plan].dailyJobLimit; // null = unlimited (pro)
   const today = new Date().toISOString().slice(0, 10);
+
+  let bonus = 0;
   let usedToday = 0;
-  if (dailyLimit != null) {
+  let swapUsed = 0;
+  if (planLimit != null) {
     const { data: view } = await supabase
       .from("user_job_views")
-      .select("count")
+      .select("*")
       .eq("user_id", user.id)
       .eq("view_date", today)
       .maybeSingle();
-    usedToday = view?.count ?? 0;
+    if (view) {
+      usedToday = view.count ?? 0;
+      swapUsed = view.swaps ?? 0;
+      bonus = view.bonus ?? 0;
+    } else {
+      bonus = dailyBonus();
+      await supabase.from("user_job_views").upsert(
+        { user_id: user.id, view_date: today, count: 0, swaps: 0, bonus },
+        { onConflict: "user_id,view_date" }
+      );
+    }
   }
+  const dailyLimit = planLimit != null ? planLimit + bonus : null;
 
-  if (dailyLimit != null && countViews && usedToday >= dailyLimit) {
-    return NextResponse.json({
-      jobs: [],
-      total,
-      hasMore: false,
-      limitReached: true,
-      plan,
-      used: usedToday,
-      limit: dailyLimit,
-      platforms,
-      categories,
-    });
-  }
+  const matchedCount = (arr: any[]) => arr.filter((j: any) => (j.profile_match ?? 0) >= MATCH_THRESHOLD).length;
 
   let jobsOut = page;
   let newUsed = 0;
-  if (dailyLimit != null && countViews) {
+  if (dailyLimit != null) {
+    const matchedOnPage = matchedCount(page);
     const remaining = Math.max(0, dailyLimit - usedToday);
-    jobsOut = page.slice(0, remaining);
-    newUsed = jobsOut.length;
-    const nextCount = usedToday + newUsed;
-    await supabase
-      .from("user_job_views")
-      .upsert({ user_id: user.id, view_date: today, count: nextCount }, { onConflict: "user_id,view_date" });
+    if (countViews && matchedOnPage > remaining) {
+      let kept = 0;
+      jobsOut = page.filter((j: any) => {
+        if ((j.profile_match ?? 0) >= MATCH_THRESHOLD) {
+          if (kept < remaining) { kept++; return true; }
+          return false;
+        }
+        return true;
+      });
+      newUsed = matchedCount(jobsOut);
+    } else if (countViews) {
+      newUsed = matchedOnPage;
+    }
+    if (countViews && newUsed > 0) {
+      const nextCount = usedToday + newUsed;
+      await supabase.from("user_job_views").upsert(
+        { user_id: user.id, view_date: today, count: nextCount, swaps: swapUsed, bonus },
+        { onConflict: "user_id,view_date" }
+      );
+    }
   }
 
   const used = dailyLimit != null ? usedToday + newUsed : null;
   const limitReached = dailyLimit != null && countViews && usedToday + newUsed >= dailyLimit;
-  const hasMore = offset + limit < total && (dailyLimit == null || usedToday + limit < dailyLimit);
+  const hasMore = offset + limit < total && (dailyLimit == null || usedToday + matchedCount(page) < dailyLimit);
 
-  return NextResponse.json({ jobs: jobsOut, total, hasMore, offset, platforms, categories, plan, used, limit: dailyLimit, limitReached });
+  return NextResponse.json({
+    jobs: jobsOut,
+    total,
+    hasMore,
+    offset,
+    platforms,
+    categories,
+    plan,
+    used,
+    limit: dailyLimit,
+    bonus,
+    swapsLeft: dailyLimit != null ? SWAP_LIMITS[plan] - swapUsed : null,
+    limitReached,
+  });
 }

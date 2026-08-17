@@ -86,15 +86,16 @@ export default function LiveFeedPage() {
   const [riskFilter, setRiskFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [sortOrder, setSortOrder] = useState("newest");
+  const [sortOrder, setSortOrder] = useState("match");
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [platforms, setPlatforms] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [limitInfo, setLimitInfo] = useState<{ plan?: string; used?: number | null; limit?: number | null; limitReached?: boolean }>({});
+  const [limitInfo, setLimitInfo] = useState<{ plan?: string; used?: number | null; limit?: number | null; limitReached?: boolean; bonus?: number; swapsLeft?: number | null }>({});
   const [savingAll, setSavingAll] = useState(false);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const [swappingIds, setSwappingIds] = useState<Set<string>>(new Set());
   const [pitchJob, setPitchJob] = useState<FeedJob | null>(null);
   const [pitchResult, setPitchResult] = useState<string | null>(null);
   const [pitchLoading, setPitchLoading] = useState(false);
@@ -146,7 +147,7 @@ export default function LiveFeedPage() {
       setHasMore(data.hasMore ?? false);
       setPlatforms(Array.isArray(data.platforms) ? data.platforms : []);
       setCategories(Array.isArray(data.categories) ? data.categories : []);
-      setLimitInfo({ plan: data.plan, used: data.used, limit: data.limit, limitReached: data.limitReached });
+      setLimitInfo({ plan: data.plan, used: data.used, limit: data.limit, limitReached: data.limitReached, bonus: data.bonus, swapsLeft: data.swapsLeft });
       if (mode === "append") {
         setJobs((prev: FeedJob[]) => {
           const seen = new Set(prev.map((j) => j.id));
@@ -295,6 +296,25 @@ export default function LiveFeedPage() {
     }
   };
 
+  const swapJob = async (job: FeedJob) => {
+    setSwappingIds((prev) => new Set(prev).add(job.id));
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/swap`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Swap failed");
+      showToast("Job getauscht – bessere Übereinstimmung gesucht 🔄");
+      await loadPage("replace");
+    } catch (e: any) {
+      showToast(e?.message ?? "Swap failed", "error");
+    } finally {
+      setSwappingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(job.id);
+        return next;
+      });
+    }
+  };
+
   const generatePitch = async (job: FeedJob) => {
     setGeneratingId(job.id);
     setPitchJob(job);
@@ -360,17 +380,19 @@ export default function LiveFeedPage() {
       {limitInfo.limitReached ? (
         <div className="bg-kawaii-purple/10 border border-kawaii-purple/40 rounded-2xl p-4 flex items-center justify-between gap-3">
           <div>
-            <p className="font-bold text-kawaii-purple dark:text-kawaii-lavender">Du hast dein tägliches Job-Limit erreicht.</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Mit Pro gibt es unbegrenzte Job-Ansichten.</p>
+            <p className="font-bold text-kawaii-purple dark:text-kawaii-lavender">Du hast dein Tageslimit an passenden Jobs erreicht.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Mit Pro gibt es unbegrenzte Job-Ansichten. Bis morgen! 🎁</p>
           </div>
           <Link href="/pricing"><Button size="sm" variant="primary">Upgrade</Button></Link>
         </div>
       ) : limitInfo.limit != null ? (
-        <div className="flex items-center justify-between rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-kawaii-lavender/25 dark:border-dark-surface px-3 py-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-kawaii-lavender/25 dark:border-dark-surface px-3 py-2">
           <span className="text-xs text-slate-500 dark:text-slate-400">
-            Du hast <strong>{limitInfo.used ?? 0}</strong> von <strong>{limitInfo.limit}</strong> Jobs heute gesehen.
+            Du hast <strong>{limitInfo.used ?? 0}</strong> von <strong>{limitInfo.limit}</strong> passenden Jobs heute gesehen
+            {limitInfo.bonus ? <> — inkl. 🎁 <strong>+{limitInfo.bonus}</strong> Bonus</> : null}
+            {limitInfo.swapsLeft != null ? <> · 🔄 <strong>{limitInfo.swapsLeft}</strong> Swaps übrig</> : null}
           </span>
-          <Link href="/pricing" className="text-xs text-kawaii-purple underline">Upgrade für mehr</Link>
+          <Link href="/dashboard/wheel" className="text-xs text-kawaii-purple underline">🎡 Tagesbonus sichern</Link>
         </div>
       ) : (
         <div className="rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-kawaii-lavender/25 dark:border-dark-surface px-3 py-2">
@@ -458,9 +480,11 @@ export default function LiveFeedPage() {
               job={job}
               isNew={newIds.has(job.id)}
               saving={savingIds.has(job.id)}
+              swapping={swappingIds.has(job.id)}
               generating={generatingId === job.id}
               onToggleSave={() => toggleSave(job)}
               onGeneratePitch={() => generatePitch(job)}
+              onSwap={() => swapJob(job)}
             />
           ))}
         </div>
@@ -534,16 +558,20 @@ function FeedJobCard({
   job,
   isNew,
   saving,
+  swapping,
   generating,
   onToggleSave,
   onGeneratePitch,
+  onSwap,
 }: {
   job: FeedJob;
   isNew: boolean;
   saving: boolean;
+  swapping: boolean;
   generating: boolean;
   onToggleSave: () => void;
   onGeneratePitch: () => void;
+  onSwap: () => void;
 }) {
   return (
     <Card
@@ -635,6 +663,9 @@ function FeedJobCard({
             </Button>
             <Button size="sm" variant="outline" onClick={onGeneratePitch} disabled={generating}>
               {generating ? "Loading..." : job.pitch_id ? "🚀 View Pitch" : "🚀 Pitch"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={onSwap} disabled={swapping} title="Tauscht den Job gegen eine bessere Übereinstimmung">
+              {swapping ? "..." : "🔄 Swap"}
             </Button>
           </div>
           {job.is_saved && <span className="text-xs text-kawaii-purple dark:text-kawaii-lavender">💾 Saved</span>}

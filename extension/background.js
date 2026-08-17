@@ -12,10 +12,34 @@ const SARI_API = "https://va-copilot-theta.vercel.app";async function pollCredit
   } catch { /* background poll fails silently */ }
 }
 
-chrome.runtime.onStartup.addListener(() => { pollCredits(); setInterval(pollCredits, 30000); });
-chrome.runtime.onInstalled.addListener(() => { pollCredits(); setInterval(pollCredits, 30000); });
-setInterval(pollCredits, 30000);
-pollCredits();
+/* Show a red timer badge while a time entry is running, so tracking is visible
+   even when the popup is closed. Refreshed on the same 30s interval. */
+async function updateTimerBadge() {
+  try {
+    const { sariToken } = await chrome.storage.local.get("sariToken");
+    if (!sariToken) { await chrome.action.setBadgeText({ text: "" }); return; }
+    const res = await fetch(`${SARI_API}/api/time-entries`, {
+      headers: { Authorization: `Bearer ${sariToken}` },
+    });
+    if (!res.ok) { return; }
+    const data = await res.json();
+    if (data.running && data.running.start_time) {
+      const secs = Math.floor((Date.now() - new Date(data.running.start_time).getTime()) / 1000);
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      await chrome.action.setBadgeBackgroundColor({ color: "#dc2626" });
+      await chrome.action.setBadgeText({ text: h > 0 ? `${h}:${String(m).padStart(2, "0")}` : `${m}m` });
+    } else {
+      await chrome.action.setBadgeText({ text: "" });
+    }
+  } catch { /* badge update fails silently */ }
+}
+
+function poll() { pollCredits(); updateTimerBadge(); }
+chrome.runtime.onStartup.addListener(() => { poll(); setInterval(poll, 30000); });
+chrome.runtime.onInstalled.addListener(() => { poll(); setInterval(poll, 30000); });
+setInterval(poll, 30000);
+poll();
 
 /* â”€â”€ Background Scanner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

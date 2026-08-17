@@ -1,0 +1,24 @@
+services:
+  collector:
+    build: .
+    container_name: sari-collector
+    restart: unless-stopped
+    environment:
+      SARI_API: ${SARI_API:-https://va-copilot-theta.vercel.app}
+      ADMIN_SECRET: ${ADMIN_SECRET:?ADMIN_SECRET is required}
+      HEADLESS: "1"
+      PROFILE_DIR: /app/profile
+      UPWORK_TYPED: ${UPWORK_TYPED:-1}
+      TYPED_SEARCH: ${TYPED_SEARCH:-1}
+      # Defaults; override per deployment if needed.
+      POLL_INTERVAL_MIN: ${POLL_INTERVAL_MIN:-6}
+      CONCURRENCY: ${CONCURRENCY:-2}
+      SEARCH_KEYWORDS: ${SEARCH_KEYWORDS:-}
+    volumes:
+      - collector-profile:/app/profile
+    # Chromium/Chrome need a large enough /dev/shm, otherwise they crash.
+    shm_size: "1gb"
+    stop_grace_period: 30s
+
+volumes:
+  collector-profile:

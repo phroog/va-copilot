@@ -499,16 +499,20 @@ const SCAN_FN = `
 
 /* ── API helpers ────────────────────────────────────────────────── */
 /** Parse listing "posted X ago" / "Posted on YYYY-MM-DD" text into an ISO date. */
-function parsePostedDate(raw) {
+function parsePostedDate(raw, platform) {
   if (!raw) return null;
   const t = raw.toLowerCase();
   const now = Date.now();
 
-  // Absolute date: "Posted on 2026-08-01 17:50:27" or "2026-08-01"
+  // Absolute date: "Posted on 2026-08-01 17:50:27" or "2026-08-01".
+  // The site shows its LOCAL time without a zone; OnlineJobs.ph is Manila
+  // (UTC+8). Interpreting it as UTC would push the timestamp 8h into the
+  // future and pin those jobs at the top of the feed for hours.
   const abs = t.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})?:?(\d{2})?/);
   if (abs) {
     const [, y, mo, d, h, mi, s] = abs;
-    const iso = `${y}-${mo}-${d}T${h || "00"}:${mi || "00"}:${s || "00"}Z`;
+    const isOnlineJobs = (platform || "").toLowerCase().includes("onlinejobs");
+    const iso = `${y}-${mo}-${d}T${h || "00"}:${mi || "00"}:${s || "00"}` + (isOnlineJobs ? "+08:00" : "Z");
     const ts = Date.parse(iso);
     if (!isNaN(ts)) return new Date(ts).toISOString();
   }
@@ -610,9 +614,13 @@ async function scrapeUrl(context, url, platformName) {
             'input[type="checkbox"], [role="checkbox"], .cb-i-frame, iframe[title*="checkbox"]'
           );
           if (box) {
-            // Small human delay + mouse move before the click.
-            await page.mouse.move(rand(300, 800), rand(300, 600), { steps: 5 }).catch(() => {});
-            await box.click({ force: true, timeout: 2000 }).catch(() => {});
+            // Human cursor path to the checkbox before the click.
+            const bb = await box.boundingBox().catch(() => null);
+            if (bb) await humanClick(page, bb);
+            else {
+              await page.mouse.move(rand(300, 800), rand(300, 600), { steps: 8 }).catch(() => {});
+              await box.click({ force: true, timeout: 2000 }).catch(() => {});
+            }
           }
         }
       } catch {}
@@ -645,7 +653,7 @@ async function scrapeUrl(context, url, platformName) {
     const jobs = (result?.jobs || []).map((j) => ({
       ...j,
       platform: j.platform || platformName,
-      posted_at: parsePostedDate(j.postedDate) || new Date().toISOString(),
+      posted_at: parsePostedDate(j.postedDate, platformName) || new Date().toISOString(),
     }));
     if (jobs.length === 0) {
       const stuck = await page
@@ -730,8 +738,13 @@ async function scrapeTyped(context, source, platformName) {
               'input[type="checkbox"], [role="checkbox"], .cb-i-frame, iframe[title*="checkbox"]'
             );
             if (box) {
-              await page.mouse.move(rand(300, 800), rand(300, 600), { steps: 5 }).catch(() => {});
-              await box.click({ force: true, timeout: 2000 }).catch(() => {});
+              // Human cursor path to the checkbox before the click.
+              const bb = await box.boundingBox().catch(() => null);
+              if (bb) await humanClick(page, bb);
+              else {
+                await page.mouse.move(rand(300, 800), rand(300, 600), { steps: 8 }).catch(() => {});
+                await box.click({ force: true, timeout: 2000 }).catch(() => {});
+              }
             }
           }
         } catch {}
@@ -761,20 +774,21 @@ async function scrapeTyped(context, source, platformName) {
           await box.waitFor({ state: cfg.forceClick ? "attached" : "visible", timeout: 20000 });
         }
 
-        // Human typing: focus, clear, then character-by-character with jitter.
+        // Human interactions: real cursor path to the box, click, focus, then
+        // natural typing (rhythm, pauses, occasional typo correction).
         if (cfg.forceClick) {
-          await box.click({ force: true }).catch(() => {});
-          await box.evaluate((el) => el.focus());
+          const bb = await box.boundingBox().catch(() => null);
+          if (bb) await humanClick(page, bb);
+          await box.evaluate((el) => el.focus()).catch(() => {});
         } else {
-          await box.click();
+          const bb = await box.boundingBox().catch(() => null);
+          if (bb) await humanClick(page, bb);
+          else await box.click().catch(() => {});
         }
         await page.keyboard.press("Control+A");
         await page.keyboard.press("Backspace");
         await humanPause(200, 500);
-        for (const ch of keyword) {
-          await page.keyboard.type(ch, { delay: 0 });
-          await page.waitForTimeout(24 + Math.random() * 40);
-        }
+        await humanType(page, keyword);
         await humanPause(150, 400);
         await page.keyboard.press("Enter");
 
@@ -784,7 +798,7 @@ async function scrapeTyped(context, source, platformName) {
         const jobs = (result?.jobs || []).map((j) => ({
           ...j,
           platform: j.platform || platformName,
-          posted_at: parsePostedDate(j.postedDate) || new Date().toISOString(),
+          posted_at: parsePostedDate(j.postedDate, platformName) || new Date().toISOString(),
         }));
         for (const j of jobs) {
           const key = j.url || `${j.title}|${j.clientName}`;
@@ -925,6 +939,100 @@ async function humanScroll(page, targetSteps = 5) {
     await page.evaluate((p) => window.scrollBy(0, p), px).catch(() => {});
     await page.waitForTimeout(rand(350, 1400)).catch(() => {});
   }
+}
+
+/* ── Human input layer ─────────────────────────────────────────────
+ * Real-feeling mouse + keyboard so the driven Chrome behaves exactly like a
+ * person typing and clicking: curved cursor paths with custom easing, a
+ * dwell before clicking, natural typing rhythm with the occasional typo +
+ * backspace correction. These fire real CDP input events (the same events a
+ * physical mouse/keyboard produce), so sites cannot tell them apart.
+ */
+// Tracked cursor position (Playwright's page.mouse.position isn't available).
+let CURSOR = { x: rand(300, 900), y: rand(200, 700) };
+function easeInOut(t) {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+function bezierPoint(p0, ctrl, p2, t) {
+  const u = 1 - t;
+  return {
+    x: u * u * p0.x + 2 * u * t * ctrl.x + t * t * p2.x,
+    y: u * u * p0.y + 2 * u * t * ctrl.y + t * t * p2.y,
+  };
+}
+
+/** Move the real cursor from `from` to `to` along a slightly curved path,
+ *  accelerating in the middle and decelerating at the ends, with jitter. */
+async function humanMouseMove(page, from, to) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 3) {
+    CURSOR = { x: to.x, y: to.y };
+    await page.mouse.move(to.x, to.y).catch(() => {});
+    return;
+  }
+  // Perpendicular control point -> a natural arc instead of a straight line.
+  const arc = Math.min(0.22 * dist, 70) * (Math.random() < 0.5 ? -1 : 1);
+  const ctrl = {
+    x: (from.x + to.x) / 2 + arc * (-dy / dist),
+    y: (from.y + to.y) / 2 + arc * (dx / dist) + rand(-10, 10),
+  };
+  const steps = Math.max(14, Math.min(34, Math.round(dist / 10)));
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const p = bezierPoint(from, ctrl, to, easeInOut(t));
+    await page.mouse.move(
+      p.x + rand(-1.5, 1.5),
+      p.y + rand(-1.5, 1.5)
+    ).catch(() => {});
+    CURSOR = { x: p.x, y: p.y };
+    // Slow at start/end, faster mid-path; occasional micro-pauses.
+    const speed = 0.06 + 0.9 * Math.sin(Math.PI * t);
+    const delay = Math.random() < 0.06 ? rand(120, 320) : Math.max(4, 38 * speed + Math.random() * 28);
+    await page.waitForTimeout(delay);
+  }
+  CURSOR = { x: to.x + rand(-2, 2), y: to.y + rand(-2, 2) };
+  await page.mouse.move(CURSOR.x, CURSOR.y).catch(() => {});
+}
+
+/** Human click: approach the element, hover, micro-adjust, click, release. */
+async function humanClick(page, box, opts = {}) {
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  // Approach a point next to the target, not dead-center.
+  await humanMouseMove(page, CURSOR, { x: cx + rand(-6, 6), y: cy + rand(-6, 6) });
+  await page.waitForTimeout(rand(90, 240)); // hover dwell
+  // Final micro-correction onto the element.
+  await humanMouseMove(page, CURSOR, { x: cx + rand(-1, 1), y: cy + rand(-1, 1) });
+  await page.waitForTimeout(rand(70, 180));
+  await page.mouse.down();
+  await page.waitForTimeout(rand(50, 130));
+  await page.mouse.up();
+  await page.waitForTimeout(rand(140, 360));
+}
+
+/** Type like a human: variable rhythm, pauses at words/punctuation, the odd
+ *  typo corrected with backspace (very low rate). */
+async function humanType(page, text) {
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    await page.keyboard.type(ch, { delay: 0 });
+    let d = rand(45, 130);
+    if (ch === " " || ch === "," || ch === ".") d += rand(120, 280); // pause at word breaks
+    if (Math.random() < 0.025) d += rand(250, 550); // "thinking" pause
+    if (Math.random() < 0.018 && text.length > 4 && !/[A-Z\s]/.test(ch)) {
+      // Occasional typo: type a wrong char, notice it, back and fix.
+      const wrong = String.fromCharCode(97 + Math.floor(Math.random() * 26));
+      await page.keyboard.type(wrong, { delay: 0 });
+      await page.waitForTimeout(rand(140, 320));
+      await page.keyboard.press("Backspace");
+      await page.waitForTimeout(rand(90, 200));
+    }
+    await page.waitForTimeout(d);
+  }
+  await page.waitForTimeout(rand(160, 380));
 }
 
 function buildContext(browser, source) {
