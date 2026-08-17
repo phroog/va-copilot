@@ -18,9 +18,6 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
   const [job, setJob] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [revealing, setRevealing] = useState(false);
-  const [revealMsg, setRevealMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [fullDescription, setFullDescription] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -38,25 +35,6 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
   function extId() {
     try { return window.localStorage.getItem("sari_ext_id"); } catch { return null; }
   }
-
-  const reveal = async () => {
-    if (!id) return;
-    setRevealing(true);
-    setRevealMsg(null);
-    try {
-      const res = await fetch(`/api/jobs/global/${id}/reveal`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) {
-        setRevealMsg({ type: "err", text: data?.error || "Fehlgeschlagen (Credits?)" });
-        return;
-      }
-      setFullDescription(data.description || "");
-      setRevealMsg({ type: "ok", text: "Freigeschaltet – Link wird geöffnet …" });
-      window.open(data.url, "_blank", "noopener,noreferrer");
-    } catch {
-      setRevealMsg({ type: "err", text: "Netzwerkfehler" });
-    } finally { setRevealing(false); }
-  };
 
   if (loading) return <div className="min-h-screen bg-[#FFF0F5] dark:bg-dark-bg flex items-center justify-center"><p className="text-slate-400 animate-pulse">Lade Job…</p></div>;
 
@@ -108,24 +86,15 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
         <Card>
           <CardContent className="p-6">
             <h2 className="font-extrabold text-sm uppercase tracking-wider text-slate-500 mb-3">Beschreibung</h2>
-            {revealMsg?.type === "ok" ? (
-              <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{fullDescription}</p>
-            ) : (
-              <>
-                <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                  {job.description_preview || "Keine Vorschau verfügbar."}
-                </p>
-                <div className="mt-4 rounded-2xl border border-dashed border-kawaii-purple/40 bg-kawaii-purple/5 dark:bg-kawaii-purple/10 p-4 text-center">
-                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">🔒 Volle Beschreibung + Bewerbungs-Link</p>
-                  <p className="text-xs text-slate-400 mt-1 mb-3">Mit 1 Credit freischalten — sobald du den Job wirklich verfolgen willst.</p>
-                  <Button onClick={reveal} disabled={revealing}>
-                    {revealing ? "Öffne…" : "🔓 Freischalten (1🪙)"}
-                  </Button>
-                </div>
-              </>
-            )}
-            {revealMsg && revealMsg.type === "err" && (
-              <p className="text-sm text-red-500 mt-2">{revealMsg.text}</p>
+            <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+              {(job.detail?.description || job.description || "Keine Beschreibung vorhanden.")}
+            </p>
+            {job.url && (
+              <div className="mt-5">
+                <a href={job.url} target="_blank" rel="noopener noreferrer">
+                  <Button>↗ Zur Original-Seite</Button>
+                </a>
+              </div>
             )}
           </CardContent>
         </Card>
