@@ -44,6 +44,7 @@ const COOLDOWN_KEY = "cooldowns";
 const REFRESH_KEY = "sessionRefreshes";
 const TAB_IDS_KEY = "platformTabIds";
 const JOB_URLS_KEY = "jobUrlByGlobalId";
+const EMPTY_KEY = "emptyCounts";
 const UUID_RE = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 /* How often to re-open the Upwork tab to keep the session token warm
@@ -135,6 +136,21 @@ async function isCloudflareTab(tabId) {
     const t = await chrome.tabs.get(tabId);
     const u = (t.url || "") + " " + (t.title || "");
     return /__cf_chl|just a moment|attention required|captcha|verify you are human/i.test(u);
+  } catch {
+    return false;
+  }
+}
+
+/* Bring the tab to the foreground of its window. Cloudflare challenges often
+   only appear (and only auto-solve) while the tab is actually visible, so a
+   background tab that needs a checkbox click must be activated first. */
+async function focusTab(tabId) {
+  try {
+    const t = await chrome.tabs.get(tabId);
+    if (!t || !t.windowId) return false;
+    await chrome.windows.update(t.windowId, { focused: true });
+    await chrome.tabs.update(tabId, { active: true });
+    return true;
   } catch {
     return false;
   }
@@ -262,6 +278,17 @@ async function addSeen(key, ids) {
   for (const id of ids) if (id) arr.add(id);
   all[key] = Array.from(arr).slice(-3000);
   await chrome.storage.local.set({ [SEEN_KEY]: all });
+}
+
+/* Consecutive empty-feed count per platform (used to decide when a page that
+   "returns nothing" really needs a fresh session tab). */
+async function getEmptyCount(key) {
+  const s = await chrome.storage.local.get(EMPTY_KEY);
+  return (s[EMPTY_KEY] || {})[key] || 0;
+}
+async function setEmptyCount(key, n) {
+  const s = await chrome.storage.local.get(EMPTY_KEY);
+  await chrome.storage.local.set({ [EMPTY_KEY]: { ...(s[EMPTY_KEY] || {}), [key]: n } });
 }
 
 /* Fetch one platform's feed from an open tab (page context). */
@@ -521,11 +548,14 @@ async function fetchWithSessionRetry(key, p, cfg) {
     const msg = err.message || "";
     const isSession = /401|authentication failed|auth failed|blocked|unreachable|Kein .*Tab offen/i.test(msg);
     if (isSession) {
-      // Case 1: the open tab is stuck on a Cloudflare challenge — click its
-      // checkbox once and retry directly (no new tab needed).
+      // Case 1: the open tab is stuck on a Cloudflare challenge — bring it to
+      // the foreground (the checkbox only works while visible), click once and
+      // retry directly (no new tab needed).
       const tabId = await findPlatformTabId(key);
       if (tabId && (await isCloudflareTab(tabId))) {
-        log(key, "CF-Challenge auf offenem Tab → Checkbox-Klick + Retry");
+        log(key, "CF-Challenge auf offenem Tab → Tab aktivieren + Checkbox-Klick + Retry");
+        await focusTab(tabId);
+        await new Promise((r) => setTimeout(r, 1500));
         await clickCloudflareCheckbox(tabId);
         await new Promise((r) => setTimeout(r, 4000));
         const retried = await fetchPlatformData(key, p, cfg).catch(() => null);
@@ -546,9 +576,9 @@ async function fetchWithSessionRetry(key, p, cfg) {
 }
 
 async function pollPlatform(key, p, cfg) {
-  const result = { ok: true, mode: "tab", got: 0, fresh: 0, total: null, inserted: 0, error: null };
+  const result = { ok: true, mode: "tab", got: 0, fresh: 0, total: null, inserted: 0, error: null, warning: null };
   try {
-    const { data, mode } = await fetchWithSessionRetry(key, p, cfg);
+    let { data, mode } = await fetchWithSessionRetry(key, p, cfg);
     result.mode = mode;
 
     if (key === "facebook") {
@@ -575,6 +605,42 @@ async function pollPlatform(key, p, cfg) {
       }
       await setCooldown(key, 0);
       return result;
+    }
+
+    // ── Empty-feed detection ─────────────────────────────────────────
+    // A page that "returns nothing" is usually a stale session token, a
+    // blocked/emptied layout or a Cloudflare wall — not genuinely zero jobs.
+    // After two consecutive empty polls we open a FRESH tab (foreground,
+    // "drauf gehen") and recheck once. Two empties avoid focus-stealing every
+    // poll when a platform is simply quiet for a while.
+    if (!data.jobs || data.jobs.length === 0) {
+      const empties = (await getEmptyCount(key)) + 1;
+      await setEmptyCount(key, empties);
+      if (empties >= 2) {
+        log(key, "leerer Feed (" + empties + "×) → neuen Tab öffnen + Recheck");
+        const refreshed = await refreshSessionTab(key, p);
+        if (refreshed) {
+          await setLastRefresh(key, Date.now());
+          await setCooldown(key, 0);
+          await new Promise((r) => setTimeout(r, 3000));
+          const again = await fetchPlatformData(key, p, cfg).catch(() => null);
+          if (again && Array.isArray(again.data.jobs) && again.data.jobs.length > 0) {
+            data = again.data;
+            mode = again.mode;
+            result.mode = mode;
+            await setEmptyCount(key, 0);
+            log(key, "Recheck ok – nach Refresh " + data.jobs.length + " Jobs");
+          } else {
+            result.warning = "Leerer Feed auch nach Tab-Refresh";
+          }
+        } else {
+          result.warning = "Leerer Feed (Tab-Refresh nicht möglich)";
+        }
+      } else {
+        result.warning = "Leerer Feed (" + empties + "×)";
+      }
+    } else {
+      await setEmptyCount(key, 0);
     }
 
     result.total = data.total;

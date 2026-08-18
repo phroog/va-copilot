@@ -76,7 +76,7 @@ function renderStatus(s) {
       : "";
     lines.push(
       r.ok
-        ? `✓ ${k}: ${r.got} geladen · ${r.fresh} neu · ${r.inserted} eingefügt (${r.mode})${dbg}`
+        ? `✓ ${k}: ${r.got} geladen · ${r.fresh} neu · ${r.inserted} eingefügt (${r.mode})${r.warning ? ` ⚠ ${r.warning}` : ""}${dbg}`
         : `✗ ${k}: FEHLER – ${r.error}`
     );
   }
