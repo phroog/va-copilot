@@ -7,26 +7,17 @@ import { Button } from "@/components/ui/button";
 import { useLocale } from "@/lib/i18n/context";
 import { useToast } from "@/components/toast";
 import MoodCheckDialog from "@/components/mood-check-dialog";
-import LuckyWheel from "@/components/lucky-wheel";
-import DailyMotivation from "@/components/daily-motivation";
-import WorldClock from "@/components/world-clock";
-import QuickNotes from "@/components/quick-notes";
-import StressBusterWidget from "@/components/stress-buster-widget";
 import { useProfileName } from "@/lib/use-profile-name";
 import { formatDuration } from "@/lib/utils";
+import { formatMoney, convert, normalizeCurrency } from "@/lib/currency";
 
-interface Job {
+interface FeedJob {
   id: string;
   title: string;
-  platform: string;
-  budget: string;
-}
-
-interface FollowUp {
-  id: string;
-  action: string;
-  due_date: string;
-  done: boolean;
+  platform: string | null;
+  budget: string | null;
+  profile_match: number | null;
+  scam_level: string | null;
 }
 
 interface InvoiceSummary {
@@ -34,17 +25,16 @@ interface InvoiceSummary {
   invoice_number: string;
   client_name: string;
   status: string;
-  invoice_items: { total: number }[];
+  currency: string;
   tax_rate: number;
+  invoice_items: { total: number; quantity: number; unit_price: number }[];
 }
 
 interface CalendarEvent {
   id: string;
   title: string;
   start_time: string;
-  source: string;
-  meeting_link: string | null;
-  jobs?: { title: string; platform: string } | null;
+  jobs?: { title: string } | null;
 }
 
 interface TimeEntry {
@@ -52,100 +42,102 @@ interface TimeEntry {
   description: string;
   end_time: string | null;
   start_time: string;
-  duration: string | null;
   hourly_rate: number;
 }
 
+const PLAN_LABELS: Record<string, string> = { free: "Free", basic: "Basic", pro: "Pro" };
+
 export default function DashboardHome() {
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   const { showToast } = useToast();
   const { name: userName } = useProfileName();
-  const [stats, setStats] = useState({ jobs: 0, applications: 0, interviews: 0, offers: 0 });
-  const [recentJobs, setRecentJobs] = useState<Job[]>([]);
-  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [greeting, setGreeting] = useState("");
-  const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
+  const [plan, setPlan] = useState("free");
+  const [credits, setCredits] = useState(0);
+  const [quota, setQuota] = useState<{ used?: number | null; limit?: number | null; bonus?: number }>({});
+  const [monthEarnings, setMonthEarnings] = useState(0);
+  const [baseCurrency, setBaseCurrency] = useState("EUR");
+  const [outstanding, setOutstanding] = useState(0);
+  const [invoiceCount, setInvoiceCount] = useState(0);
+  const [topMatches, setTopMatches] = useState<FeedJob[]>([]);
   const [recentInvoices, setRecentInvoices] = useState<InvoiceSummary[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
   const [runningTimer, setRunningTimer] = useState<TimeEntry | null>(null);
   const [elapsed, setElapsed] = useState(0);
-  const [todaySummary, setTodaySummary] = useState({ hours: 0, earnings: 0 });
-
-  const fetchData = async () => {
-    try {
-      const [jobsRes, appsRes, followsRes, timeRes, eventsRes, invoicesRes] = await Promise.all([
-        fetch("/api/jobs"),
-        fetch("/api/applications"),
-        fetch("/api/follow-ups"),
-        fetch("/api/time-entries"),
-        fetch("/api/events"),
-        fetch("/api/invoices"),
-      ]);
-      const jobsData = await jobsRes.json();
-      const appsData = await appsRes.json();
-      const followsData = await followsRes.json();
-      const timeData = await timeRes.json();
-      const eventsData = await eventsRes.json();
-      const invoicesData = await invoicesRes.json();
-
-      const jobs = jobsData.jobs ?? [];
-      const apps = appsData.applications ?? [];
-      const follows = followsData.followUps ?? [];
-      const entries: TimeEntry[] = timeData.entries ?? [];
-
-      setRecentJobs(jobs.slice(0, 3));
-      setFollowUps(follows.filter((f: FollowUp) => !f.done).slice(0, 5));
-
-      const sent = apps.filter((a: any) => a.status === "sent").length;
-      const interviews = apps.filter((a: any) => a.status === "interview").length;
-      const offers = apps.filter((a: any) => a.status === "offer" || a.status === "won").length;
-
-      setStats({ jobs: jobs.length, applications: sent + interviews + offers, interviews, offers });
-
-      // Time tracking
-      const running = timeData.running;
-      setRunningTimer(running);
-      if (running) {
-        setElapsed(Math.floor((Date.now() - new Date(running.start_time).getTime()) / 1000));
-      }
-
-      // Today summary
-      const today = new Date().toDateString();
-      const todayEntries = entries.filter((e) => new Date(e.start_time).toDateString() === today);
-      let totalSecs = 0;
-      let totalEarnings = 0;
-      todayEntries.forEach((e) => {
-        const start = new Date(e.start_time).getTime();
-        const end = e.end_time ? new Date(e.end_time).getTime() : Date.now();
-        const secs = Math.floor((end - start) / 1000);
-        totalSecs += secs;
-        totalEarnings += (secs / 3600) * e.hourly_rate;
-      });
-      setTodaySummary({ hours: totalSecs, earnings: totalEarnings });
-
-      // Upcoming events
-      const allEvents: CalendarEvent[] = eventsData.events ?? [];
-      const now = new Date();
-      const nextEvents = allEvents
-        .filter((e) => new Date(e.start_time) > now)
-        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-        .slice(0, 3);
-      setUpcomingEvents(nextEvents);
-
-      // Recent invoices
-      const allInvoices: InvoiceSummary[] = invoicesData.invoices ?? [];
-      setRecentInvoices(allInvoices.slice(0, 3));
-    } catch (e) {
-      showToast((e as any)?.message ?? "Failed to load dashboard data", "error");
-    }
-  };
+  const [todayHours, setTodayHours] = useState(0);
+  const [todayEarnings, setTodayEarnings] = useState(0);
 
   useEffect(() => {
-    fetchData();
-
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("🌅 Good morning");
     else if (hour < 18) setGreeting("☀️ Good afternoon");
     else setGreeting("🌙 Good evening");
+
+    const load = async () => {
+      try {
+        const [finRes, invRes, feedRes, timeRes, eventsRes, subRes, creditsRes] = await Promise.all([
+          fetch("/api/finances"),
+          fetch("/api/invoices"),
+          fetch("/api/jobs/feed?limit=5&count_views=0&sort=match"),
+          fetch("/api/time-entries"),
+          fetch("/api/events"),
+          fetch("/api/subscription-status"),
+          fetch("/api/ai/credits"),
+        ]);
+        const fin = await finRes.json();
+        const inv = await invRes.json();
+        const feed = await feedRes.json();
+        const time = await timeRes.json();
+        const events = await eventsRes.json();
+        const sub = await subRes.json();
+        const cr = await creditsRes.json();
+
+        setMonthEarnings(fin.totalMonth ?? 0);
+        setBaseCurrency(normalizeCurrency(fin.baseCurrency || "EUR"));
+        setTopMatches((feed.jobs ?? []).slice(0, 5));
+        setQuota({ used: feed.used, limit: feed.limit, bonus: feed.bonus });
+        setPlan(sub.plan ?? "free");
+        setCredits(cr.balance ?? 0);
+
+        // Outstanding = sent + overdue, converted to base currency
+        const invoices: InvoiceSummary[] = inv.invoices ?? [];
+        setRecentInvoices(invoices.slice(0, 3));
+        let open = 0;
+        for (const i of invoices) {
+          if (i.status !== "sent" && i.status !== "overdue") continue;
+          const subTotal = (i.invoice_items ?? []).reduce((s, it) => s + Number(it.total ?? it.quantity * it.unit_price), 0);
+          const total = subTotal + subTotal * (Number(i.tax_rate) / 100);
+          open += convert(total, i.currency || "USD", baseCurrency);
+        }
+        setOutstanding(open);
+        setInvoiceCount(invoices.length);
+
+        // Time tracking
+        const entries: TimeEntry[] = time.entries ?? [];
+        const running = time.running;
+        setRunningTimer(running);
+        if (running) setElapsed(Math.floor((Date.now() - new Date(running.start_time).getTime()) / 1000));
+        const today = new Date().toDateString();
+        let secs = 0;
+        let earn = 0;
+        for (const e of entries) {
+          if (new Date(e.start_time).toDateString() !== today) continue;
+          const start = new Date(e.start_time).getTime();
+          const end = e.end_time ? new Date(e.end_time).getTime() : Date.now();
+          const s = Math.max(0, Math.floor((end - start) / 1000));
+          secs += s;
+          earn += (s / 3600) * e.hourly_rate;
+        }
+        setTodayHours(secs);
+        setTodayEarnings(earn);
+
+        const now = new Date();
+        setUpcomingEvents((events.events ?? []).filter((e: CalendarEvent) => new Date(e.start_time) > now).sort((a: CalendarEvent, b: CalendarEvent) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()).slice(0, 3));
+      } catch (e) {
+        showToast((e as any)?.message ?? "Failed to load dashboard", "error");
+      }
+    };
+    load();
 
     fetch("/api/mood")
       .then((r) => r.json())
@@ -161,10 +153,9 @@ export default function DashboardHome() {
           setGreeting((g) => g + " — " + (moodGreetings[data.mood] ?? ""));
         }
       })
-      .catch(() => showToast("Failed to load mood", "error"));
+      .catch(() => {});
   }, []);
 
-  // Live timer tick
   useEffect(() => {
     if (runningTimer) {
       const interval = setInterval(() => {
@@ -182,110 +173,165 @@ export default function DashboardHome() {
       body: JSON.stringify({ end_time: new Date().toISOString() }),
     });
     setRunningTimer(null);
-    fetchData();
   };
 
-  const statsCards = [
-    { label: "Total Jobs", value: stats.jobs, emoji: "💼", color: "from-kawaii-purple to-kawaii-pink" },
-    { label: "Applications", value: stats.applications, emoji: "📝", color: "from-kawaii-pink to-kawaii-coral" },
-    { label: "Interviews", value: stats.interviews, emoji: "🎯", color: "from-kawaii-peach to-kawaii-purple" },
-    { label: "Offers", value: stats.offers, emoji: "🎉", color: "from-kawaii-mint to-kawaii-purple" },
+  const quotaPct = quota.limit ? Math.min(100, Math.round(((quota.used ?? 0) / quota.limit) * 100)) : 100;
+
+  const stats = [
+    { label: "Dieser Monat", value: formatMoney(monthEarnings, baseCurrency), emoji: "💰", color: "from-kawaii-purple to-kawaii-pink", href: "/dashboard/finances" },
+    { label: "Offene Rechnungen", value: formatMoney(outstanding, baseCurrency), emoji: "📄", color: "from-kawaii-coral to-kawaii-pink", href: "/dashboard/invoices" },
+    { label: "Credits", value: String(credits), emoji: "🪙", color: "from-kawaii-peach to-kawaii-purple", href: "/dashboard/credits" },
+    { label: "Heute getrackt", value: formatDuration(todayHours) + (todayEarnings > 0 ? ` · ${formatMoney(todayEarnings, baseCurrency)}` : ""), emoji: "⏱", color: "from-kawaii-mint to-kawaii-purple", href: "/dashboard/time-tracker" },
   ];
+
+  const statusColors: Record<string, string> = {
+    draft: "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300",
+    sent: "bg-kawaii-lavender/30 text-kawaii-purple",
+    paid: "bg-kawaii-mint/30 text-green-700 dark:text-green-300",
+    overdue: "bg-kawaii-coral/30 text-red-700 dark:text-red-300",
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <MoodCheckDialog />
 
-      <div>
-        <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
-          {greeting}{userName ? ", " + userName : ""}
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">{t("welcomeDashboard")}</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
+            {greeting}{userName ? ", " + userName : ""}
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">{t("welcomeDashboard")}</p>
+        </div>
+        <Link href="/pricing">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-kawaii-purple/10 text-kawaii-purple dark:text-kawaii-lavender text-xs font-bold hover:bg-kawaii-purple/20 transition-all">
+            {PLAN_LABELS[plan] ?? plan} Plan
+            {plan !== "pro" && <span className="text-kawaii-coral">↑ Upgrade</span>}
+          </span>
+        </Link>
       </div>
-
-      <DailyMotivation />
-
-      {/* Stress Buster mini-game widget */}
-      <StressBusterWidget />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {statsCards.map((s) => (
-          <Card key={s.label}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{s.label}</p>
-                  <p className="text-3xl font-extrabold mt-1">{s.value}</p>
+        {stats.map((s) => (
+          <Link key={s.label} href={s.href}>
+            <Card className="hover:border-kawaii-purple/50 transition-all h-full">
+              <CardContent className="p-4 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{s.label}</p>
+                  <p className="text-lg md:text-xl font-extrabold mt-1 truncate">{s.value}</p>
                 </div>
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${s.color} flex items-center justify-center text-xl`}>
+                <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${s.color} flex items-center justify-center text-lg shrink-0`}>
                   {s.emoji}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
-      {/* Time Tracking Widget */}
-      <Card className="bg-gradient-to-r from-kawaii-purple/10 to-kawaii-pink/10 dark:from-kawaii-purple/5 dark:to-kawaii-pink/5">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">⏱ Time Tracking</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {runningTimer ? (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                <div>
-                  <p className="text-2xl font-extrabold text-kawaii-purple dark:text-kawaii-lavender tabular-nums">
-                    {Math.floor(elapsed / 3600).toString().padStart(2, "0")}:{Math.floor((elapsed % 3600) / 60).toString().padStart(2, "0")}:{(elapsed % 60).toString().padStart(2, "0")}
-                  </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{runningTimer.description || "Tracking"}</p>
-                </div>
-              </div>
-              <Button variant="destructive" size="sm" onClick={stopTimer}>⏹ Stop</Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Today: {formatDuration(todaySummary.hours)} — ${todaySummary.earnings.toFixed(2)} earned
-                </p>
-              </div>
-              <Link href="/dashboard/time-tracker">
-                <Button variant="primary" size="sm">▶ Start Tracking</Button>
-              </Link>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* World Clock + Quick Notes */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <WorldClock />
-        <QuickNotes />
-      </div>
-
-      {/* Recent Jobs + Follow-ups */}
+      {/* Quota + Timer */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">💼 {t("recentJobs")}</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center justify-between">
+              <span>🎯 Tageskontingent (passende Jobs)</span>
+              <Link href="/dashboard/live-feed" className="text-xs text-kawaii-purple underline font-medium">Zum Feed</Link>
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {recentJobs.length === 0 ? (
-              <p className="text-sm text-slate-400">{t("noJobsYet")}</p>
+            {quota.limit == null ? (
+              <p className="text-sm text-slate-500">💎 Unbegrenzte Job-Ansichten (Pro)</p>
             ) : (
-              <div className="space-y-3">
-                {recentJobs.map((job) => (
-                  <div key={job.id} className="flex items-center justify-between p-3 rounded-2xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 squishy">
-                    <div>
-                      <p className="font-semibold">{job.title}</p>
-                      <p className="text-xs text-slate-400">{job.platform} — {job.budget}</p>
-                    </div>
-                    <span className="text-lg">→</span>
+              <>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-slate-600 dark:text-slate-300">
+                    <strong>{quota.used ?? 0}</strong> von <strong>{quota.limit}</strong> passenden Jobs heute gesehen
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    {quota.bonus ? `🎁 inkl. +${quota.bonus} Bonus` : ""}
+                  </span>
+                </div>
+                <div className="h-3 bg-kawaii-lavender/20 dark:bg-dark-surface rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-kawaii-purple to-kawaii-pink transition-all duration-700" style={{ width: `${quotaPct}%` }} />
+                </div>
+              </>
+            )}
+            <div className="flex gap-2 mt-4">
+              <Link href="/dashboard/wheel" className="flex-1">
+                <Button variant="outline" size="sm" className="w-full">🎡 Glücksrad (täglich)</Button>
+              </Link>
+              <Link href="/pricing" className="flex-1">
+                <Button variant="outline" size="sm" className="w-full">📈 Mehr Jobs</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-kawaii-purple/10 to-kawaii-pink/10 dark:from-kawaii-purple/5 dark:to-kawaii-pink/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">⏱ Time Tracking</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {runningTimer ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                  <div>
+                    <p className="text-2xl font-extrabold text-kawaii-purple dark:text-kawaii-lavender tabular-nums">
+                      {Math.floor(elapsed / 3600).toString().padStart(2, "0")}:{Math.floor((elapsed % 3600) / 60).toString().padStart(2, "0")}:{(elapsed % 60).toString().padStart(2, "0")}
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{runningTimer.description || "Tracking"}</p>
                   </div>
+                </div>
+                <Button variant="destructive" size="sm" onClick={stopTimer}>⏹ Stop</Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Heute: {formatDuration(todayHours)}{todayEarnings > 0 ? ` — ${formatMoney(todayEarnings, baseCurrency)} verdient` : ""}
+                  </p>
+                </div>
+                <Link href="/dashboard/time-tracker">
+                  <Button variant="primary" size="sm">▶ Start Tracking</Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top matches + Recent invoices */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center justify-between">
+              <span>🎯 Beste Matches</span>
+              <Link href="/dashboard/live-feed" className="text-xs text-kawaii-purple underline font-medium">Alle ansehen</Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {topMatches.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">Noch keine Matches — richte dein Profil in den Einstellungen ein.</p>
+            ) : (
+              <div className="space-y-2">
+                {topMatches.map((job) => (
+                  <Link key={job.id} href={`/jobs/${job.id}`} className="block">
+                    <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 hover:bg-kawaii-lavender/30 squishy">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{job.title}</p>
+                        <p className="text-xs text-slate-400">
+                          {job.platform}
+                          {job.budget ? ` · ${job.budget}` : ""}
+                        </p>
+                      </div>
+                      {job.profile_match != null && (
+                        <span className="text-xs font-extrabold px-2 py-0.5 rounded-lg bg-kawaii-purple/10 text-kawaii-purple dark:text-kawaii-lavender shrink-0">
+                          {job.profile_match}%
+                        </span>
+                      )}
+                    </div>
+                  </Link>
                 ))}
               </div>
             )}
@@ -293,31 +339,37 @@ export default function DashboardHome() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">📅 {t("upcomingFollowUps")}</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center justify-between">
+              <span>📄 Rechnungen</span>
+              <Link href="/dashboard/invoices" className="text-xs text-kawaii-purple underline font-medium">
+                {invoiceCount > 0 ? `${invoiceCount} gesamt` : "Rechnung erstellen"}
+              </Link>
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {followUps.length === 0 ? (
-              <p className="text-sm text-slate-400">{t("noFollowUps")}</p>
+            {recentInvoices.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">Noch keine Rechnungen.</p>
             ) : (
-              <div className="space-y-3">
-                {followUps.map((fu) => {
-                  const due = new Date(fu.due_date);
-                  const today = new Date();
-                  const diffDays = Math.ceil((due.getTime() - today.getTime()) / 86400000);
-                  let badgeColor = "bg-kawaii-mint/30 text-green-700 dark:text-green-300";
-                  if (diffDays < 0) badgeColor = "bg-kawaii-coral/30 text-red-700 dark:text-red-300";
-                  else if (diffDays === 0) badgeColor = "bg-kawaii-peach/40 text-yellow-700 dark:text-yellow-300";
-
+              <div className="space-y-2">
+                {recentInvoices.map((inv) => {
+                  const sub = (inv.invoice_items ?? []).reduce((s, it) => s + Number(it.total ?? it.quantity * it.unit_price), 0);
+                  const total = sub + sub * (Number(inv.tax_rate) / 100);
                   return (
-                    <div key={fu.id} className="flex items-center justify-between p-3 rounded-2xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 squishy">
-                      <div>
-                        <p className="font-semibold text-sm">{fu.action}</p>
-                        <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium ${badgeColor}`}>
-                          {diffDays < 0 ? `${Math.abs(diffDays)}d overdue` : diffDays === 0 ? "Today" : `In ${diffDays}d`}
-                        </span>
+                    <Link key={inv.id} href="/dashboard/invoices" className="block">
+                      <div className="flex items-center justify-between p-3 rounded-2xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 squishy">
+                        <div>
+                          <p className="font-semibold text-sm">{inv.invoice_number}</p>
+                          <p className="text-xs text-slate-400">{inv.client_name}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${statusColors[inv.status] || statusColors.draft}`}>
+                            {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
+                          </span>
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mt-1">{formatMoney(total, inv.currency)}</p>
+                        </div>
                       </div>
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
@@ -326,16 +378,16 @@ export default function DashboardHome() {
         </Card>
       </div>
 
-      {/* Upcoming Events */}
+      {/* Upcoming events */}
       {upcomingEvents.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">📅 {t("upcomingEvents")}</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">📅 Kommende Termine</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {upcomingEvents.map((ev) => (
-                <Link key={ev.id} href={`/dashboard/calendar`} className="block">
+                <Link key={ev.id} href="/dashboard/calendar" className="block">
                   <div className="flex items-center justify-between p-3 rounded-2xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 squishy">
                     <div>
                       <p className="font-semibold text-sm">{ev.title}</p>
@@ -343,7 +395,7 @@ export default function DashboardHome() {
                         {new Date(ev.start_time).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
                         {" — "}
                         {new Date(ev.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        {ev.jobs?.title && ` · 💼 ${ev.jobs.title}`}
+                        {ev.jobs?.title ? ` · 💼 ${ev.jobs.title}` : ""}
                       </p>
                     </div>
                     <span className="text-lg">→</span>
@@ -354,59 +406,6 @@ export default function DashboardHome() {
           </CardContent>
         </Card>
       )}
-
-      {/* Academy Banner */}
-      <Card className="bg-gradient-to-r from-kawaii-purple/10 to-kawaii-pink/10 dark:from-kawaii-purple/5 dark:to-kawaii-pink/5 border-none">
-        <CardContent className="p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🎓</span>
-            <div>
-              <p className="font-bold text-sm text-slate-700 dark:text-slate-200">{t("academyBanner")}</p>
-              <p className="text-xs text-slate-500">{t("academyBannerDesc")}</p>
-            </div>
-          </div>
-          <Link href="/academy/dashboard">
-            <Button variant="primary" size="sm">🎓 {t("learnMore")}</Button>
-          </Link>
-        </CardContent>
-      </Card>
-
-      {/* Recent Invoices */}
-      {recentInvoices.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">📊 {t("recentInvoices")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {recentInvoices.map((inv) => {
-                const sub = (inv.invoice_items ?? []).reduce((s, i) => s + Number(i.total || 0), 0);
-                const total = sub + sub * (Number(inv.tax_rate) / 100);
-                const statusColors: Record<string, string> = { draft: "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300", sent: "bg-kawaii-lavender/30 text-kawaii-purple", paid: "bg-kawaii-mint/30 text-green-700 dark:text-green-300", overdue: "bg-kawaii-coral/30 text-red-700 dark:text-red-300" };
-                return (
-                  <Link key={inv.id} href="/dashboard/invoices" className="block">
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 squishy">
-                      <div>
-                        <p className="font-semibold text-sm">{inv.invoice_number}</p>
-                        <p className="text-xs text-slate-400">{inv.client_name}</p>
-                      </div>
-                      <div className="text-right">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${statusColors[inv.status] || statusColors.draft}`}>
-                          {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
-                        </span>
-                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mt-1">${total.toFixed(2)}</p>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Lucky Wheel */}
-      <LuckyWheel />
     </div>
   );
 }

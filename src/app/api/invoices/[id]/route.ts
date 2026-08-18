@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sellerSnapshot } from "@/lib/invoices/pdf";
+import { normalizeCurrency } from "@/lib/currency";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = createClient();
@@ -27,7 +28,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await request.json();
-  const { client_name, client_address, client_email, issue_date, due_date, tax_rate, notes, status, items, job_id, seller, time_entry_ids } = body;
+  const { client_name, client_address, client_email, issue_date, due_date, tax_rate, notes, status, items, job_id, seller, time_entry_ids, currency } = body;
 
   // Update invoice fields
   const update: Record<string, any> = {};
@@ -40,6 +41,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (notes !== undefined) update.notes = notes;
   if (status !== undefined) update.status = status;
   if (job_id !== undefined) update.job_id = job_id;
+  if (currency !== undefined) update.currency = normalizeCurrency(currency);
 
   // Refresh seller snapshot from profile when not explicitly provided
   if (seller || job_id !== undefined) {
@@ -62,6 +64,43 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .eq("id", id)
       .eq("user_id", user.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // When an invoice is marked paid, its total automatically lands in finances
+  // (source "invoice"), so income and invoices stay in sync.
+  if (status === "paid") {
+    const { data: inv } = await supabase
+      .from("invoices")
+      .select("*, invoice_items(*)")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (inv) {
+      const { data: already } = await supabase
+        .from("income_log")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("source", "invoice")
+        .eq("invoice_id", id)
+        .maybeSingle();
+
+      if (!already) {
+        const sub = (inv.invoice_items ?? []).reduce((s: number, i: any) => s + (Number(i.total ?? Number(i.quantity || 0) * Number(i.unit_price || 0)) || 0), 0);
+        const total = sub + sub * (Number(inv.tax_rate) || 0) / 100;
+        if (total > 0) {
+          await supabase.from("income_log").insert({
+            user_id: user.id,
+            source: "invoice",
+            invoice_id: id,
+            amount: Math.round(total * 100) / 100,
+            description: `Invoice ${inv.invoice_number} — ${inv.client_name}`,
+            earned_at: new Date().toISOString().split("T")[0],
+            currency: normalizeCurrency(inv.currency),
+          });
+        }
+      }
+    }
   }
 
   // Replace items if provided

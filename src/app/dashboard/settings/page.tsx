@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useLocale } from "@/lib/i18n/context";
 import { useToast } from "@/components/toast";
 import { Textarea } from "@/components/ui/textarea";
+import { CURRENCIES, CURRENCY_SYMBOLS } from "@/lib/currency";
 
 interface Profile {
   full_name: string;
@@ -89,6 +90,12 @@ export default function SettingsPage() {
   const [rateSaving, setRateSaving] = useState(false);
   const [rateSaved, setRateSaved] = useState(false);
 
+  // Finance settings
+  const [baseCurrency, setBaseCurrency] = useState("EUR");
+  const [defaultTaxRate, setDefaultTaxRate] = useState("0");
+  const [financeSaving, setFinanceSaving] = useState(false);
+  const [financeSaved, setFinanceSaved] = useState(false);
+
   // Agency visibility (paid plan later)
   const [agencyEnabled, setAgencyEnabled] = useState(false);
 
@@ -118,10 +125,12 @@ export default function SettingsPage() {
           const p = profileData.profile;
           if (!Array.isArray(p.job_vector) || p.job_vector.length !== 5) p.job_vector = [3, 3, 3, 3, 3];
           setProfile(p);
+          if (p.base_currency) setBaseCurrency(p.base_currency);
         }
         if (settingsData.settings) {
           setDefaultRate(String(settingsData.settings.default_hourly_rate ?? "0"));
           setAgencyEnabled(settingsData.settings.agency_enabled === true);
+          setDefaultTaxRate(String(settingsData.settings.default_tax_rate ?? "0"));
         }
         if (pubData.profile) setPublicProfile(pubData.profile);
         const gcal = (integData.integrations ?? []).find((i: any) => i.provider === "google_calendar");
@@ -175,6 +184,30 @@ export default function SettingsPage() {
       showToast((e as any)?.message ?? "Failed to save rate", "error");
     } finally {
       setRateSaving(false);
+    }
+  };
+
+  const saveFinance = async () => {
+    setFinanceSaving(true);
+    try {
+      await Promise.all([
+        fetch("/api/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...profile, base_currency: baseCurrency }),
+        }),
+        fetch("/api/user-settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ default_tax_rate: parseFloat(defaultTaxRate) || 0 }),
+        }),
+      ]);
+      setFinanceSaved(true);
+      setTimeout(() => setFinanceSaved(false), 2000);
+    } catch (e) {
+      showToast((e as any)?.message ?? "Failed to save finance settings", "error");
+    } finally {
+      setFinanceSaving(false);
     }
   };
 
@@ -587,10 +620,44 @@ export default function SettingsPage() {
                 placeholder="0.00"
               />
             </div>
-            <Button onClick={saveRate} disabled={rateSaving}>
+                        <Button onClick={saveRate} disabled={rateSaving}>
               {rateSaving ? "Saving..." : "💾 Save"}
             </Button>
             {rateSaved && <span className="text-sm text-green-500 animate-fade-in">✅ Saved!</span>}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Finance: Base Currency + Default Tax Rate */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">🌍 Finanzen: Basiswährung & Steuern</CardTitle>
+          <CardDescription>Einnahmen in anderen Währungen werden in deine Basiswährung umgerechnet; der Steuersatz liefert eine Steuerschätzung in den Finanzen.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs">Basiswährung</Label>
+              <select
+                value={baseCurrency}
+                onChange={(e) => setBaseCurrency(e.target.value)}
+                className="w-full rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 px-4 py-2.5 text-sm text-slate-700 dark:bg-dark-card dark:text-slate-200 dark:border-dark-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kawaii-purple"
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c} value={c}>{CURRENCY_SYMBOLS[c]} {c}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Geschätzter Steuersatz (%)</Label>
+              <Input type="number" step="0.01" value={defaultTaxRate} onChange={(e) => setDefaultTaxRate(e.target.value)} placeholder="0" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button onClick={saveFinance} disabled={financeSaving}>
+              {financeSaving ? "Saving..." : "💾 Save Finance Settings"}
+            </Button>
+            {financeSaved && <span className="text-sm text-green-500 animate-fade-in">✅ Saved!</span>}
           </div>
         </CardContent>
       </Card>

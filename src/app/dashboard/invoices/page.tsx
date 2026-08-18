@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocale } from "@/lib/i18n/context";
 import { useToast } from "@/components/toast";
+import { formatMoney, normalizeCurrency, CURRENCIES, CURRENCY_SYMBOLS } from "@/lib/currency";
 import Link from "next/link";
 
 interface InvoiceItem {
@@ -28,6 +29,7 @@ interface Invoice {
   status: string;
   notes: string;
   tax_rate: number;
+  currency: string;
   created_at: string;
   invoice_items: InvoiceItem[];
   job_id?: string | null;
@@ -40,6 +42,8 @@ interface JobOption {
   client_name: string;
   client_address: string;
   client_email: string;
+  budget?: string | null;
+  budget_amount?: number | null;
 }
 
 interface TrackedEntry {
@@ -82,8 +86,12 @@ export default function InvoicesPage() {
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState("");
   const [taxRate, setTaxRate] = useState("0");
+  const [currency, setCurrency] = useState("USD");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<InvoiceItem[]>([{ description: "", quantity: 1, unit_price: 0 }]);
+  const [sellerName, setSellerName] = useState("");
+  const [sellerEmail, setSellerEmail] = useState("");
+  const [sellerTaxId, setSellerTaxId] = useState("");
 
   const fetchInvoices = useCallback(async () => {
     try {
@@ -116,6 +124,19 @@ export default function InvoicesPage() {
         }
       })
       .catch(() => showToast("Failed to load jobs", "error"));
+
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((data) => {
+        const p = data.profile;
+        if (p) {
+          if (p.base_currency) setCurrency(normalizeCurrency(p.base_currency));
+          setSellerName(p.business_name || p.full_name || "");
+          setSellerEmail(p.business_email || "");
+          setSellerTaxId(p.tax_id || "");
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const resetForm = () => {
@@ -125,6 +146,7 @@ export default function InvoicesPage() {
     setIssueDate(new Date().toISOString().split("T")[0]);
     setDueDate("");
     setTaxRate("0");
+    setCurrency(normalizeCurrency(currency));
     setNotes("");
     setItems([{ description: "", quantity: 1, unit_price: 0 }]);
     setJobId(null);
@@ -148,6 +170,7 @@ export default function InvoicesPage() {
     setIssueDate(inv.issue_date);
     setDueDate(inv.due_date ?? "");
     setTaxRate(String(inv.tax_rate));
+    setCurrency(normalizeCurrency(inv.currency));
     setNotes(inv.notes ?? "");
     setItems(inv.invoice_items?.length > 0 ? inv.invoice_items.map((i) => ({ description: i.description, quantity: i.quantity, unit_price: i.unit_price })) : [{ description: "", quantity: 1, unit_price: 0 }]);
     setJobId(inv.job_id ?? null);
@@ -168,6 +191,7 @@ export default function InvoicesPage() {
         issue_date: issueDate,
         due_date: dueDate || null,
         tax_rate: parseFloat(taxRate) || 0,
+        currency: normalizeCurrency(currency),
         notes,
         items: allItems.map((i) => ({ description: i.description, quantity: i.quantity, unit_price: i.unit_price })).filter((i) => i.description.trim()),
         job_id: jobId || null,
@@ -218,6 +242,26 @@ export default function InvoicesPage() {
     setItems(items.filter((_, i) => i !== index));
   };
 
+  const addFixedPriceFromJob = () => {
+    const job = jobs.find((j) => j.id === jobId);
+    if (!job) return;
+    let price = typeof job.budget_amount === "number" ? job.budget_amount : NaN;
+    if (!isFinite(price)) {
+      const parsed = parseFloat(String(job.budget || "").replace(/[^0-9.]/g, ""));
+      price = isNaN(parsed) ? 0 : parsed;
+    }
+    if (price <= 0) {
+      showToast("Kein Budget für diesen Job vorhanden", "error");
+      return;
+    }
+    setItems((prev) => [
+      ...prev,
+      { description: `${job.title} — Festpreis (einmalig)`, quantity: 1, unit_price: price },
+    ]);
+    showToast(`Festpreis ${formatMoney(price, currency)} hinzugefügt 💰`);
+  };
+
+  // ── Compliance check (before you send a real invoice) ─────────────
   const selectJob = (selectedId: string) => {
     setJobId(selectedId || null);
     setTrackedEntries([]);
@@ -266,6 +310,23 @@ export default function InvoicesPage() {
     .map((e) => ({ description: `${e.date} — ${e.description}`, quantity: e.hours, unit_price: e.hourly_rate, total: e.amount }));
 
   const allItems: InvoiceItem[] = [...items, ...trackedItems];
+
+  // ── Compliance check (before you send a real invoice) ─────────────
+  const compliance = useMemo(() => {
+    const validItems = allItems.filter((i) => i.description.trim() && (parseFloat(String(i.quantity)) || 0) > 0 && (parseFloat(String(i.unit_price)) || 0) >= 0);
+    const checks = [
+      { label: "Klientenname", ok: !!clientName.trim(), critical: true },
+      { label: "Klienten-E-Mail", ok: /^\S+@\S+\.\S+$/.test(clientEmail.trim()), critical: false },
+      { label: "Mindestens ein Leistungsposten", ok: validItems.length > 0, critical: true },
+      { label: "Verkäufer (dein Name/Firma)", ok: !!sellerName.trim(), critical: true },
+      { label: "Steuernummer (TIN/VAT)", ok: !!sellerTaxId.trim(), critical: false },
+      { label: "Fälligkeitsdatum gesetzt", ok: !!dueDate, critical: false },
+      { label: "Zahlungsbedingungen (Notes)", ok: notes.trim().length >= 10, critical: false },
+    ];
+    const passed = checks.filter((c) => c.ok).length;
+    const criticalMissing = checks.filter((c) => c.critical && !c.ok).length;
+    return { checks, passed, total: checks.length, criticalMissing, ready: criticalMissing === 0 };
+  }, [clientName, clientEmail, allItems, sellerName, sellerTaxId, dueDate, notes]);
 
   const calcSubtotal = () => allItems.reduce((s, i) => s + (parseFloat(String(i.quantity)) || 0) * (parseFloat(String(i.unit_price)) || 0), 0);
   const calcTax = () => calcSubtotal() * ((parseFloat(taxRate) || 0) / 100);
@@ -322,7 +383,7 @@ export default function InvoicesPage() {
                         <p className="text-xs text-kawaii-purple dark:text-kawaii-lavender mt-0.5">💼 {inv.jobs.title}</p>
                       )}
                     </div>
-                    <span className="text-lg font-bold text-slate-700 dark:text-slate-200">${total.toFixed(2)}</span>
+                    <span className="text-lg font-bold text-slate-700 dark:text-slate-200">{formatMoney(total, inv.currency)}</span>
                   </div>
                   <div className="flex gap-1 mt-2">
                     {inv.status === "draft" && (
@@ -389,14 +450,20 @@ export default function InvoicesPage() {
                                 <input type="checkbox" checked={checked} onChange={() => toggleEntry(entry.id)} className="rounded border-kawaii-lavender/40 text-kawaii-purple focus:ring-kawaii-purple" />
                                 <span className="flex-1 min-w-0">
                                   <span className="block text-slate-700 dark:text-slate-200 truncate">{entry.date} — {entry.description}</span>
-                                  <span className="block text-xs text-slate-400">{entry.hours.toFixed(2)}h @ ${entry.hourly_rate.toFixed(2)}</span>
+                                  <span className="block text-xs text-slate-400">{entry.hours.toFixed(2)}h @ {formatMoney(entry.hourly_rate, currency)}</span>
                                 </span>
-                                <span className="font-bold text-slate-700 dark:text-slate-200 shrink-0">${entry.amount.toFixed(2)}</span>
+                                <span className="font-bold text-slate-700 dark:text-slate-200 shrink-0">{formatMoney(entry.amount, currency)}</span>
                               </label>
                             );
                           })}
                         </div>
                       )}
+                      <button
+                        onClick={addFixedPriceFromJob}
+                        className="mt-2 w-full text-xs font-bold text-kawaii-purple dark:text-kawaii-lavender border border-dashed border-kawaii-purple/40 rounded-xl py-2 hover:bg-kawaii-purple/10 transition-colors"
+                      >
+                        💰 Festpreis aus Job-Budget als Position hinzufügen (einmaliges Projekt)
+                      </button>
                     </div>
                   )}
                 </div>
@@ -418,8 +485,8 @@ export default function InvoicesPage() {
                 <Input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} placeholder="Client address" />
               </div>
 
-              {/* Dates & Tax */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Dates, Currency & Tax */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
                   <Label className="text-xs">{t("issueDate")}</Label>
                   <Input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
@@ -427,6 +494,18 @@ export default function InvoicesPage() {
                 <div>
                   <Label className="text-xs">{t("dueDate")}</Label>
                   <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Währung</Label>
+                  <select
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    className="w-full rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 px-4 py-2.5 text-sm text-slate-700 dark:bg-dark-card dark:text-slate-200 dark:border-dark-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kawaii-purple"
+                  >
+                    {CURRENCIES.map((c) => (
+                      <option key={c} value={c}>{CURRENCY_SYMBOLS[c]} {c}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <Label className="text-xs">{t("taxRate")} (%)</Label>
@@ -464,14 +543,14 @@ export default function InvoicesPage() {
                         <Input
                           type="number"
                           step="0.01"
-                          placeholder="$"
+                          placeholder="0.00"
                           value={item.unit_price}
                           onChange={(e) => updateItem(i, "unit_price", parseFloat(e.target.value) || 0)}
                           className="text-sm text-center"
                         />
                       </div>
-                      <div className="w-16 text-sm font-bold text-slate-600 dark:text-slate-300 text-center py-2">
-                        ${((parseFloat(String(item.quantity)) || 0) * (parseFloat(String(item.unit_price)) || 0)).toFixed(2)}
+                      <div className="w-20 text-sm font-bold text-slate-600 dark:text-slate-300 text-center py-2">
+                        {formatMoney((parseFloat(String(item.quantity)) || 0) * (parseFloat(String(item.unit_price)) || 0), currency)}
                       </div>
                       <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 text-lg pb-1">✕</button>
                     </div>
@@ -480,8 +559,8 @@ export default function InvoicesPage() {
                     <div key={`t${i}`} className="flex gap-2 items-end rounded-xl bg-kawaii-lavender/10 dark:bg-kawaii-purple/10 px-2">
                       <div className="flex-1 text-sm text-slate-700 dark:text-slate-200 py-2 truncate">🕐 {item.description}</div>
                       <div className="w-16 text-sm text-center py-2 text-slate-600 dark:text-slate-300">{item.quantity}</div>
-                      <div className="w-20 text-sm text-center py-2 text-slate-600 dark:text-slate-300">${item.unit_price.toFixed(2)}</div>
-                      <div className="w-16 text-sm font-bold text-slate-700 dark:text-slate-200 text-center py-2">${(item.total ?? 0).toFixed(2)}</div>
+                      <div className="w-20 text-sm text-center py-2 text-slate-600 dark:text-slate-300">{formatMoney(item.unit_price, currency)}</div>
+                      <div className="w-20 text-sm font-bold text-slate-700 dark:text-slate-200 text-center py-2">{formatMoney(item.total ?? 0, currency)}</div>
                       <button onClick={() => toggleEntry(trackedEntries.filter((e) => selectedIds.has(e.id))[i]?.id ?? "")} className="text-slate-400 text-lg pb-1" title="Remove from invoice">✕</button>
                     </div>
                   ))}
@@ -494,11 +573,32 @@ export default function InvoicesPage() {
                 <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Payment terms, additional notes..." />
               </div>
 
+              {/* Compliance check */}
+              <div className={`rounded-2xl border p-4 ${compliance.ready ? "border-green-300/60 bg-green-50/60 dark:bg-green-900/10" : "border-kawaii-coral/40 bg-kawaii-coral/10 dark:bg-red-900/10"}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                    {compliance.ready ? "✅ Compliance-Check bestanden" : "⚠️ Compliance-Check"}
+                  </p>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{compliance.passed}/{compliance.total} Checks</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {compliance.checks.map((c) => (
+                    <div key={c.label} className="flex items-center gap-2 text-xs">
+                      <span className={c.ok ? "text-green-600 dark:text-green-400" : "text-red-500"}>{c.ok ? "✓" : c.critical ? "✗" : "⚠"}</span>
+                      <span className={`text-slate-600 dark:text-slate-300 ${!c.ok && c.critical ? "font-bold" : ""}`}>{c.label}</span>
+                    </div>
+                  ))}
+                </div>
+                {!compliance.ready && (
+                  <p className="text-xs text-red-500 mt-2 font-medium">Pflichtfelder fehlen — du kannst als Entwurf speichern, aber noch nicht als „Gesendet" markieren.</p>
+                )}
+              </div>
+
               {/* Totals */}
               <div className="text-right space-y-1 border-t border-kawaii-lavender/20 pt-3">
-                <p className="text-sm text-slate-500">{t("subtotal")}: ${calcSubtotal().toFixed(2)}</p>
-                <p className="text-sm text-slate-500">{t("tax")} ({taxRate}%): ${calcTax().toFixed(2)}</p>
-                <p className="text-xl font-extrabold text-kawaii-purple dark:text-kawaii-lavender">{t("total")}: ${calcTotal().toFixed(2)}</p>
+                <p className="text-sm text-slate-500">{t("subtotal")}: {formatMoney(calcSubtotal(), currency)}</p>
+                <p className="text-sm text-slate-500">{t("tax")} ({taxRate}%): {formatMoney(calcTax(), currency)}</p>
+                <p className="text-xl font-extrabold text-kawaii-purple dark:text-kawaii-lavender">{t("total")}: {formatMoney(calcTotal(), currency)}</p>
               </div>
 
               {/* Actions */}

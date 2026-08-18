@@ -52,9 +52,9 @@ export async function PUT(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id, public_id, skills, experience_level, job_categories, job_vector } = await request.json();
+  const { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id, public_id, skills, experience_level, job_categories, job_vector, base_currency } = await request.json();
 
-  const update: Record<string, any> = { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id, skills, experience_level, job_categories };
+  const update: Record<string, any> = { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id, skills, experience_level, job_categories, base_currency };
 
   if (job_vector !== undefined && job_vector !== null) {
     if (!Array.isArray(job_vector) || job_vector.length !== 5 || job_vector.some((n: any) => !Number.isInteger(n) || n < 1 || n > 5)) {

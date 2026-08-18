@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sellerSnapshot } from "@/lib/invoices/pdf";
+import { normalizeCurrency } from "@/lib/currency";
 
 export async function GET(request: Request) {
   const supabase = createClient();
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { client_name, client_address, client_email, issue_date, due_date, tax_rate, notes, items, job_id, seller, time_entry_ids } = body;
+  const { client_name, client_address, client_email, issue_date, due_date, tax_rate, notes, items, job_id, seller, time_entry_ids, currency } = body;
 
   if (!client_name && !job_id) {
     return NextResponse.json({ error: "client_name or job_id is required" }, { status: 400 });
@@ -94,6 +95,7 @@ export async function POST(request: Request) {
       tax_rate: tax_rate ?? 0,
       notes: notes ?? "",
       job_id: job_id ?? null,
+      currency: normalizeCurrency(currency),
       ...finalSeller,
     })
     .select()

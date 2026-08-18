@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeCurrency, detectCurrency } from "@/lib/currency";
 
 function parseBudgetToNumber(budget: string): number {
   const clean = budget.replace(/[^0-9.]/g, "");
@@ -30,7 +31,6 @@ export async function POST() {
       const amount = hours * parseFloat(entry.hourly_rate);
       if (amount <= 0) continue;
 
-      // Check if already synced
       const { data: existing } = await supabase
         .from("income_log")
         .select("id")
@@ -49,11 +49,12 @@ export async function POST() {
         amount: Math.round(amount * 100) / 100,
         description: entry.description || "Time entry",
         earned_at: earnedAt,
+        currency: normalizeCurrency(entry.currency),
       });
       synced++;
     }
 
-    // 2. Sync won pitches with budget
+    // 2. Sync won pitches with budget (currency detected from the budget string)
     const { data: pitches } = await supabase
       .from("pitches")
       .select("*, jobs(budget, title)")
@@ -84,6 +85,40 @@ export async function POST() {
         amount,
         description: jobTitle,
         earned_at: new Date().toISOString().split("T")[0],
+        currency: detectCurrency(budget) || "USD",
+      });
+      synced++;
+    }
+
+    // 3. Sync paid invoices (source "invoice") — earnings land in finances
+    const { data: paidInvoices } = await supabase
+      .from("invoices")
+      .select("*, invoice_items(*)")
+      .eq("user_id", user.id)
+      .eq("status", "paid");
+
+    for (const inv of paidInvoices ?? []) {
+      const { data: existing } = await supabase
+        .from("income_log")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("source", "invoice")
+        .eq("invoice_id", inv.id)
+        .maybeSingle();
+      if (existing) continue;
+
+      const sub = (inv.invoice_items ?? []).reduce((s: number, i: any) => s + (Number(i.total ?? Number(i.quantity || 0) * Number(i.unit_price || 0)) || 0), 0);
+      const total = sub + sub * (Number(inv.tax_rate) || 0) / 100;
+      if (total <= 0) continue;
+
+      await supabase.from("income_log").insert({
+        user_id: user.id,
+        source: "invoice",
+        invoice_id: inv.id,
+        amount: Math.round(total * 100) / 100,
+        description: `Invoice ${inv.invoice_number} — ${inv.client_name}`,
+        earned_at: new Date().toISOString().split("T")[0],
+        currency: normalizeCurrency(inv.currency),
       });
       synced++;
     }

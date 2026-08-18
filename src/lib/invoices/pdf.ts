@@ -1,10 +1,20 @@
 import pdfMake from "pdfmake/build/pdfmake";
 import vfs from "pdfmake/build/vfs_fonts";
+import { formatMoney, normalizeCurrency } from "@/lib/currency";
 
 // pdfmake >= 0.3 registers fonts via the virtual file system (pdfMake.vfs = ... does nothing).
 pdfMake.addVirtualFileSystem(vfs as any);
 
-export const CURRENCY = "$";
+const CURRENCY_NAMES: Record<string, string> = {
+  USD: "US DOLLARS",
+  EUR: "EUROS",
+  GBP: "POUNDS STERLING",
+  PHP: "PHILIPPINE PESOS",
+  CAD: "CANADIAN DOLLARS",
+  AUD: "AUSTRALIAN DOLLARS",
+  INR: "INDIAN RUPEES",
+  JPY: "JAPANESE YEN",
+};
 
 function numberToWords(n: number): string {
   const ones = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
@@ -24,11 +34,13 @@ function numberToWords(n: number): string {
   return parts.reverse().join(" ");
 }
 
-function amountInWords(total: number): string {
+function amountInWords(total: number, currency: string): string {
+  const code = normalizeCurrency(currency);
+  const name = CURRENCY_NAMES[code] ?? code;
   const whole = Math.floor(total);
   const cents = Math.round((total - whole) * 100);
-  if (cents === 0) return `${numberToWords(whole)} and 00/100 ${CURRENCY} ONLY`;
-  return `${numberToWords(whole)} and ${String(cents).padStart(2, "0")}/100 ${CURRENCY} ONLY`;
+  if (cents === 0) return `${numberToWords(whole)} and 00/100 ${name} ONLY`;
+  return `${numberToWords(whole)} and ${String(cents).padStart(2, "0")}/100 ${name} ONLY`;
 }
 
 function daysUntil(dateStr?: string): number | null {
@@ -76,6 +88,7 @@ export async function buildInvoicePdf(opts: {
   const taxRate = Number(invoice.tax_rate) || 0;
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
+  const currency = normalizeCurrency(invoice.currency || "USD");
 
   const daysLeft = daysUntil(invoice.due_date);
   const dueNote = invoice.due_date
@@ -152,8 +165,8 @@ export async function buildInvoicePdf(opts: {
               ? items.map((item) => [
                   { text: item.description, style: "cell" },
                   { text: String(item.quantity), style: "cell", alignment: "right" },
-                  { text: `${CURRENCY}${item.unit_price.toFixed(2)}`, style: "cell", alignment: "right" },
-                  { text: `${CURRENCY}${item.total.toFixed(2)}`, style: "cell", alignment: "right" },
+                  { text: formatMoney(item.unit_price, currency), style: "cell", alignment: "right" },
+                  { text: formatMoney(item.total, currency), style: "cell", alignment: "right" },
                 ])
               : [[{ text: "No items", colSpan: 4, style: "cell" }, {}, {}, {}]]),
           ],
@@ -173,16 +186,16 @@ export async function buildInvoicePdf(opts: {
             width: "*",
             stack: [
               { text: "Amount Due (in words):", bold: true },
-              { text: amountInWords(total), italics: true },
+              { text: amountInWords(total, currency), italics: true },
             ],
           },
           {
             width: "auto",
             stack: [
-              { text: `Subtotal: ${CURRENCY}${subtotal.toFixed(2)}`, alignment: "right" },
-              { text: `Tax / VAT (${taxRate}%): ${CURRENCY}${taxAmount.toFixed(2)}`, alignment: "right" },
+              { text: `Subtotal: ${formatMoney(subtotal, currency)}`, alignment: "right" },
+              { text: `Tax / VAT (${taxRate}%): ${formatMoney(taxAmount, currency)}`, alignment: "right" },
               { text: "\n" },
-              { text: `Total Due: ${CURRENCY}${total.toFixed(2)}`, alignment: "right", bold: true, fontSize: 14, color: "#6d28d9" },
+              { text: `Total Due: ${formatMoney(total, currency)}`, alignment: "right", bold: true, fontSize: 14, color: "#6d28d9" },
             ],
           },
         ],
