@@ -1,21 +1,25 @@
-const steps = [
-  { step: "1", emoji: "🔗", title: "Connect", description: "Link your freelancer profiles or paste job URLs." },
-  { step: "2", emoji: "🤖", title: "Generate", description: "AI crafts the perfect pitch tailored to each job." },
-  { step: "3", emoji: "📤", title: "Send & Track", description: "Submit your pitch and track its status in your pipeline." },
-  { step: "4", emoji: "📅", title: "Follow Up", description: "Get smart reminders so you never miss a chance." },
-  { step: "5", emoji: "🏆", title: "Win!", description: "Land more clients and grow your freelancing business." },
-];
+"use client";
+
+import { useLocale } from "@/lib/i18n/context";
 
 export default function HowItWorks() {
+  const { t } = useLocale();
+  const steps = [
+    { step: "1", emoji: "📝", title: t("hiw1Title"), description: t("hiw1Desc") },
+    { step: "2", emoji: "📡", title: t("hiw2Title"), description: t("hiw2Desc") },
+    { step: "3", emoji: "🚀", title: t("hiw3Title"), description: t("hiw3Desc") },
+    { step: "4", emoji: "🛡️", title: t("hiw4Title"), description: t("hiw4Desc") },
+    { step: "5", emoji: "💰", title: t("hiw5Title"), description: t("hiw5Desc") },
+  ];
   return (
     <section id="how-it-works" className="py-16 px-4 bg-kawaii-lavender/15 dark:bg-dark-surface/20">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-800 dark:text-slate-100">
-            How It Works 🚀
+            {t("hiwTitle")} 🚀
           </h2>
           <p className="mt-4 text-lg text-slate-500 dark:text-slate-400">
-            From job discovery to winning the gig — in 5 simple steps
+            {t("hiwSub")}
           </p>
         </div>
         <div className="space-y-6">
@@ -25,7 +29,7 @@ export default function HowItWorks() {
                 {s.emoji}
               </div>
               <div className="pt-1">
-                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200">{s.title}</h3>
+                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200">{s.step}. {s.title}</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400">{s.description}</p>
               </div>
               {i < steps.length - 1 && (

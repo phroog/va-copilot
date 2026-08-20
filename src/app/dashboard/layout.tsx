@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LanguageSwitcher } from "@/components/language-switcher";
+import { LanguageDropdown } from "@/components/language-dropdown";
 import { useLocale } from "@/lib/i18n/context";
 import { useProfileName } from "@/lib/use-profile-name";
 import { useState, useEffect } from "react";
@@ -189,7 +189,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </button>
             <div className="hidden lg:block" />
               <div className="flex items-center gap-3">
-                <LanguageSwitcher />
+                <LanguageDropdown />
                 <ThemeToggle />
                 <Link href="/dashboard/credits" className="flex items-center gap-1 px-2 py-1 rounded-xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 text-kawaii-purple dark:text-kawaii-lavender text-xs font-bold hover:bg-kawaii-lavender/30 transition-all">
                   <Coins className="w-3.5 h-3.5" />

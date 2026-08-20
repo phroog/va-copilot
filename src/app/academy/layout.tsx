@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LanguageSwitcher } from "@/components/language-switcher";
+import { LanguageDropdown } from "@/components/language-dropdown";
 import { useLocale } from "@/lib/i18n/context";
 
 export default function AcademyLayout({ children }: { children: React.ReactNode }) {
@@ -60,7 +60,7 @@ export default function AcademyLayout({ children }: { children: React.ReactNode 
           </nav>
 
           <div className="flex items-center gap-2">
-            <LanguageSwitcher />
+            <LanguageDropdown />
             <ThemeToggle />
             {user ? (
               <Link href="/academy/dashboard">

@@ -1,16 +1,20 @@
-import Link from "next/link";
+"use client";
 
-const footerLinks = [
-  { label: "Features", href: "#features" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Academy", href: "/academy" },
-  { label: "🎮 Escape Room", href: "/va-escape-room" },
-  { label: "Privacy", href: "#" },
-  { label: "Terms", href: "#" },
-];
+import Link from "next/link";
+import { LanguageDropdown } from "@/components/language-dropdown";
+import { useLocale } from "@/lib/i18n/context";
 
 export default function Footer() {
+  const { t } = useLocale();
+  const footerLinks = [
+    { label: t("navFeatures"), href: "#features" },
+    { label: t("navHowItWorks"), href: "#how-it-works" },
+    { label: t("navPricing"), href: "#pricing" },
+    { label: t("navAcademy"), href: "/academy" },
+    { label: t("footerFinance"), href: "/dashboard/finances" },
+    { label: t("footerPricing"), href: "/pricing" },
+  ];
+
   return (
     <footer className="border-t border-sari-lavender/30 dark:border-dark-surface bg-white/50 dark:bg-dark-bg/50">
       <div className="max-w-7xl mx-auto px-4 py-10">
@@ -32,10 +36,10 @@ export default function Footer() {
               </Link>
             ))}
           </nav>
-          <p className="text-sm text-slate-400 dark:text-slate-500">
-            Made with 🍠 for freelancers worldwide
-          </p>
+          <LanguageDropdown />
         </div>
+        <p className="text-sm text-slate-400 dark:text-slate-500 text-center mt-6">{t("footerTagline")}</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 text-center mt-1">{t("footerMadeWith")}</p>
       </div>
     </footer>
   );

@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { LanguageSwitcher } from "@/components/language-switcher";
+import { LanguageDropdown } from "@/components/language-dropdown";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useLocale } from "@/lib/i18n/context";
 
 export default function Header() {
+  const { t } = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const supabase = createClient();
@@ -18,10 +20,10 @@ export default function Header() {
   }, [supabase]);
 
   const navLinks = [
-    { href: "#features", label: "Features" },
-    { href: "#how-it-works", label: "How It Works" },
-    { href: "#pricing", label: "Pricing" },
-    { href: "/academy", label: "🎓 Academy" },
+    { href: "#features", label: t("navFeatures") },
+    { href: "#how-it-works", label: t("navHowItWorks") },
+    { href: "#pricing", label: t("navPricing") },
+    { href: "/academy", label: "🎓 " + t("navAcademy") },
     { href: user ? "/dashboard" : "/", label: "🍠 Sari" },
   ];
 
@@ -49,19 +51,19 @@ export default function Header() {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            <LanguageSwitcher />
+            <LanguageDropdown />
             <ThemeToggle />
             {user ? (
               <Link href="/dashboard">
-                <Button variant="primary" size="sm">📊 Dashboard</Button>
+                <Button variant="primary" size="sm">📊 {t("dashboard")}</Button>
               </Link>
             ) : (
               <>
                 <Link href="/auth/login">
-                  <Button variant="ghost" size="sm">Log In</Button>
+                  <Button variant="ghost" size="sm">{t("logIn")}</Button>
                 </Link>
                 <Link href="/auth/signup">
-                  <Button variant="primary" size="sm">Get Started ✨</Button>
+                  <Button variant="primary" size="sm">{t("getStarted")} ✨</Button>
                 </Link>
               </>
             )}
@@ -81,19 +83,19 @@ export default function Header() {
             </Link>
           ))}
           <div className="flex items-center gap-3 pt-2 border-t border-sari-lavender/20 dark:border-dark-surface">
-            <LanguageSwitcher />
+            <LanguageDropdown />
             <ThemeToggle />
             {user ? (
               <Link href="/dashboard" className="flex-1">
-                <Button variant="primary" className="w-full" size="sm">📊 Dashboard</Button>
+                <Button variant="primary" className="w-full" size="sm">📊 {t("dashboard")}</Button>
               </Link>
             ) : (
               <>
                 <Link href="/auth/login" className="flex-1">
-                  <Button variant="ghost" className="w-full" size="sm">Log In</Button>
+                  <Button variant="ghost" className="w-full" size="sm">{t("logIn")}</Button>
                 </Link>
                 <Link href="/auth/signup" className="flex-1">
-                  <Button variant="primary" className="w-full" size="sm">Sign Up ✨</Button>
+                  <Button variant="primary" className="w-full" size="sm">{t("getStarted")} ✨</Button>
                 </Link>
               </>
             )}
