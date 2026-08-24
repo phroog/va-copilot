@@ -74,6 +74,7 @@ export default function ScamCheckPage() {
         website_url: target,
         client_name: source || undefined,
         job_description: ev.flags.map((f) => f.label).join("; ") || undefined,
+        payment_info: [ev.signals.paymentMethods, ev.signals.requestedData].flat().join("; ") || undefined,
       }),
     }).then(async (r) => {
       if (r.ok) return r.json();
@@ -102,6 +103,7 @@ export default function ScamCheckPage() {
         website_url: target,
         client_name: source || undefined,
         job_description: ev.flags.map((f) => f.label).join("; ") || undefined,
+        payment_info: [ev.signals.paymentMethods, ev.signals.requestedData].flat().join("; ") || undefined,
       }),
     }).then(async (r) => (r.ok ? r.json() : { score: null, analysis: null })).catch(() => ({ score: null, analysis: null }));
     const finalScore = typeof ai.score === "number" ? ai.score : ev.score;

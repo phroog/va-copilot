@@ -37,7 +37,14 @@ export async function POST(request: Request) {
   const prompt = parts.join("\n");
 
   const systemPrompt =
-    "You are a fraud detection expert for freelancers. Based ONLY on the provided client information, assess the trustworthiness of this client on a scale of 1 to 100. Be critical — default to lower scores when data is missing or suspicious.\n\nScoring guidelines:\n- 90-100: Verifiable real business with strong online footprint and clear professional communication\n- 70-89: Likely legitimate but limited verifiable info\n- 40-69: Mixed signals, some red flags or very sparse data\n- 1-39: Clear scam patterns or virtually no verifiable information provided\n\nIf the client_name is empty or generic, website_url is a job board URL (not a company site), and no payment_info is given, score below 40.\nOutput a JSON object with exactly two keys: 'score' (number) and 'analysis' (string, max 150 words).";
+    "You are a fraud detection expert for freelancers assessing a job posting. IMPORTANT CONTEXT: the 'website URL' is usually a JOB BOARD link (Indeed, Upwork, Freelancer, etc.) — that is the NORMAL case and must NOT be treated as suspicious. Missing company website, missing payment info, or missing contact details are also NORMAL for job boards and must NOT lower the score by themselves. Only judge the ACTUAL scam signals present in the text.\n\n" +
+    "Score the RISK of the posting on a scale of 1 to 100 (higher = more risky/scammy):\n" +
+    "- 1-30 (safe): No red flags. Normal job-board posting for a common role.\n" +
+    "- 31-55 (caution): A few minor warning signs but nothing definitive.\n" +
+    "- 56-79 (suspicious): Clear scam patterns present (fees, data requests, off-platform contact).\n" +
+    "- 80-100 (high risk): Strong scam indicators (upfront payment/fee, wire/gift-card payment, request for ID/bank details, telegram/whatsapp-only contact, 'too good to be true', unpaid trial work).\n\n" +
+    "Treat a job board URL, missing company footprint, and sparse data as NEUTRAL — do not penalize them. Only raise the score for concrete scam patterns. If there are no red flags, give a low score (below 30).\n" +
+    "Output a JSON object with exactly two keys: 'score' (number) and 'analysis' (string, max 150 words, in the same language as the input where possible).";
 
   let score = 50;
   let analysis = "Unable to analyze at this time. Please try again.";
