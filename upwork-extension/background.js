@@ -776,6 +776,10 @@ chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === "PING") {
+    sendResponse({ ok: true, version: chrome.runtime.getManifest().version });
+    return;
+  }
   if (msg.type === "OPEN_JOB_BY_ID") {
     (async () => {
       try {
@@ -785,6 +789,77 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         // but the link stays hidden until a credit reveals it.
         await chrome.windows.create({ url, type: "popup", width: 1100, height: 820 });
         sendResponse({ ok: true });
+      } catch (e) {
+        sendResponse({ ok: false, error: e.message });
+      }
+    })();
+    return true;
+  }
+  if (msg.type === "SCAN_JOB_URL") {
+    (async () => {
+      try {
+        const url = msg.url;
+        if (!url) { sendResponse({ ok: false, error: "keine URL" }); return; }
+        // Reuse an existing tab on that host if present, else open a new one.
+        let tab = null;
+        try {
+          const host = new URL(url).hostname;
+          const found = await chrome.tabs.query({ url: "*://" + host + "/*" });
+          tab = found && found[0] ? found[0] : null;
+        } catch {}
+        if (!tab) tab = await chrome.tabs.create({ url, active: true });
+        else await chrome.tabs.update(tab.id, { url, active: true });
+
+        // Wait for load, then inject the scanner (fresh content script).
+        await new Promise((r) => setTimeout(r, 2500));
+        const fn = () => {
+          const flags = [];
+          const seen = new Set();
+          const signals = { offPlatformLinks: [], paymentMethods: [], requestedData: [], suspiciousSites: [], generic: [] };
+          const baseHost = (() => { try { return new URL(location.href).hostname; } catch { return ""; } })();
+          const text = (document.body ? document.body.innerText : "").toLowerCase();
+          const push = (label, sev) => { if (!seen.has(label)) { seen.add(label); flags.push({ label, severity: sev }); } };
+          document.querySelectorAll("a[href]").forEach((a) => {
+            const href = a.getAttribute("href") || "";
+            try {
+              const link = new URL(href, location.href);
+              const h = link.hostname.replace(/^www\./, "");
+              const b = baseHost.replace(/^www\./, "");
+              if (h === b || h.endsWith("." + b)) return;
+              if (!signals.offPlatformLinks.includes(link.hostname)) signals.offPlatformLinks.push(link.hostname);
+              if (/\.(zip|mov|country|click|gq|top|xyz|tk|ml|cf|ga|date|icu|work|racing)$/i.test(link.hostname)) {
+                if (!signals.suspiciousSites.includes(link.hostname)) signals.suspiciousSites.push(link.hostname);
+              }
+            } catch {}
+          });
+          if (/western union|moneygram|wire transfer|gift card|bitcoin|crypto|paypal\s*(friends|family)/i.test(text)) { push("Zahlung per Überweisung/Geschenkkarte", 30); signals.paymentMethods.push("Zahlungsmethode"); }
+          if (/credit card|card details|bank account|ssn|social security|passport|id copy|copy of (id|passport)/i.test(text)) { push("Sensible Daten angefordert", 25); signals.requestedData.push("Sensible Daten"); }
+          if (/processing|application|registration|activation fee|pay to (register|apply)|deposit.*(secure|reserve)|payment.*(upfront|in advance)/i.test(text)) push("Gebühr vorab / Zahlung verlangt", 30);
+          if (/unlimited earning|guaranteed (income|salary|profit)|get rich|residual income|passive income/i.test(text)) push("Zu gut um wahr zu sein", 25);
+          if (/recruiters? needed|referral (bonus|commission)|network marketing|multi[- ]level/i.test(text)) push("MLM/Recruiting-Muster", 20);
+          if (/(work|do|test|sample).*(free|without pay)|unpaid (trial|test)/i.test(text)) push("Unbezahlte Testarbeit", 25);
+          if (/urgent|start (immediately|now|today)|no interview/i.test(text)) push("Dringlichkeit/Druck", 10);
+          const tg = document.querySelectorAll('a[href*="t.me"], a[href*="wa.me"], a[href*="whatsapp"]').length;
+          if (tg > 0) push("Kontakt über Telegram/WhatsApp", 25);
+          if (signals.suspiciousSites.length > 0) push("Verdächtige Links auf der Seite", 25);
+          let score = 10;
+          for (const f of flags) score += f.severity;
+          score = Math.max(0, Math.min(100, score));
+          const level = score >= 70 ? "red" : score >= 50 ? "orange" : score >= 30 ? "yellow" : "green";
+          return {
+            score, level, flags, signals,
+            pageTitle: document.title || "",
+            pageUrl: location.href,
+            inspected: true,
+            checkedAt: new Date().toISOString(),
+          };
+        };
+        const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: fn }).catch(() => null);
+        const ev = results && results[0] && results[0].result ? results[0].result : null;
+        if (!ev) { sendResponse({ ok: false, error: "Seite konnte nicht gescannt werden" }); return; }
+        // Close the scan tab if we opened it fresh, so the user isn't flooded.
+        // (Keep it open on mobile-like flows where the user wants to review.)
+        sendResponse({ ok: true, evidence: ev });
       } catch (e) {
         sendResponse({ ok: false, error: e.message });
       }

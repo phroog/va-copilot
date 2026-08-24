@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sari Job Radar",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Pollt die Job-Feeds von Upwork, OnlineJobs.ph, Guru, Freelancer & Co. im Hintergrund über deren eigene Seiten/APIs und reicht neue Jobs an Sari weiter.",
   "background": {
     "service_worker": "background.js"

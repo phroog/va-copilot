@@ -9,6 +9,7 @@ import { useLocale } from "@/lib/i18n/context";
 import { useToast } from "@/components/toast";
 import { ScamGauge } from "@/components/scam-gauge";
 import { quickUrlCheck, heuristicEvidence, type ScamEvidence } from "@/lib/client/scam-scan";
+import { detectExtension, isMobileDevice, scanWithExtension } from "@/lib/client/extension-scan";
 
 const LEVEL_META: Record<string, { emoji: string; label: string; cls: string }> = {
   green: { emoji: "🟢", label: "Gering", cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
@@ -25,6 +26,9 @@ export default function ScamCheckPage() {
   const [result, setResult] = useState<ScamEvidence | null>(null);
   const [source, setSource] = useState<string>("");
 
+  const [mobile] = useState(isMobileDevice);
+  const [ext, setExt] = useState<"checking" | "yes" | "no">("checking");
+
   useEffect(() => {
     const u = new URL(window.location.href);
     const q = u.searchParams.get("url");
@@ -33,43 +37,36 @@ export default function ScamCheckPage() {
     if (j) setSource(`Aus Job ${j}`);
   }, []);
 
-  const scan = useCallback(async (target: string) => {
-    setChecking(true);
-    setResult(null);
+  // Detect the extension on desktop.
+  useEffect(() => {
+    if (mobile) { setExt("no"); return; }
+    let active = true;
+    detectExtension().then((yes) => { if (active) setExt(yes ? "yes" : "no"); });
+    return () => { active = false; };
+  }, [mobile]);
 
-    const pre = quickUrlCheck(target);
-    if (pre) {
-      setChecking(false);
-      showToast(pre, "error");
-      return;
-    }
-
+  const simpleScan = useCallback(async (target: string) => {
     // Open the page in the user's own tab (works on desktop & mobile).
     const tab = window.open(target, "_blank", "noopener");
     if (!tab) {
-      setChecking(false);
       showToast("Pop-up wurde blockiert – bitte erlauben und erneut versuchen.", "error");
       return;
     }
 
-    let ev: ScamEvidence;
+    let ev: ScamEvidence = heuristicEvidence(target);
     try {
-      // A browser tab on another origin cannot be read by a plain script (CORS),
-      // so we try the deterministic heuristic + a live cross-origin fetch that
-      // usually fails, then fall back gracefully.
       const res = await fetch(target, { mode: "cors" }).catch(() => null);
       if (res && res.ok) {
         const html = await res.text();
         const doc = new DOMParser().parseFromString(html, "text/html");
-        ev = { ...(doc.body ? scanDom(doc, target) : {}), inspected: true } as ScamEvidence;
-      } else {
-        ev = heuristicEvidence(target);
+        if (doc.body) {
+          ev = { ...scanDom(doc, target), inspected: true } as ScamEvidence;
+        }
       }
     } catch {
-      ev = heuristicEvidence(target);
+      /* cross-origin blocked — keep heuristic */
     }
 
-    // Optional: ask the AI to interpret the URL + what we found.
     const ai = await fetch("/api/ai/scam-check", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -80,20 +77,36 @@ export default function ScamCheckPage() {
       }),
     }).then(async (r) => {
       if (r.ok) return r.json();
-      if (r.status === 402) return { score: null, analysis: null, noCredits: true };
       return { score: null, analysis: null };
     }).catch(() => ({ score: null, analysis: null }));
 
     const finalScore = typeof ai.score === "number" ? ai.score : ev.score;
     const finalLevel = finalScore >= 70 ? "red" : finalScore >= 50 ? "orange" : finalScore >= 30 ? "yellow" : "green";
+    setResult({ ...ev, score: finalScore, level: finalLevel, pageTitle: ev.pageTitle || target });
+  }, [source, showToast]);
 
-    setResult({
-      ...ev,
-      score: finalScore,
-      level: finalLevel,
-      pageTitle: ev.pageTitle || target,
-      noCredits: (ai as any).noCredits,
-    } as any);
+  const extensionScan = useCallback(async (target: string) => {
+    setChecking(true);
+    setResult(null);
+    const res = await scanWithExtension(target);
+    if (!res.ok || !res.evidence) {
+      setChecking(false);
+      showToast(res.error || "Extension-Scan fehlgeschlagen – versuche den simplen Scan.", "error");
+      return;
+    }
+    let ev = res.evidence as ScamEvidence;
+    const ai = await fetch("/api/ai/scam-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        website_url: target,
+        client_name: source || undefined,
+        job_description: ev.flags.map((f) => f.label).join("; ") || undefined,
+      }),
+    }).then(async (r) => (r.ok ? r.json() : { score: null, analysis: null })).catch(() => ({ score: null, analysis: null }));
+    const finalScore = typeof ai.score === "number" ? ai.score : ev.score;
+    const finalLevel = finalScore >= 70 ? "red" : finalScore >= 50 ? "orange" : finalScore >= 30 ? "yellow" : "green";
+    setResult({ ...ev, score: finalScore, level: finalLevel, pageTitle: ev.pageTitle || target });
     setChecking(false);
   }, [source, showToast]);
 
@@ -107,7 +120,14 @@ export default function ScamCheckPage() {
       showToast("Bitte eine gültige URL mit http(s):// eingeben.", "error");
       return;
     }
-    scan(target);
+    const pre = quickUrlCheck(target);
+    if (pre) { showToast(pre, "error"); return; }
+
+    if (!mobile && ext === "yes") {
+      extensionScan(target);
+    } else {
+      simpleScan(target);
+    }
   };
 
   const m = result ? LEVEL_META[result.level] : null;
@@ -116,8 +136,7 @@ export default function ScamCheckPage() {
     <div className="space-y-6 animate-fade-in max-w-3xl">
       <h1 className="text-3xl font-extrabold">🕵️ {t("scamCheck")}</h1>
       <p className="text-slate-500 dark:text-slate-400">
-        Gib die Job-URL ein (oder nutze einen Job aus Live-Feed / Extension, der hier reingezogen wurde). Beim Scan öffnet
-        sich die Seite in deinem Tab und wird direkt auf Scam-Muster geprüft – auch am Handy.
+        Job-URL eingeben (oder einen Job aus Live-Feed / Extension nutzen) und auf Scan drücken.
       </p>
 
       <Card>
@@ -145,7 +164,36 @@ export default function ScamCheckPage() {
                 )}
               </Button>
             </div>
-            <p className="text-xs text-slate-400 mt-2">Die Seite öffnet sich in einem neuen Tab und wird dort direkt analysiert.</p>
+          </div>
+
+          {/* Scan mode notice */}
+          <div className={`rounded-2xl border p-3 text-sm ${mobile ? "border-amber-300/60 bg-amber-50/70 dark:bg-amber-900/10" : ext === "yes" ? "border-green-300/60 bg-green-50/70 dark:bg-green-900/10" : "border-kawaii-lavender/40 bg-kawaii-lavender/10 dark:bg-dark-surface"}`}>
+            {mobile ? (
+              <p className="text-amber-700 dark:text-amber-300">
+                ⚠️ <strong>Vorsicht – nur ein grober Scan.</strong> Auf dem Handy kann Sari die Seite nicht direkt lesen;
+                das Ergebnis basiert auf ein paar kleinen Fakten (Domain + KI). Für den richtigen Scan bitte den PC verwenden.
+              </p>
+            ) : ext === "checking" ? (
+              <p className="text-slate-500">Prüfe Browser-Extension…</p>
+            ) : ext === "yes" ? (
+              <p className="text-green-700 dark:text-green-300">
+                ✅ Browser-Extension erkannt – der Scan öffnet die echte Seite und prüft sie dort vollständig (DOM).
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-kawaii-purple dark:text-kawaii-lavender">
+                  🧩 Browser-Extension nicht installiert. Für den <strong>vollen Scan</strong> auf der echten Seite:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => window.open("https://chrome.google.com/webstore", "_blank")}>
+                    📥 Sari-Extension installieren
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => simpleScan(url.trim())} disabled={checking || !url.trim()}>
+                    Oder: simpler Scan (wie am Handy) →
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {source && <p className="text-xs text-kawaii-purple dark:text-kawaii-lavender">📎 {source}</p>}
@@ -204,8 +252,6 @@ export default function ScamCheckPage() {
   );
 }
 
-/* Local helper (kept out of the shared lib to avoid importing a DOM type into
-   a module that also runs on the server). */
 function scanDom(doc: Document, baseUrl: string): Partial<ScamEvidence> {
   const flags: { label: string; severity: number }[] = [];
   const seen = new Set<string>();
