@@ -10,6 +10,7 @@ import { useLocale } from "@/lib/i18n/context";
 import { useToast } from "@/components/toast";
 import { Textarea } from "@/components/ui/textarea";
 import { CURRENCIES, CURRENCY_SYMBOLS } from "@/lib/currency";
+import TelegramSettings from "@/components/telegram-settings";
 
 interface Profile {
   full_name: string;
@@ -691,6 +692,9 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Telegram Integration */}
+      <TelegramSettings />
 
       {/* Google Calendar Integration */}
       <Card>
