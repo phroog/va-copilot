@@ -20,6 +20,7 @@ export async function GET() {
 
   return NextResponse.json({
     configured: telegramConfigured(),
+    botUsername: process.env.TELEGRAM_BOT_USERNAME || "",
     linked: !!link,
     chatId: link?.chat_id ?? null,
     username: link?.username ?? null,

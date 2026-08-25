@@ -10,6 +10,7 @@ import MoodCheckDialog from "@/components/mood-check-dialog";
 import { useProfileName } from "@/lib/use-profile-name";
 import { formatDuration } from "@/lib/utils";
 import { formatMoney, convert, normalizeCurrency } from "@/lib/currency";
+import TelegramCta from "@/components/telegram-cta";
 
 interface FeedJob {
   id: string;
@@ -230,6 +231,7 @@ export default function DashboardHome() {
       </div>
 
       {/* Quota + Timer */}
+      <TelegramCta />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="pb-2">

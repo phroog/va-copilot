@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/components/toast";
 
+const BOT_URL = (username: string) => `https://t.me/${username}`;
+
 export default function TelegramSettings() {
   const { showToast } = useToast();
-  const [status, setStatus] = useState<{ configured: boolean; linked: boolean; chatId: number | null; username: string | null; linkedAt: string | null } | null>(null);
+  const [status, setStatus] = useState<{ configured: boolean; botUsername: string; linked: boolean; chatId: number | null; username: string | null; linkedAt: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [code, setCode] = useState("");
   const [generating, setGenerating] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<{ telegram_enabled: boolean; telegram_push_matches: boolean; telegram_push_followups: boolean; telegram_push_invoices: boolean; telegram_push_scam: boolean }>({
@@ -87,6 +88,8 @@ export default function TelegramSettings() {
 
   if (loading) return <Card className="animate-pulse"><CardContent className="p-8" /></Card>;
 
+  const botName = status?.botUsername || "dein-bot";
+
   return (
     <Card>
       <CardHeader>
@@ -129,16 +132,35 @@ export default function TelegramSettings() {
           </>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-slate-500">
-              1. Öffne Telegram und suche deinen Bot.<br />
-              2. Klicke unten auf <b>„Code generieren"</b>.<br />
-              3. Schicke dem Bot <b>/start &lt;code&gt;</b>.
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              1. Öffne den Bot in Telegram:{" "}
+              <a
+                href={BOT_URL(botName)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-kawaii-purple dark:text-kawaii-lavender underline underline-offset-2"
+              >
+                @{botName} ↗
+              </a>
             </p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              2. Klicke in Telegram auf <b>Start</b>.
+            </p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              3. Klicke unten auf <b>„Code generieren"</b> und schicke dem Bot <b>/start &lt;code&gt;</b>.
+            </p>
+
             {generatedCode ? (
               <div className="rounded-2xl bg-kawaii-purple/10 border border-kawaii-purple/40 p-4 text-center">
                 <p className="text-xs text-slate-500 mb-1">Dein Verifizierungs-Code:</p>
                 <p className="text-3xl font-extrabold tracking-widest text-kawaii-purple dark:text-kawaii-lavender">{generatedCode}</p>
-                <p className="text-xs text-slate-400 mt-2">Schicke <code>/start {generatedCode}</code> an den Bot.</p>
+                <p className="text-xs text-slate-400 mt-2">
+                  Schicke <code>/start {generatedCode}</code> an{" "}
+                  <a href={BOT_URL(botName)} target="_blank" rel="noopener noreferrer" className="text-kawaii-purple underline">@{botName}</a>.
+                </p>
+                <a href={BOT_URL(botName)} target="_blank" rel="noopener noreferrer">
+                  <Button size="sm" className="mt-3">📲 Jetzt im Bot öffnen</Button>
+                </a>
               </div>
             ) : (
               <Button variant="primary" onClick={generateCode} disabled={generating}>
