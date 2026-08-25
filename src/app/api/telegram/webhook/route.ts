@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { sendTelegram, userIdForChat } from "@/lib/telegram";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { sendTelegram } from "@/lib/telegram";
 import { formatMoney, convert, normalizeCurrency } from "@/lib/currency";
 
 export const runtime = "nodejs";
@@ -54,35 +55,24 @@ async function handleMessage(chatId: number, text: string, username: string) {
       await sendTelegram(chatId, "👋 Willkommen! Um dein Sari-Konto zu verbinden:\n1. Öffne Sari → Einstellungen → Telegram\n2. Klicke auf „Mit Telegram verbinden“\n3. Schicke mir den 6-stelligen Code mit /start <code>");
       return;
     }
-    const { data: pending } = await supabase
-      .from("telegram_verify_codes")
-      .select("user_id")
-      .eq("code", code)
-      .maybeSingle();
-    if (!pending) {
+    // SECURITY DEFINER RPC: verifies the code + links the chat, bypassing RLS.
+    const { data, error } = await supabase.rpc("telegram_link_account", {
+      p_code: code,
+      p_chat_id: chatId,
+      p_username: username,
+    });
+    if (error || !data?.ok) {
       await sendTelegram(chatId, "❌ Ungültiger oder abgelaufener Code. Bitte neuen Code in Sari generieren.");
       return;
     }
-    const { error } = await supabase.from("telegram_links").upsert(
-      { user_id: pending.user_id, chat_id: chatId, username },
-      { onConflict: "user_id" }
-    );
-    if (error) {
-      await sendTelegram(chatId, "⚠️ Verbindung fehlgeschlagen. Bitte versuche es erneut.");
-      return;
-    }
-    // consume the code
-    await supabase.from("telegram_verify_codes").delete().eq("user_id", pending.user_id);
-    await supabase
-      .from("user_settings")
-      .update({ telegram_enabled: true })
-      .eq("user_id", pending.user_id);
     await sendTelegram(chatId, "✅ Verbunden! Du erhältst jetzt Push-Benachrichtigungen. Verfügbare Befehle:\n/match – neueste Matches\n/stats – Wochenstatistik\n/invoices – offene Rechnungen");
     return;
   }
 
   // ── All other commands need a linked account ─────────────────────
-  const userId = await userIdForChat(chatId);
+  // Resolve via RPC (webhook has no user session, RLS would block the lookup).
+  const { data: userIdData } = await supabase.rpc("telegram_user_for_chat", { p_chat_id: chatId });
+  const userId: string | null = userIdData || null;
   if (!userId) {
     await sendTelegram(chatId, "⚠️ Dieses Chat ist nicht mit einem Sari-Konto verbunden. Schicke /start <code> um zu verbinden.");
     return;
@@ -105,7 +95,7 @@ async function handleMessage(chatId: number, text: string, username: string) {
 }
 
 async function cmdMatch(userId: string, chatId: number) {
-  const supabase = createClient();
+  const supabase = createServiceRoleClient();
   const { data: profile } = await supabase
     .from("profiles")
     .select("job_vector")
@@ -146,7 +136,7 @@ async function cmdMatch(userId: string, chatId: number) {
 }
 
 async function cmdStats(userId: string, chatId: number) {
-  const supabase = createClient();
+  const supabase = createServiceRoleClient();
   const { data: profile } = await supabase
     .from("profiles")
     .select("base_currency")
@@ -193,7 +183,7 @@ async function cmdStats(userId: string, chatId: number) {
 }
 
 async function cmdInvoices(userId: string, chatId: number) {
-  const supabase = createClient();
+  const supabase = createServiceRoleClient();
   const { data: invoices } = await supabase
     .from("invoices")
     .select("id, invoice_number, client_name, status, tax_rate, currency, invoice_items(quantity, unit_price, total)")

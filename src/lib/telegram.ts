@@ -26,15 +26,13 @@ export async function sendTelegram(chatId: number | string, text: string): Promi
   }
 }
 
-/* Find the user_id linked to a Telegram chat_id (for inbound bot commands). */
+/* Find the user_id linked to a Telegram chat_id (for inbound bot commands).
+   Uses the SECURITY DEFINER RPC so it works without a user session (RLS would
+   block a direct query from the anonymous webhook). */
 export async function userIdForChat(chatId: number): Promise<string | null> {
   const supabase = createClient();
-  const { data } = await supabase
-    .from("telegram_links")
-    .select("user_id")
-    .eq("chat_id", chatId)
-    .maybeSingle();
-  return data?.user_id || null;
+  const { data } = await supabase.rpc("telegram_user_for_chat", { p_chat_id: chatId });
+  return (data as string) || null;
 }
 
 /* Send a message to a user's linked Telegram chat (if linked + enabled). */
