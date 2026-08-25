@@ -47,7 +47,13 @@ export async function POST() {
   }
 
   const code = crypto.randomInt(100000, 1000000).toString();
-  await supabase.from("telegram_verify_codes").upsert({ user_id: user.id, code, created_at: new Date().toISOString() }, { onConflict: "user_id" });
+  const { error: codeError } = await supabase.from("telegram_verify_codes").upsert(
+    { user_id: user.id, code, created_at: new Date().toISOString() },
+    { onConflict: "user_id" }
+  );
+  if (codeError) {
+    return NextResponse.json({ error: "Code konnte nicht gespeichert werden: " + codeError.message }, { status: 500 });
+  }
 
   return NextResponse.json({ code, botUsername: process.env.TELEGRAM_BOT_USERNAME || "" });
 }
