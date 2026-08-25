@@ -67,7 +67,7 @@ export async function GET() {
         .from("follow_ups")
         .select("id, action, due_date")
         .eq("user_id", link.user_id)
-        .eq("done", false);
+        .eq("status", "pending");
 
       const now = Date.now();
       const due = (followUps ?? []).filter((f) => {

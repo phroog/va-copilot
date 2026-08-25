@@ -23,28 +23,52 @@ Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
   // The payload is the inserted global_job row (from pg_net).
-  let job;
+  let payload;
   try {
     const body = await req.json();
-    job = body?.record || body?.job || body;
+    payload = body?.record || body?.job || body;
   } catch {
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 
-  const jobId = job?.id;
+  // ── Follow-up reminder (INSERT on follow_ups) ────────────────────
+  if (payload?.due_date && payload?.user_id) {
+    const due = new Date(payload.due_date);
+    if (!isNaN(due.getTime())) {
+      const { data: settings } = await supabase
+        .from("user_settings")
+        .select("telegram_enabled, telegram_push_followups")
+        .eq("user_id", payload.user_id)
+        .maybeSingle();
+      if (settings?.telegram_enabled && settings.telegram_push_followups === true) {
+        const { data: link } = await supabase
+          .from("telegram_links")
+          .select("chat_id")
+          .eq("user_id", payload.user_id)
+          .maybeSingle();
+        if (link) {
+          const action = payload.action || payload.job_id || "Follow-up";
+          await sendTelegram(BOT_TOKEN, link.chat_id, `⏰ <b>Follow-up fällig</b>\n\n${action} (bis ${payload.due_date})`);
+        }
+      }
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+
+  const jobId = payload?.id;
   if (!jobId) return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
 
   // Dedup: only push jobs newer than a few minutes (avoid re-pushing old rows
   // inserted by the collector in bulk).
-  const collected = job?.collected_at || job?.posted_at || new Date().toISOString();
+  const collected = payload?.collected_at || payload?.posted_at || new Date().toISOString();
   if (Date.now() - new Date(collected).getTime() > 10 * 60 * 1000) {
     return new Response(JSON.stringify({ ok: true, skipped: "old" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 
-  const jobVec = Array.isArray(job.profile_vector) ? job.profile_vector : null;
-  const title = job.title || "";
-  const platform = job.platform || "";
-  const budget = job.budget || "";
+  const jobVec = Array.isArray(payload.profile_vector) ? payload.profile_vector : null;
+  const title = payload.title || "";
+  const platform = payload.platform || "";
+  const budget = payload.budget || "";
 
   // All users with Telegram linked + match push enabled.
   const { data: links } = await supabase

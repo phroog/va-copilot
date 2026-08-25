@@ -38,3 +38,29 @@ create trigger trg_telegram_push_on_job
   after insert on global_jobs
   for each row
   execute function public.telegram_push_on_job();
+
+-- ── Follow-up reminder: when a new follow-up is created, notify via Telegram ──
+create or replace function public.telegram_push_on_followup()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform net.http_post(
+    url := current_setting('app.telegram_push_url', true),
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || current_setting('app.telegram_push_secret', true)
+    ),
+    body := jsonb_build_object('record', to_jsonb(new))
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_telegram_push_on_followup on follow_ups;
+create trigger trg_telegram_push_on_followup
+  after insert on follow_ups
+  for each row
+  execute function public.telegram_push_on_followup();
