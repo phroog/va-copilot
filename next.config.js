@@ -51,6 +51,14 @@ const nextConfig = {
   experimental: {
     scrollRestoration: true,
   },
+  webpack: (config) => {
+    // Supabase Edge Functions live in this repo but are deployed separately
+    // (Deno runtime). Never let Next.js try to compile them.
+    config.resolve.alias = {
+      ...config.resolve.alias,
+    };
+    return config;
+  },
 };
 
 module.exports = nextConfig;
