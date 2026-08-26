@@ -14,6 +14,11 @@ export default function Footer() {
     { label: t("footerFinance"), href: "/dashboard/finances" },
     { label: t("footerPricing"), href: "/pricing" },
   ];
+  const legalLinks = [
+    { label: "Imprint", href: "/legal/imprint" },
+    { label: "Terms", href: "/legal/terms" },
+    { label: "Privacy", href: "/legal/privacy" },
+  ];
 
   return (
     <footer className="border-t border-sari-lavender/30 dark:border-dark-surface bg-white/50 dark:bg-dark-bg/50">
@@ -38,7 +43,15 @@ export default function Footer() {
           </nav>
           <LanguageDropdown />
         </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 text-center mt-6">{t("footerTagline")}</p>
+        <div className="flex flex-wrap justify-center gap-5 mt-6 text-xs text-slate-400 dark:text-slate-500">
+          {legalLinks.map((l) => (
+            <Link key={l.label} href={l.href} className="hover:text-sari-ube dark:hover:text-sari-lavender transition-colors">
+              {l.label}
+            </Link>
+          ))}
+          <span>Vascora OÜ · Tornimäe tn 5, 10145 Tallinn, Estonia</span>
+        </div>
+        <p className="text-sm text-slate-400 dark:text-slate-500 text-center mt-4">{t("footerTagline")}</p>
         <p className="text-xs text-slate-400 dark:text-slate-500 text-center mt-1">{t("footerMadeWith")}</p>
       </div>
     </footer>

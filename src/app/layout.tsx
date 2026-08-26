@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { LocaleProvider } from "@/lib/i18n/context";
 import { ThemeProvider } from "@/lib/theme/theme-provider";
+import CookieConsent from "@/components/cookie-consent";
 
 export const metadata: Metadata = {
   title: "Sari",
@@ -17,7 +18,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-[#FFF0F5] dark:bg-dark-bg text-slate-800 dark:text-slate-100 antialiased">
         <ThemeProvider>
-          <LocaleProvider>{children}</LocaleProvider>
+          <LocaleProvider>
+            {children}
+            <CookieConsent />
+          </LocaleProvider>
         </ThemeProvider>
       </body>
     </html>
