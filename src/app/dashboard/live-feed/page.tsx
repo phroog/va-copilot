@@ -108,19 +108,31 @@ export default function LiveFeedPage() {
 
   const PAGE_SIZE = 50;
 
-  const applyDefaults = useCallback((job: any): FeedJob => ({
-    ...job,
-    is_saved: job.is_saved ?? false,
-    is_applied: job.is_applied ?? false,
-    matching_score: job.matching_score ?? null,
-    matched_skills: Array.isArray(job.matched_skills) ? job.matched_skills : [],
-    category: job.category ?? null,
-    pitch_id: job.pitch_id ?? null,
-    profile_match: job.profile_match ?? null,
-    scam_risk: job.scam_risk ?? null,
-    scam_level: job.scam_level ?? null,
-    scam_flags: Array.isArray(job.scam_flags) ? job.scam_flags : [],
-  }), []);
+  const applyDefaults = useCallback((job: any): FeedJob => {
+    const str = (v: any): string => (typeof v === "string" ? v : v == null ? "" : String(v));
+    const arr = (v: any): string[] => (Array.isArray(v) ? v.map((x) => String(x)) : []);
+    return {
+      ...job,
+      title: str(job.title),
+      description: str(job.description),
+      budget: str(job.budget),
+      client_name: str(job.client_name),
+      client_country: str(job.client_country),
+      platform: str(job.platform),
+      category: str(job.category),
+      experience_level: str(job.experience_level),
+      skills: arr(job.skills),
+      is_saved: !!job.is_saved,
+      is_applied: !!job.is_applied,
+      matching_score: typeof job.matching_score === "number" ? job.matching_score : null,
+      matched_skills: arr(job.matched_skills),
+      pitch_id: job.pitch_id ?? null,
+      profile_match: typeof job.profile_match === "number" ? job.profile_match : null,
+      scam_risk: typeof job.scam_risk === "number" ? job.scam_risk : null,
+      scam_level: str(job.scam_level) || null,
+      scam_flags: arr(job.scam_flags),
+    };
+  }, []);
 
   const buildQuery = useCallback(() => {
     const p = new URLSearchParams();
@@ -617,12 +629,12 @@ function FeedJobCard({
             📅 {job.posted_at ? "Posted " + timeAgo(job.posted_at) : "Collected " + timeAgo(job.collected_at)}
             {job.client_name ? ` · 👤 ${job.client_name}${job.client_country ? " (" + job.client_country + ")" : ""}` : ""}
           </p>
-          {job.description && (
+          {job.description ? (
             <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mt-2">
               {job.description}
             </p>
-          )}
-          {job.skills && job.skills.length > 0 && (
+          ) : null}
+          {Array.isArray(job.skills) && job.skills.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {job.skills.slice(0, 6).map((s) => (
                 <span key={s} className="text-xs px-2 py-0.5 bg-kawaii-lavender/20 dark:bg-kawaii-purple/20 rounded-full">
@@ -631,7 +643,7 @@ function FeedJobCard({
               ))}
             </div>
           )}
-          {job.matched_skills && job.matched_skills.length > 0 && (
+          {Array.isArray(job.matched_skills) && job.matched_skills.length > 0 && (
             <div className="flex flex-wrap items-center gap-1 mt-2">
               <span className="text-xs font-semibold text-green-600 dark:text-green-400">🎯 Matches:</span>
               {job.matched_skills.slice(0, 6).map((s) => (
