@@ -1,8 +1,8 @@
 const COMPANY = {
   name: "Vascora OÜ",
   form: "OÜ (osaühing / private limited company)",
-  registry: "[Registry code – add from e-Business Register]",
-  vat: "[VAT ID – if registered]",
+  registry: "17472482",
+  vat: null as string | null,
   address: "Tornimäe tn 5, 10145 Tallinn, Harju maakond, Kesklinna linnaosa, Estonia",
   rep: "Julian Busarello",
   email: "hello.vascora@gmail.com",
@@ -23,7 +23,7 @@ export default function ImprintPage() {
           <Row label="Company" value={COMPANY.name} />
           <Row label="Legal form" value={COMPANY.form} />
           <Row label="Registry code" value={COMPANY.registry} />
-          <Row label="VAT ID" value={COMPANY.vat} />
+          {COMPANY.vat && <Row label="VAT ID" value={COMPANY.vat} />}
           <Row label="Registered office" value={COMPANY.address} />
           <Row label="Represented by" value={COMPANY.rep} />
           <Row label="Contact" value={COMPANY.email} />
