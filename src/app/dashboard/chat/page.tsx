@@ -51,19 +51,23 @@ export default function ChatPage() {
       })
       .catch(() => setLoading(false));
 
-    // Subscribe to realtime
-    const channel = supabase
-      .channel("chat_messages")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_messages" },
-        (payload: any) => {
-          setMessages((prev) => [...prev, payload.new as ChatMessage]);
-        }
-      )
-      .subscribe();
+    // Subscribe to realtime (guarded: some mobile networks/browsers throw a
+    // SecurityError on WebSocket — the page must not crash because of that).
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel("chat_messages")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "chat_messages" },
+          (payload: any) => {
+            setMessages((prev) => [...prev, payload.new as ChatMessage]);
+          }
+        )
+        .subscribe();
+    } catch (_e) {}
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { if (channel) { try { supabase.removeChannel(channel); } catch (_e) {} } };
   }, []);
 
   useEffect(() => {

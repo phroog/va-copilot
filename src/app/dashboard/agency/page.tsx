@@ -57,7 +57,7 @@ function AgencyVault({ orgId }: { orgId: string }) {
       const res = await fetch(`/api/org/${orgId}/vault`);
       const data = await res.json();
       setItems(data.items ?? []);
-    } catch {} finally { setLoading(false); }
+    } catch (_e) {} finally { setLoading(false); }
   };
 
   useEffect(() => { if (orgId) fetchItems(); }, [orgId]);
@@ -223,7 +223,7 @@ function TeamChat({ orgId, currentUserId }: { orgId: string; currentUserId: stri
       if (list.length > 0 && !activeRoomId) {
         setActiveRoomId(list[0].id);
       }
-    } catch {} finally { setLoadingRooms(false); }
+    } catch (_e) {} finally { setLoadingRooms(false); }
   };
 
   useEffect(() => { fetchRooms(); }, [orgId]);
@@ -235,7 +235,7 @@ function TeamChat({ orgId, currentUserId }: { orgId: string; currentUserId: stri
       const res = await fetch(`/api/org/${orgId}/rooms/${roomId}/messages`);
       const data = await res.json();
       setMessages(data.messages ?? []);
-    } catch {} finally { setLoadingMessages(false); }
+    } catch (_e) {} finally { setLoadingMessages(false); }
   };
 
   useEffect(() => {
@@ -244,22 +244,26 @@ function TeamChat({ orgId, currentUserId }: { orgId: string; currentUserId: stri
     }
   }, [activeRoomId]);
 
-  // Realtime subscription
+  // Realtime subscription (guarded: some mobile networks/browsers throw a
+  // SecurityError on WebSocket — the page must not crash because of that).
   useEffect(() => {
     if (!activeRoomId) return;
 
-    const channel = supabase
-      .channel(`org_chat_${activeRoomId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "org_chat_messages", filter: `room_id=eq.${activeRoomId}` },
-        (payload: any) => {
-          setMessages((prev) => [...prev, payload.new]);
-        }
-      )
-      .subscribe();
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel(`org_chat_${activeRoomId}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "org_chat_messages", filter: `room_id=eq.${activeRoomId}` },
+          (payload: any) => {
+            setMessages((prev) => [...prev, payload.new]);
+          }
+        )
+        .subscribe();
+    } catch (_e) {}
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { if (channel) { try { supabase.removeChannel(channel); } catch (_e) {} } };
   }, [activeRoomId]);
 
   useEffect(() => {
@@ -458,7 +462,7 @@ function AgencyInner() {
       if (list.length > 0) {
         setActiveOrg(list[0]);
       }
-    } catch {} finally { setLoading(false); }
+    } catch (_e) {} finally { setLoading(false); }
   };
 
   useEffect(() => {
@@ -474,7 +478,7 @@ function AgencyInner() {
       const res = await fetch(`/api/org/${orgId}/members`);
       const data = await res.json();
       setMembers(data.members ?? []);
-    } catch {} finally { setMembersLoading(false); }
+    } catch (_e) {} finally { setMembersLoading(false); }
   };
 
   useEffect(() => {
@@ -498,7 +502,7 @@ function AgencyInner() {
         const data = await res.json();
         setSearchResults(data.users ?? []);
         setShowResults(true);
-      } catch {} finally { setSearching(false); }
+      } catch (_e) {} finally { setSearching(false); }
     }, 300);
     return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
   }, [inviteSearch, activeOrg, selectedUser]);

@@ -195,36 +195,47 @@ export default function LiveFeedPage() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  // Realtime: new global jobs appear automatically
+  // Realtime: new global jobs appear automatically. Wrapped in try/catch — on
+  // some mobile networks/browsers `new WebSocket()` throws a SecurityError
+  // ("operation is insecure") which would otherwise crash the page. The polling
+  // fallback below keeps the feed working even when realtime is unavailable.
   useEffect(() => {
-    const channel = supabase
-      .channel("global-jobs-live-feed")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "global_jobs" },
-        (payload: any) => {
-          const job = payload.new;
-          if (!job?.id) return;
-          const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-          const collected = new Date(job.collected_at).getTime();
-          if (isNaN(collected) || collected < cutoff) return;
-          setJobs((prev) => [applyDefaults(job), ...prev.filter((j) => j.id !== job.id)]);
-          setNewIds((prev) => new Set(prev).add(job.id));
-          setTimeout(() => {
-            setNewIds((prev) => {
-              const next = new Set(prev);
-              next.delete(job.id);
-              return next;
-            });
-          }, 4000);
-        }
-      )
-      .subscribe((status) => {
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel("global-jobs-live-feed")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "global_jobs" },
+          (payload: any) => {
+            const job = payload.new;
+            if (!job?.id) return;
+            const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+            const collected = new Date(job.collected_at).getTime();
+            if (isNaN(collected) || collected < cutoff) return;
+            setJobs((prev) => [applyDefaults(job), ...prev.filter((j) => j.id !== job.id)]);
+            setNewIds((prev) => new Set(prev).add(job.id));
+            setTimeout(() => {
+              setNewIds((prev) => {
+                const next = new Set(prev);
+                next.delete(job.id);
+                return next;
+              });
+            }, 4000);
+          }
+        );
+      channel.subscribe((status: string) => {
         setLive(status === "SUBSCRIBED");
       });
+    } catch {
+      // WebSocket unavailable (e.g. mobile network blocks it) — polling covers it.
+      setLive(false);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        try { supabase.removeChannel(channel); } catch (_e) {}
+      }
     };
   }, [supabase, applyDefaults]);
 
