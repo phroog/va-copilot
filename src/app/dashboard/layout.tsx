@@ -14,6 +14,7 @@ import dynamic from "next/dynamic";
 const MochiHub = dynamic(() => import("@/components/mochi-hub"), { ssr: false });
 import { ToastProvider } from "@/components/toast";
 import { FocusTimerProvider } from "@/components/focus-timer-provider";
+import ClientErrorReporter from "@/components/client-error-reporter";
 
 const sidebarGroups = [
   {
@@ -217,6 +218,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       <MochiHub />
+      <ClientErrorReporter />
     </div>
     </ToastProvider>
     </FocusTimerProvider>
