@@ -39,7 +39,7 @@ export default function TelegramSettings() {
         });
       }
     } catch {
-      showToast("Fehler beim Laden der Telegram-Einstellungen", "error");
+      showToast("Failed to load Telegram settings", "error");
     } finally {
       setLoading(false);
     }
@@ -55,9 +55,9 @@ export default function TelegramSettings() {
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Fehler");
       setGeneratedCode(d.code);
-      showToast("Code generiert! Schicke ihn dem Bot mit /start <code>.");
+      showToast("Code generiert! Send ihn dem Bot mit /start <code>.");
     } catch (e: any) {
-      showToast(e?.message || "Fehlgeschlagen", "error");
+      showToast(e?.message || "Failed", "error");
     } finally {
       setGenerating(false);
     }
@@ -73,9 +73,9 @@ export default function TelegramSettings() {
         body: JSON.stringify(next),
       });
       if (!res.ok) throw new Error("Update fehlgeschlagen");
-      showToast("Gespeichert ✅");
+      showToast("Saved ✅");
     } catch {
-      showToast("Speichern fehlgeschlagen", "error");
+      showToast("Saving failed", "error");
     }
   };
 
@@ -94,27 +94,27 @@ export default function TelegramSettings() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">📨 Telegram</CardTitle>
-        <CardDescription>Push-Benachrichtigungen &amp; Befehle über einen Telegram-Bot.</CardDescription>
+        <CardDescription>Push notifications & commands via a Telegram bot.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {!status?.configured ? (
           <p className="text-sm text-slate-500">
-            ⚠️ Telegram ist noch nicht eingerichtet (Bot-Token fehlt auf dem Server).
+            ⚠️ Telegram is not set up yet (bot token missing on the server).
           </p>
         ) : status?.linked ? (
           <>
             <div className="rounded-2xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 p-3 text-sm">
-              ✅ Verbunden mit Chat <b>@{status.username || status.chatId}</b>
+              ✅ Connected to chat <b>@{status.username || status.chatId}</b>
               {status.linkedAt ? ` (seit ${new Date(status.linkedAt).toLocaleDateString()})` : ""}
             </div>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Benachrichtigungen</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Notifications</p>
               {([
-                ["telegram_push_matches", "🎯 Neue Job-Matches"],
-                ["telegram_push_followups", "⏰ Fällige Follow-ups"],
-                ["telegram_push_invoices", "📄 Offene Rechnungen"],
-                ["telegram_push_scam", "🛡️ Scam-Warnungen"],
+                ["telegram_push_matches", "🎯 New job matches"],
+                ["telegram_push_followups", "⏰ Due follow-ups"],
+                ["telegram_push_invoices", "📄 Open invoices"],
+                ["telegram_push_scam", "🛡️ Scam alerts"],
               ] as [keyof typeof prefs, string][]).map(([key, label]) => (
                 <label key={key} className="flex items-center gap-3 py-2 cursor-pointer">
                   <input
@@ -128,12 +128,12 @@ export default function TelegramSettings() {
               ))}
             </div>
 
-            <Button variant="outline" size="sm" onClick={disconnect}>Verbinden lösen</Button>
+            <Button variant="outline" size="sm" onClick={disconnect}>Disconnect</Button>
           </>
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              1. Öffne den Bot in Telegram:{" "}
+              1. Open the bot in Telegram:{" "}
               <a
                 href={BOT_URL(botName)}
                 target="_blank"
@@ -144,27 +144,27 @@ export default function TelegramSettings() {
               </a>
             </p>
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              2. Klicke in Telegram auf <b>Start</b>.
+              2. Tap <b>Start</b>.
             </p>
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              3. Klicke unten auf <b>„Code generieren"</b> und schicke dem Bot <b>/start &lt;code&gt;</b>.
+              3. Click <b>„Generate code"</b> and send the bot <b>/start &lt;code&gt;</b>.
             </p>
 
             {generatedCode ? (
               <div className="rounded-2xl bg-kawaii-purple/10 border border-kawaii-purple/40 p-4 text-center">
-                <p className="text-xs text-slate-500 mb-1">Dein Verifizierungs-Code:</p>
+                <p className="text-xs text-slate-500 mb-1">Your verification code:</p>
                 <p className="text-3xl font-extrabold tracking-widest text-kawaii-purple dark:text-kawaii-lavender">{generatedCode}</p>
                 <p className="text-xs text-slate-400 mt-2">
-                  Schicke <code>/start {generatedCode}</code> an{" "}
+                  Send <code>/start {generatedCode}</code> an{" "}
                   <a href={BOT_URL(botName)} target="_blank" rel="noopener noreferrer" className="text-kawaii-purple underline">@{botName}</a>.
                 </p>
                 <a href={BOT_URL(botName)} target="_blank" rel="noopener noreferrer">
-                  <Button size="sm" className="mt-3">📲 Jetzt im Bot öffnen</Button>
+                  <Button size="sm" className="mt-3">📲 Open in bot now</Button>
                 </a>
               </div>
             ) : (
               <Button variant="primary" onClick={generateCode} disabled={generating}>
-                {generating ? "Generiere…" : "🔑 Code generieren"}
+                {generating ? "Generating…" : "🔑 Generate code"}
               </Button>
             )}
           </div>

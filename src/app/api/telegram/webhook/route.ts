@@ -52,7 +52,7 @@ async function handleMessage(chatId: number, text: string, username: string) {
   if (startMatch) {
     const code = startMatch[1];
     if (!code) {
-      await sendTelegram(chatId, "👋 Willkommen! Um dein Sari-Konto zu verbinden:\n1. Öffne Sari → Einstellungen → Telegram\n2. Klicke auf „Mit Telegram verbinden“\n3. Schicke mir den 6-stelligen Code mit /start <code>");
+      await sendTelegram(chatId, "👋 Welcome! To link your Sari account:\n1. Open Sari → Settings → Telegram\n2. Click \"Connect Telegram\"\n3. Send me the 6-digit code with /start <code>");
       return;
     }
     // SECURITY DEFINER RPC: verifies the code + links the chat, bypassing RLS.
@@ -62,10 +62,10 @@ async function handleMessage(chatId: number, text: string, username: string) {
       p_username: username,
     });
     if (error || !data?.ok) {
-      await sendTelegram(chatId, "❌ Ungültiger oder abgelaufener Code. Bitte neuen Code in Sari generieren.");
+      await sendTelegram(chatId, "❌ Invalid or expired code. Please generate a new one in Sari.");
       return;
     }
-    await sendTelegram(chatId, "✅ Verbunden! Du erhältst jetzt Push-Benachrichtigungen. Verfügbare Befehle:\n/match – neueste Matches\n/stats – Wochenstatistik\n/invoices – offene Rechnungen");
+    await sendTelegram(chatId, "✅ Connected! You'll now receive push notifications. Available commands:\n/match – latest matches\n/stats – weekly stats\n/invoices – open invoices");
     return;
   }
 
@@ -74,7 +74,7 @@ async function handleMessage(chatId: number, text: string, username: string) {
   const { data: userIdData } = await supabase.rpc("telegram_user_for_chat", { p_chat_id: chatId });
   const userId: string | null = userIdData || null;
   if (!userId) {
-    await sendTelegram(chatId, "⚠️ Dieses Chat ist nicht mit einem Sari-Konto verbunden. Schicke /start <code> um zu verbinden.");
+    await sendTelegram(chatId, "⚠️ This chat is not linked to a Sari account. Send /start <code> to connect.");
     return;
   }
 
@@ -123,14 +123,14 @@ async function cmdMatch(userId: string, chatId: number) {
     .slice(0, 5);
 
   if (list.length === 0) {
-    await sendTelegram(chatId, "📡 Noch keine starken Matches. Richte dein Profil in Sari ein und warte auf neue Jobs.");
+    await sendTelegram(chatId, "📡 No strong matches yet. Set up your profile in Sari and wait for new jobs.");
     return;
   }
 
-  const lines = ["🎯 Deine neuesten Matches:\n"];
+  const lines = ["🎯 Your latest matches:\n"];
   for (const j of list) {
     const when = j.posted_at ? new Date(j.posted_at).toLocaleDateString() : "";
-    lines.push(`<b>${j.title}</b> (${j.match}%)\n${j.platform} · ${j.budget || "k.A."} · ${when}\n`);
+    lines.push(`<b>${j.title}</b> (${j.match}%)\n${j.platform} · ${j.budget || "n/a"} · ${when}\n`);
   }
   await sendTelegram(chatId, lines.join("\n"));
 }
@@ -174,11 +174,11 @@ async function cmdStats(userId: string, chatId: number) {
 
   await sendTelegram(
     chatId,
-    `📊 <b>Wochenstatistik</b>\n\n` +
-      `💰 Einnahmen (7 Tage): <b>${formatMoney(Math.round(total * 100) / 100, base)}</b>\n` +
-      `🧾 ${count} Einnahme-Posten\n` +
-      `📝 ${(apps ?? []).length} Bewerbungen\n` +
-      `📄 ${openInvoices} offene Rechnungen`
+    `📊 <b>Weekly stats</b>\n\n` +
+      `💰 Earnings (7 days): <b>${formatMoney(Math.round(total * 100) / 100, base)}</b>\n` +
+      `🧾 ${count} income entries\n` +
+      `📝 ${(apps ?? []).length} applications\n` +
+      `📄 ${openInvoices} open invoices`
   );
 }
 
@@ -192,11 +192,11 @@ async function cmdInvoices(userId: string, chatId: number) {
 
   const list = invoices ?? [];
   if (list.length === 0) {
-    await sendTelegram(chatId, "📄 Keine offenen Rechnungen. Gut gemacht!");
+    await sendTelegram(chatId, "📄 No open invoices. Well done!");
     return;
   }
 
-  const lines = ["📄 <b>Offene Rechnungen</b>:\n"];
+  const lines = ["📄 <b>Open invoices</b>:\n"];
   for (const inv of list) {
     const sub = (inv.invoice_items || []).reduce((s, i) => s + Number(i.total ?? (i.quantity || 0) * (i.unit_price || 0)), 0);
     const tot = sub + sub * (Number(inv.tax_rate || 0) / 100);

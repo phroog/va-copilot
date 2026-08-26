@@ -315,18 +315,33 @@ export default function InvoicesPage() {
   const compliance = useMemo(() => {
     const validItems = allItems.filter((i) => i.description.trim() && (parseFloat(String(i.quantity)) || 0) > 0 && (parseFloat(String(i.unit_price)) || 0) >= 0);
     const checks = [
-      { label: "Klientenname", ok: !!clientName.trim(), critical: true },
-      { label: "Klienten-E-Mail", ok: /^\S+@\S+\.\S+$/.test(clientEmail.trim()), critical: false },
-      { label: "Mindestens ein Leistungsposten", ok: validItems.length > 0, critical: true },
-      { label: "Verkäufer (dein Name/Firma)", ok: !!sellerName.trim(), critical: true },
-      { label: "Steuernummer (TIN/VAT)", ok: !!sellerTaxId.trim(), critical: false },
-      { label: "Fälligkeitsdatum gesetzt", ok: !!dueDate, critical: false },
-      { label: "Zahlungsbedingungen (Notes)", ok: notes.trim().length >= 10, critical: false },
+      { label: "Client name", field: "clientName", ok: !!clientName.trim(), critical: true },
+      { label: "Client email", field: "clientEmail", ok: /^\S+@\S+\.\S+$/.test(clientEmail.trim()), critical: false },
+      { label: "At least one line item", field: "items", ok: validItems.length > 0, critical: true },
+      { label: "Seller (your name/company)", field: "seller", ok: !!sellerName.trim(), critical: true },
+      { label: "Tax ID (TIN/VAT)", field: "taxId", ok: !!sellerTaxId.trim(), critical: false },
+      { label: "Due date set", field: "dueDate", ok: !!dueDate, critical: false },
+      { label: "Payment terms (notes)", field: "notes", ok: notes.trim().length >= 10, critical: false },
     ];
     const passed = checks.filter((c) => c.ok).length;
     const criticalMissing = checks.filter((c) => c.critical && !c.ok).length;
     return { checks, passed, total: checks.length, criticalMissing, ready: criticalMissing === 0 };
   }, [clientName, clientEmail, allItems, sellerName, sellerTaxId, dueDate, notes]);
+
+  // Clicking a failed check jumps to the field so the user can fix it.
+  const focusField = (field: string) => {
+    if (field === "seller" || field === "taxId") {
+      window.location.href = "/dashboard/settings";
+      return;
+    }
+    if (field === "items") {
+      const first = document.querySelector<HTMLInputElement>(".invoice-item-desc");
+      if (first) { first.focus(); first.scrollIntoView({ behavior: "smooth", block: "center" }); }
+      return;
+    }
+    const el = document.getElementById(`inv-${field}`) as HTMLInputElement | null;
+    if (el) { el.focus(); el.scrollIntoView({ behavior: "smooth", block: "center" }); }
+  };
 
   const calcSubtotal = () => allItems.reduce((s, i) => s + (parseFloat(String(i.quantity)) || 0) * (parseFloat(String(i.unit_price)) || 0), 0);
   const calcTax = () => calcSubtotal() * ((parseFloat(taxRate) || 0) / 100);
@@ -473,11 +488,11 @@ export default function InvoicesPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">{t("clientName")}</Label>
-                  <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client name" />
+                  <Input id="inv-clientName" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client name" />
                 </div>
                 <div>
                   <Label className="text-xs">{t("clientEmail")}</Label>
-                  <Input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="client@email.com" />
+                  <Input id="inv-clientEmail" type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="client@email.com" />
                 </div>
               </div>
               <div>
@@ -493,7 +508,7 @@ export default function InvoicesPage() {
                 </div>
                 <div>
                   <Label className="text-xs">{t("dueDate")}</Label>
-                  <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                  <Input id="inv-dueDate" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
                 </div>
                 <div>
                   <Label className="text-xs">Währung</Label>
@@ -527,7 +542,7 @@ export default function InvoicesPage() {
                           placeholder={t("description")}
                           value={item.description}
                           onChange={(e) => updateItem(i, "description", e.target.value)}
-                          className="text-sm"
+                          className="text-sm invoice-item-desc"
                         />
                       </div>
                       <div className="w-16">
@@ -570,27 +585,33 @@ export default function InvoicesPage() {
               {/* Notes */}
               <div>
                 <Label className="text-xs">{t("notes")}</Label>
-                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Payment terms, additional notes..." />
+                <Input id="inv-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Payment terms, additional notes..." />
               </div>
 
               {/* Compliance check */}
               <div className={`rounded-2xl border p-4 ${compliance.ready ? "border-green-300/60 bg-green-50/60 dark:bg-green-900/10" : "border-kawaii-coral/40 bg-kawaii-coral/10 dark:bg-red-900/10"}`}>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                    {compliance.ready ? "✅ Compliance-Check bestanden" : "⚠️ Compliance-Check"}
+                    {compliance.ready ? "✅ Compliance passed" : "⚠️ Compliance check"}
                   </p>
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{compliance.passed}/{compliance.total} Checks</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{compliance.passed}/{compliance.total} checks</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {compliance.checks.map((c) => (
-                    <div key={c.label} className="flex items-center gap-2 text-xs">
+                    <button
+                      key={c.label}
+                      onClick={() => !c.ok && focusField(c.field)}
+                      disabled={c.ok}
+                      className={`flex items-center gap-2 text-xs text-left rounded-lg px-1.5 py-1 transition-colors ${!c.ok ? "hover:bg-kawaii-lavender/20 cursor-pointer" : "cursor-default"}`}
+                    >
                       <span className={c.ok ? "text-green-600 dark:text-green-400" : "text-red-500"}>{c.ok ? "✓" : c.critical ? "✗" : "⚠"}</span>
                       <span className={`text-slate-600 dark:text-slate-300 ${!c.ok && c.critical ? "font-bold" : ""}`}>{c.label}</span>
-                    </div>
+                      {!c.ok && <span className="ml-auto text-kawaii-purple dark:text-kawaii-lavender underline shrink-0">Fill in →</span>}
+                    </button>
                   ))}
                 </div>
                 {!compliance.ready && (
-                  <p className="text-xs text-red-500 mt-2 font-medium">Pflichtfelder fehlen — du kannst als Entwurf speichern, aber noch nicht als „Gesendet" markieren.</p>
+                  <p className="text-xs text-red-500 mt-2 font-medium">Required fields are missing — you can save as a draft, but not mark it as "Sent" yet. Click a check to jump to the field.</p>
                 )}
               </div>
 

@@ -30,14 +30,14 @@ export default function TelegramCta() {
         <div className="flex items-center gap-3">
           <span className="text-3xl">📨</span>
           <div>
-            <p className="font-bold text-sm text-slate-700 dark:text-slate-200">Nie wieder einen Match verpassen</p>
+            <p className="font-bold text-sm text-slate-700 dark:text-slate-200">Never miss a match again</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Verbinde Telegram und erhalte neue Matches &amp; Follow-ups direkt aufs Handy.
+              Connect Telegram and get new matches & follow-ups straight to your phone.
             </p>
           </div>
         </div>
         <Link href="/dashboard/settings">
-          <Button size="sm" variant="primary" className="shrink-0">Mit Telegram verbinden →</Button>
+          <Button size="sm" variant="primary" className="shrink-0">Connect Telegram →</Button>
         </Link>
       </CardContent>
     </Card>

@@ -209,7 +209,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 lg:p-6 relative">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-6 relative">
           <div className="blob w-72 h-72 bg-kawaii-pink top-[-5%] left-[-10%] -z-0" />
           <div className="blob w-64 h-64 bg-kawaii-lavender bottom-[-5%] right-[-10%] -z-0" />
           <div className="relative z-10">{children}</div>

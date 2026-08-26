@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
           .maybeSingle();
         if (link) {
           const action = payload.action || payload.job_id || "Follow-up";
-          await sendTelegram(BOT_TOKEN, link.chat_id, `⏰ <b>Follow-up fällig</b>\n\n${action} (bis ${payload.due_date})`);
+          await sendTelegram(BOT_TOKEN, link.chat_id, `⏰ <b>Follow-up due</b>\n\n${action} (by ${payload.due_date})`);
         }
       }
     }
@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
     }
     if (match < 70) continue;
 
-    const text = `🎯 <b>Neuer Match für dich!</b>\n\n<b>${title}</b> (${match}%)\n${platform} · ${budget || "k.A."}`;
+    const text = `🎯 <b>New match for you!</b>\n\n<b>${title}</b> (${match}%)\n${platform} · ${budget || "n/a"}`;
     const ok = await sendTelegram(BOT_TOKEN, link.chat_id, text);
     if (ok) {
       sent++;
