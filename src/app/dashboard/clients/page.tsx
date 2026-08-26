@@ -67,7 +67,7 @@ export default function ClientsPage() {
   const [formJobId, setFormJobId] = useState("");
 
   useEffect(() => {
-    // Prefill client name from ?name= (e.g. "Client anlegen" from a job).
+    // Prefill client name from ?name= (e.g. "Add Client" from a job).
     try {
       const name = new URLSearchParams(window.location.search).get("name");
       if (name) setFormClientName(name);

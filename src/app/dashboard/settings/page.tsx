@@ -30,11 +30,11 @@ interface Profile {
 }
 
 const VECTOR_AXES = [
-  { key: "erfahrung", label: "Erfahrung", opts: ["Anfänger", "Grundkenntnisse", "Erfahren (2–4 J)", "Fortgeschritten", "Experte (5+ J)"] },
-  { key: "technik", label: "Technik", opts: ["Reine Admin/VA", "Büro/Support", "Social Media/Content", "Tools (Excel/WordPress/Video)", "Dev/Data/Engineering"] },
-  { key: "kundenkontakt", label: "Kundenkontakt", opts: ["Backoffice/Daten", "E-Mail/Inbox", "Allg. Admin/Chat", "Support/Rezeption", "Telefon/Verkauf"] },
-  { key: "auslastung", label: "Auslastung", opts: ["Einmal-Gig", "Wenige Std", "Teilzeit", "~30 Std", "Fulltime"] },
-  { key: "budget", label: "Budget", opts: ["< 5$/h · < 200$ fest", "< 15$/h", "< 25$/h", "< 45$/h", "45$+/h · Premium"] },
+  { key: "erfahrung", label: "Experience", opts: ["Beginner", "Basic knowledge", "Experienced (2–4 yrs)", "Advanced", "Expert (5+ yrs)"] },
+  { key: "technik", label: "Technical", opts: ["Pure Admin/VA", "Office/Support", "Social Media/Content", "Tools (Excel/WordPress/Video)", "Dev/Data/Engineering"] },
+  { key: "kundenkontakt", label: "Client contact", opts: ["Backoffice/Data", "Email/Inbox", "General Admin/Chat", "Support/Reception", "Phone/Sales"] },
+  { key: "auslastung", label: "Workload", opts: ["One-off gig", "Few hours", "Part-time", "~30 hrs", "Full-time"] },
+  { key: "budget", label: "Budget", opts: ["< 5$/h · < 200$ fixed", "< 15$/h", "< 25$/h", "< 45$/h", "45$+/h · Premium"] },
 ];
 
 function ChipInput({ values, onChange, placeholder }: { values: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
@@ -290,8 +290,8 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">💎 Dein Plan</CardTitle>
-          <CardDescription>Aktueller Tarif und tägliches Job-Limit.</CardDescription>
+          <CardTitle className="flex items-center gap-2">💎 Your Plan</CardTitle>
+          <CardDescription>Your current plan and daily job limit.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {sub ? (
@@ -301,23 +301,23 @@ export default function SettingsPage() {
                 <span className="font-bold capitalize text-kawaii-purple">{sub.plan}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Jobs heute gesehen</span>
+                <span className="text-slate-500">Jobs seen today</span>
                 <span className="font-semibold">
-                  {sub.dailyJobLimit == null ? "Unbegrenzt 💎" : `${sub.usedToday ?? 0} / ${sub.dailyJobLimit}`}
+                  {sub.dailyJobLimit == null ? "Unlimited 💎" : `${sub.usedToday ?? 0} / ${sub.dailyJobLimit}`}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">AI-Credits</span>
-                <span className="font-semibold">{sub.credits} ({sub.monthlyCredits}/Monat)</span>
+                <span className="font-semibold">{sub.credits} ({sub.monthlyCredits}/month)</span>
               </div>
               <div className="pt-2">
                 <Link href="/pricing">
-                  <Button size="sm" variant="outline">{sub.plan === "pro" ? "Plan verwalten" : "Upgrade"}</Button>
+                  <Button size="sm" variant="outline">{sub.plan === "pro" ? "Manage plan" : "Upgrade"}</Button>
                 </Link>
               </div>
             </>
           ) : (
-            <p className="text-xs text-slate-400">Lade Plan…</p>
+            <p className="text-xs text-slate-400">Loading plan…</p>
           )}
         </CardContent>
       </Card>
@@ -359,7 +359,7 @@ export default function SettingsPage() {
             <ChipInput
               values={profile.skills || []}
               onChange={(v) => setProfile({ ...profile, skills: v })}
-              placeholder="Skill eingeben + Enter oder Komma"
+              placeholder="Enter skill + Enter or comma"
             />
             <p className="text-xs text-slate-400">Used to match job descriptions against your skill set.</p>
           </div>
@@ -380,15 +380,15 @@ export default function SettingsPage() {
             <ChipInput
               values={profile.job_categories || []}
               onChange={(v) => setProfile({ ...profile, job_categories: v })}
-              placeholder="Kategorie eingeben + Enter oder Komma"
+              placeholder="Enter category + Enter or comma"
             />
             <p className="text-xs text-slate-400">Categories help match jobs to your preferred work areas.</p>
           </div>
           <div className="space-y-3 pt-1">
-            <p className="text-xs text-slate-400">
-              <strong>5-Achsen-Profil (1–5):</strong> Jobs werden beim Einsammeln nach demselben Muster eingeteilt.
-              Je näher deine Zahlen an denen des Jobs liegen, desto höher der Match im Live-Feed.
-            </p>
+              <p className="text-xs text-slate-400">
+                <strong>5-axis profile (1–5):</strong> Jobs are categorized using the same pattern when collected.
+                The closer your numbers are to the job's, the higher the match in the Live Feed.
+              </p>
             {VECTOR_AXES.map((ax, i) => (
               <div key={ax.key} className="space-y-1">
                 <div className="flex items-center gap-3">
@@ -413,7 +413,7 @@ export default function SettingsPage() {
               </div>
             ))}
             <p className="text-xs text-slate-400">
-              Dein Vektor: <strong>[{(profile.job_vector || [3, 3, 3, 3, 3]).join(" ")}]</strong>
+              Your vector: <strong>[{(profile.job_vector || [3, 3, 3, 3, 3]).join(" ")}]</strong>
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -577,7 +577,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">🏢 Agency</CardTitle>
-          <CardDescription>Agency-Features freischalten (langfristig ein Paid-Plan).</CardDescription>
+          <CardDescription>Unlock agency features (a paid plan in the long term).</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-3">
@@ -594,12 +594,12 @@ export default function SettingsPage() {
                     body: JSON.stringify({ agency_enabled: next }),
                   });
                   if (!res.ok) { setAgencyEnabled(!next); throw new Error("Update failed"); }
-                  showToast(next ? "Agency aktiviert" : "Agency deaktiviert");
-                } catch { setAgencyEnabled(!next); showToast("Agency-Update fehlgeschlagen", "error"); }
+                  showToast(next ? "Agency enabled" : "Agency disabled");
+                } catch { setAgencyEnabled(!next); showToast("Agency update failed", "error"); }
               }}
               className="w-5 h-5"
             />
-            <span className="text-sm text-slate-600 dark:text-slate-300">Agency im Menü anzeigen</span>
+            <span className="text-sm text-slate-600 dark:text-slate-300">Show agency in menu</span>
           </div>
         </CardContent>
       </Card>
@@ -632,13 +632,13 @@ export default function SettingsPage() {
       {/* Finance: Base Currency + Default Tax Rate */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">🌍 Finanzen: Basiswährung & Steuern</CardTitle>
-          <CardDescription>Einnahmen in anderen Währungen werden in deine Basiswährung umgerechnet; der Steuersatz liefert eine Steuerschätzung in den Finanzen.</CardDescription>
+          <CardTitle className="flex items-center gap-2">🌍 Finances: Base Currency & Taxes</CardTitle>
+          <CardDescription>Earnings in other currencies are converted to your base currency; the tax rate provides a tax estimate in the finances.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label className="text-xs">Basiswährung</Label>
+              <Label className="text-xs">Base currency</Label>
               <select
                 value={baseCurrency}
                 onChange={(e) => setBaseCurrency(e.target.value)}
@@ -650,7 +650,7 @@ export default function SettingsPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Geschätzter Steuersatz (%)</Label>
+              <Label className="text-xs">Estimated tax rate (%)</Label>
               <Input type="number" step="0.01" value={defaultTaxRate} onChange={(e) => setDefaultTaxRate(e.target.value)} placeholder="0" />
             </div>
           </div>

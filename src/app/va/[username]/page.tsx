@@ -117,7 +117,7 @@ export default function VAPublicProfile({ params }: { params: Promise<{ username
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-kawaii-purple text-white text-sm font-bold hover:bg-kawaii-purple/90 transition-colors"
               >
-                📄 CV ansehen
+                📄 View CV
               </a>
             )}
           </CardContent>

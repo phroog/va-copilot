@@ -568,7 +568,7 @@ export default function JobsPage() {
                             type="button"
                             onClick={(e) => { e.stopPropagation(); removeFile(i); }}
                             className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center"
-                            title="Entfernen"
+                            title="Remove"
                           >
                             ×
                           </button>
@@ -576,7 +576,7 @@ export default function JobsPage() {
                       ))}
                     </div>
                     <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                      {screenshotPreviews.length} Screenshot(s) — für mehr anklicken
+                      {screenshotPreviews.length} Screenshot(s) — click for more
                     </p>
                   </div>
                 ) : (

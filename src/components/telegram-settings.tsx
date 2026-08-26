@@ -53,9 +53,9 @@ export default function TelegramSettings() {
     try {
       const res = await fetch("/api/telegram/connect", { method: "POST" });
       const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Fehler");
+      if (!res.ok) throw new Error(d.error || "Error");
       setGeneratedCode(d.code);
-      showToast("Code generiert! Send ihn dem Bot mit /start <code>.");
+      showToast("Code generated! Send it to the bot with /start <code>.");
     } catch (e: any) {
       showToast(e?.message || "Failed", "error");
     } finally {
@@ -72,7 +72,7 @@ export default function TelegramSettings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(next),
       });
-      if (!res.ok) throw new Error("Update fehlgeschlagen");
+      if (!res.ok) throw new Error("Update failed");
       showToast("Saved ✅");
     } catch {
       showToast("Saving failed", "error");
@@ -83,12 +83,12 @@ export default function TelegramSettings() {
     await fetch("/api/telegram/connect", { method: "DELETE" });
     await updatePrefs({ telegram_enabled: false, telegram_push_matches: false, telegram_push_followups: false, telegram_push_invoices: false, telegram_push_scam: false });
     setStatus((s) => s ? { ...s, linked: false, chatId: null, username: null } : s);
-    showToast("Telegram getrennt");
+    showToast("Telegram disconnected");
   };
 
   if (loading) return <Card className="animate-pulse"><CardContent className="p-8" /></Card>;
 
-  const botName = status?.botUsername || "dein-bot";
+  const botName = status?.botUsername || "your-bot";
 
   return (
     <Card>
@@ -105,7 +105,7 @@ export default function TelegramSettings() {
           <>
             <div className="rounded-2xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 p-3 text-sm">
               ✅ Connected to chat <b>@{status.username || status.chatId}</b>
-              {status.linkedAt ? ` (seit ${new Date(status.linkedAt).toLocaleDateString()})` : ""}
+              {status.linkedAt ? ` (since ${new Date(status.linkedAt).toLocaleDateString()})` : ""}
             </div>
 
             <div>
@@ -155,7 +155,7 @@ export default function TelegramSettings() {
                 <p className="text-xs text-slate-500 mb-1">Your verification code:</p>
                 <p className="text-3xl font-extrabold tracking-widest text-kawaii-purple dark:text-kawaii-lavender">{generatedCode}</p>
                 <p className="text-xs text-slate-400 mt-2">
-                  Send <code>/start {generatedCode}</code> an{" "}
+                  Send <code>/start {generatedCode}</code> to{" "}
                   <a href={BOT_URL(botName)} target="_blank" rel="noopener noreferrer" className="text-kawaii-purple underline">@{botName}</a>.
                 </p>
                 <a href={BOT_URL(botName)} target="_blank" rel="noopener noreferrer">

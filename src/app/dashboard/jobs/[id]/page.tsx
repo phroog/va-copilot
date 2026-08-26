@@ -402,12 +402,12 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
 
       {/* Quick actions */}
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">⚡ Schnellaktionen</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">⚡ Quick Actions</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             {job.url && (
               <a href={job.url} target="_blank" rel="noopener noreferrer" className="col-span-2 sm:col-span-1">
-                <Button size="sm" variant="outline" className="w-full">↗ Job öffnen</Button>
+                <Button size="sm" variant="outline" className="w-full">↗ Open Job</Button>
               </a>
             )}
             <Button size="sm" variant="primary" onClick={() => generatePitch(false)} disabled={pitchLoading || pitchRegenerating} className="w-full">
@@ -415,8 +415,8 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
             </Button>
             <Button size="sm" variant="outline" onClick={() => document.getElementById("milestones")?.scrollIntoView({ behavior: "smooth" })} className="w-full">📋 Milestones</Button>
             <Link href={`/dashboard/invoices?job=${jobId}`} className="col-span-2 sm:col-span-1"><Button size="sm" variant="outline" className="w-full">🧾 Invoice</Button></Link>
-            <Link href={`/dashboard/time-tracker?job=${jobId}`} className="col-span-2 sm:col-span-1"><Button size="sm" variant="outline" className="w-full">🕐 Zeit</Button></Link>
-            <Link href={`/dashboard/clients?name=${encodeURIComponent(job.client_name || job.title || "")}`} className="col-span-2 sm:col-span-1"><Button size="sm" variant="outline" className="w-full">👤 Client anlegen</Button></Link>
+            <Link href={`/dashboard/time-tracker?job=${jobId}`} className="col-span-2 sm:col-span-1"><Button size="sm" variant="outline" className="w-full">🕐 Time</Button></Link>
+            <Link href={`/dashboard/clients?name=${encodeURIComponent(job.client_name || job.title || "")}`} className="col-span-2 sm:col-span-1"><Button size="sm" variant="outline" className="w-full">👤 Add Client</Button></Link>
             <Button size="sm" variant="outline" onClick={runScamCheck} disabled={scamChecking} className="w-full">{scamChecking ? "⏳" : "🕵️"} Scam Check</Button>
             <Button size="sm" variant="outline" onClick={() => generateToken()} disabled={generatingToken} className="w-full">{generatingToken ? "⏳" : "🔗"} Client Portal</Button>
             <Button size="sm" variant="outline" onClick={async () => {

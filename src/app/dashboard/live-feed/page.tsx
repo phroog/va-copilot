@@ -60,15 +60,15 @@ function timeAgo(dateStr: string | null): string {
 }
 
 const SCAM_META: Record<string, { emoji: string; label: string; cls: string }> = {
-  green: { emoji: "🟢", label: "Gering", cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
-  yellow: { emoji: "🟡", label: "Mittel", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" },
-  orange: { emoji: "🟠", label: "Erhöht", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" },
-  red: { emoji: "🔴", label: "Hoch", cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
+  green: { emoji: "🟢", label: "Low", cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
+  yellow: { emoji: "🟡", label: "Medium", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" },
+  orange: { emoji: "🟠", label: "Elevated", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" },
+  red: { emoji: "🔴", label: "High", cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
 };
 
 function ScamBadge({ level, risk, flags }: { level: string; risk: number | null; flags?: string[] }) {
   const m = SCAM_META[level] || SCAM_META.green;
-  const tip = flags && flags.length ? `${risk ?? "?"}% Risiko · ${flags.join("; ")}` : `${risk ?? "?"}% Risiko`;
+  const tip = flags && flags.length ? `${risk ?? "?"}% Risk · ${flags.join("; ")}` : `${risk ?? "?"}% Risk`;
   return (
     <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-lg ${m.cls}`} title={tip}>
       {m.emoji} {m.label}
@@ -283,7 +283,7 @@ export default function LiveFeedPage() {
       setJobs((prev) =>
         prev.map((j) => (j.id === job.id ? { ...j, is_saved: !job.is_saved } : j))
       );
-      showToast(job.is_saved ? "Removed from saved" : "Saved to Meine Jobs 💾");
+      showToast(job.is_saved ? "Removed from saved" : "Saved to My Jobs 💾");
     } catch (e: any) {
       showToast(e?.message ?? "Failed to save job", "error");
     } finally {
@@ -311,7 +311,7 @@ export default function LiveFeedPage() {
         });
       }
       setJobs((prev) => prev.map((j) => (visible.some((v) => v.id === j.id) ? { ...j, is_saved: true } : j)));
-      showToast(`Saved ${visible.length} job(s) to Meine Jobs 💾`);
+      showToast(`Saved ${visible.length} job(s) to My Jobs 💾`);
     } catch (e: any) {
       showToast(e?.message ?? "Failed to save jobs", "error");
     } finally {
@@ -325,7 +325,7 @@ export default function LiveFeedPage() {
       const res = await fetch(`/api/jobs/${job.id}/swap`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Swap failed");
-      showToast("Job getauscht – bessere Übereinstimmung gesucht 🔄");
+      showToast("Job swapped — searching for a better match 🔄");
       await loadPage("replace");
     } catch (e: any) {
       showToast(e?.message ?? "Swap failed", "error");
@@ -403,23 +403,23 @@ export default function LiveFeedPage() {
       {limitInfo.limitReached ? (
         <div className="bg-kawaii-purple/10 border border-kawaii-purple/40 rounded-2xl p-4 flex items-center justify-between gap-3">
           <div>
-            <p className="font-bold text-kawaii-purple dark:text-kawaii-lavender">Du hast dein Tageslimit an passenden Jobs erreicht.</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Mit Pro gibt es unbegrenzte Job-Ansichten. Bis morgen! 🎁</p>
+            <p className="font-bold text-kawaii-purple dark:text-kawaii-lavender">You've reached your daily limit of matching jobs.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">With Pro you get unlimited job views. See you tomorrow! 🎁</p>
           </div>
           <Link href="/pricing"><Button size="sm" variant="primary">Upgrade</Button></Link>
         </div>
       ) : limitInfo.limit != null ? (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-kawaii-lavender/25 dark:border-dark-surface px-3 py-2">
           <span className="text-xs text-slate-500 dark:text-slate-400">
-            Du hast <strong>{limitInfo.used ?? 0}</strong> von <strong>{limitInfo.limit}</strong> passenden Jobs heute gesehen
-            {limitInfo.bonus ? <> — inkl. 🎁 <strong>+{limitInfo.bonus}</strong> Bonus</> : null}
-            {limitInfo.swapsLeft != null ? <> · 🔄 <strong>{limitInfo.swapsLeft}</strong> Swaps übrig</> : null}
+            You've seen <strong>{limitInfo.used ?? 0}</strong> of <strong>{limitInfo.limit}</strong> matching jobs today
+            {limitInfo.bonus ? <> — incl. 🎁 <strong>+{limitInfo.bonus}</strong> bonus</> : null}
+            {limitInfo.swapsLeft != null ? <> · 🔄 <strong>{limitInfo.swapsLeft}</strong> swaps left</> : null}
           </span>
-          <Link href="/dashboard/wheel" className="text-xs text-kawaii-purple underline">🎡 Tagesbonus sichern</Link>
+          <Link href="/dashboard/wheel" className="text-xs text-kawaii-purple underline">🎡 Claim your daily bonus</Link>
         </div>
       ) : (
         <div className="rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-kawaii-lavender/25 dark:border-dark-surface px-3 py-2">
-          <span className="text-xs text-slate-500 dark:text-slate-400">💎 Unbegrenzte Job-Ansichten (Pro)</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">💎 Unlimited job views (Pro)</span>
         </div>
       )}
 
@@ -438,10 +438,10 @@ export default function LiveFeedPage() {
             className="w-full md:w-auto rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 px-4 py-2 text-sm text-slate-700 dark:bg-dark-card dark:text-slate-200 dark:border-dark-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kawaii-purple"
           >
             <option value="all">🛡️ All risk</option>
-            <option value="green">🟢 Gering</option>
-            <option value="yellow">🟡 Mittel</option>
-            <option value="orange">🟠 Erhöht</option>
-            <option value="red">🔴 Hoch</option>
+            <option value="green">🟢 Low</option>
+            <option value="yellow">🟡 Medium</option>
+            <option value="orange">🟠 Elevated</option>
+            <option value="red">🔴 High</option>
           </select>
           <select
             value={platformFilter}
@@ -518,11 +518,11 @@ export default function LiveFeedPage() {
         <div className="flex flex-col items-center gap-2 pt-2 pb-4">
           {jobs.length > 0 && (
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {jobs.length} von {total} Jobs geladen
+              {jobs.length} of {total} jobs loaded
             </p>
           )}
-          {loadingMore && <span className="text-sm text-slate-400 animate-pulse">Lädt mehr…</span>}
-          {!hasMore && jobs.length > 0 && <p className="text-xs text-slate-400">Ende erreicht</p>}
+          {loadingMore && <span className="text-sm text-slate-400 animate-pulse">Loading more…</span>}
+          {!hasMore && jobs.length > 0 && <p className="text-xs text-slate-400">End reached</p>}
           <div ref={sentinelRef} className="h-10" />
         </div>
       )}
@@ -631,7 +631,7 @@ function FeedJobCard({
             <Link
               href={`/jobs/${job.id}`}
               className="hover:text-kawaii-purple dark:hover:text-kawaii-lavender transition-colors"
-              title="Details auf Sari ansehen"
+              title="View details on Sari"
             >
               {job.title} <span className="text-xs text-slate-300 dark:text-slate-500">↗</span>
             </Link>
@@ -671,7 +671,7 @@ function FeedJobCard({
             {job.profile_match != null && (
               <span
                 className="text-xs font-extrabold px-2 py-0.5 rounded-lg bg-kawaii-purple/10 text-kawaii-purple dark:text-kawaii-lavender"
-                title="Deterministischer 5-Achsen-Profil-Match"
+                title="Deterministic 5-axis profile match"
               >
                 🎯 {job.profile_match}%
               </span>
@@ -687,7 +687,7 @@ function FeedJobCard({
             <Button size="sm" variant="outline" onClick={onGeneratePitch} disabled={generating}>
               {generating ? "Loading..." : job.pitch_id ? "🚀 View Pitch" : "🚀 Pitch"}
             </Button>
-            <Button size="sm" variant="outline" onClick={onSwap} disabled={swapping} title="Tauscht den Job gegen eine bessere Übereinstimmung">
+            <Button size="sm" variant="outline" onClick={onSwap} disabled={swapping} title="Swaps the job for a better match">
               {swapping ? "..." : "🔄 Swap"}
             </Button>
           </div>

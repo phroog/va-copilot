@@ -1,60 +1,59 @@
-# Sari Job Radar (Browser-Erweiterung)
+# Sari Job Radar (Browser Extension)
 
-Pollt die Job-Feeds mehrerer Plattformen im Hintergrund über deren **eigene
-Seiten/APIs** und reicht neue Jobs an Sari weiter. Das Backend filtert und pusht
-in den Live-Feed. Kein CDP, kein sichtbares Browserfenster, kein DOM-Scraping in
-einem automatisierten Browser — die Erweiterung macht Requests, die von normalen
-Tab-Abrufen nicht unterscheidbar sind.
+Polls job feeds from multiple platforms in the background via their **own
+pages/APIs** and forwards new jobs to Sari. The backend filters and pushes them
+into the Live Feed. No CDP, no visible browser window, no DOM scraping in an
+automated browser — the extension makes requests that are indistinguishable from
+normal tab requests.
 
-## Plattformen
+## Platforms
 
-| Key | Quelle | Modus |
+| Key | Source | Mode |
 |---|---|---|
-| `upwork` | GraphQL `visitorJobSearch` (Bearer aus Cookie `UniversalSearchNuxt_vt`) | ✅ verifiziert |
-| `onlinejobs` | Same-Origin-Fetch der Jobs-Liste + HTML-Parse | ✅ verifiziert |
-| `guru` | Same-Origin-Fetch `/d/jobs/` + HTML-Parse | ✅ verifiziert |
-| `freelancer` | Same-Origin-Fetch `/jobs` + HTML-Parse | ✅ verifiziert |
-| `workingnomads`, `remoteok`, `jobspresso`, `peopleperhour`, `indeed` | Same-Origin-Fetch + HTML-Parse | Best-Effort (unverifiziert) |
-| `reddit` | Subreddit-JSON-Feeds (`/r/<sub>/new.json`), URL = komma-getrennte Subs | ✅ verifiziert (Tab nötig) |
-| `facebook` | Liest den gerenderten **Groups-Feed** des offenen Tabs (`?filter=groups&sk=h_chr`); Bildposts werden per Backend-OCR (tesseract) erfasst; strenger Intent-Filter gegen Noise | Reader verifiziert, OCR im Backend |
-| `hubstaff` | Liest die gerenderten `/jobs/<slug>`-Links des offenen Tabs (JS-geladene Liste) | ✅ verifiziert |
+| `upwork` | GraphQL `visitorJobSearch` (Bearer from cookie `UniversalSearchNuxt_vt`) | ✅ verified |
+| `onlinejobs` | Same-origin fetch of the jobs list + HTML parse | ✅ verified |
+| `guru` | Same-origin fetch `/d/jobs/` + HTML parse | ✅ verified |
+| `freelancer` | Same-origin fetch `/jobs` + HTML parse | ✅ verified |
+| `workingnomads`, `remoteok`, `jobspresso`, `peopleperhour`, `indeed` | Same-origin fetch + HTML parse | Best-effort (unverified) |
+| `reddit` | Subreddit JSON feeds (`/r/<sub>/new.json`), URL = comma-separated subs | ✅ verified (tab needed) |
+| `facebook` | Reads the rendered **Groups feed** of the open tab (`?filter=groups&sk=h_chr`); image posts are captured via backend OCR (tesseract); strict intent filter against noise | Reader verified, OCR in backend |
+| `hubstaff` | Reads the rendered `/jobs/<slug>` links of the open tab (JS-loaded list) | ✅ verified |
 
-## Wie es funktioniert
+## How it works
 
-1. Der Service Worker feuert alle X Minuten (Alarm) einen Poll.
-2. Pro Plattform wird ein **offener Tab** derselben Site gesucht (Content-Script
-   läuft im Seitenkontext → echte Cookies/Header). Der Adapter holt die Jobs
-   (GraphQL oder Fetch + Parse) und gibt sie als snake_case-Objekte zurück.
-3. Nur **neue** Jobs (gegen `seenIds` je Plattform) werden an
-   `POST <Sari-API>/api/jobs/upload-web` geschickt — mit der Source-UUID, die beim
-   Speichern automatisch aus `/api/jobs/keywords` geholt wird.
-4. Das Backend dedupliziert, filtert und pusht in den Live-Feed.
+1. The service worker fires a poll every X minutes (alarm).
+2. For each platform an **open tab** of the same site is used (content script
+   runs in the page context → real cookies/headers). The adapter fetches the
+   jobs (GraphQL or fetch + parse) and returns them as snake_case objects.
+3. Only **new** jobs (compared against `seenIds` per platform) are sent to
+   `POST <Sari-API>/api/jobs/upload-web` — with the source UUID that is
+   automatically resolved from `/api/jobs/keywords`.
+4. The backend dedupes, filters and pushes into the Live Feed.
 
-**Wichtig:** Für die HTML-Plattformen muss je ein Tab der jeweiligen Site offen
-sein (der wird nur als „Bühne“ genutzt, nie neu geladen). Upwork kann auch ohne
-Tab laufen (Service-Worker-Fetch via Cookie).
+**Important:** For the HTML platforms a tab of the respective site must be open
+(it is only used as a "stage", never reloaded). Upwork can also run without a
+tab (service worker fetch via cookie).
 
 ## Installation
 
-1. `chrome://extensions` → Entwicklermodus → „Entpackte Erweiterung laden“ →
-   Ordner `upwork-extension` (Ordnername bleibt, ist jetzt aber mehrspurig).
-2. Im Popup konfigurieren:
-   - **Sari API URL** (Default `https://va-copilot-theta.vercel.app`)
-   - **Admin Secret** (aus `.env.local`)
-   - **Intervall** in Minuten (z. B. `1.5` = 90s; Chrome-Alarms: unpacked ab 0.5 Min)
-   - **Plattformen:** Häkchen setzen = aktiv; bei den HTML-Sites ggf. die
-     Jobs-URL anpassen. Source-IDs werden automatisch gemappt.
-3. **Save & Poll** → Status zeigt pro Plattform Ergebnis oder Fehler.
+1. `chrome://extensions` → Developer mode → "Load unpacked" → select the
+   `upwork-extension` folder.
+2. Configure in the popup:
+   - **Sari API URL** (default `https://va-copilot-theta.vercel.app`)
+   - **Admin Secret** (from `.env.local`)
+   - **Interval** in minutes (e.g. `1.5` = 90s; Chrome alarms: unpacked from 0.5 min)
+   - **Platforms:** check = enabled; for HTML sites you can adjust the jobs URL.
+     Source IDs are mapped automatically.
+3. **Save & Poll** → the status shows the result or error per platform.
 
-## Hinweise
+## Notes
 
-- Nur neue Jobs werden hochgeladen → auch bei hoher Poll-Frequenz bleibt der
-  Upload klein.
-- Falls eine Site ihre Struktur ändert, wirft der Adapter einen Fehler im
-  Popup-Status (dann Selector in `content.js` prüfen).
-- `posted_at`, `budget`, `external_id` werden im Backend-Vertrag (snake_case)
-  gesendet — der Live-Feed zeigt damit korrekte Alter und Budgets.
-- Das Backend filtert beim Upload irrelevante Jobs (VA/WFH-Fokus) und löscht
-  sie direkt; der **Cleanup**-Knopf im Popup entfernt außerdem zukunfts-datierte
-  und schon vorhandene irrelevante Einträge.
-- Jobspresso läuft im Collector über RSS; hier via HTML-Parse (Best-Effort).
+- Only new jobs are uploaded → even with a high poll frequency the upload stays small.
+- If a site changes its structure, the adapter reports an error in the popup
+  status (then check the selectors in `content.js`).
+- `posted_at`, `budget`, `external_id` are sent in the backend contract
+  (snake_case) — the Live Feed shows correct ages and budgets.
+- The backend filters out irrelevant jobs on upload (VA/WFH focus) and deletes
+  them directly; the **Cleanup** button in the popup additionally removes
+  future-dated and already-existing irrelevant entries.
+- Jobspresso runs in the collector via RSS; here via HTML parse (best-effort).

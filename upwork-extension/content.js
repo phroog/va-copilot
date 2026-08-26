@@ -216,7 +216,7 @@ function mapUpworkJob(r) {
 
 async function fetchUpwork(count) {
   const token = upworkToken();
-  if (!token) throw new Error("Kein Upwork-Token (UniversalSearchNuxt_vt) gefunden");
+  if (!token) throw new Error("No Upwork token (UniversalSearchNuxt_vt) found");
   const res = await fetch("/api/graphql/v1?alias=visitorJobSearch", {
     method: "POST",
     credentials: "include",

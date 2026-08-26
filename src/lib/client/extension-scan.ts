@@ -56,7 +56,7 @@ export function scanWithExtension(url: string, timeoutMs = 30000): Promise<Exten
     window.postMessage({ type: "SARI_SCAN_JOB", url, msgId }, "*");
     setTimeout(() => {
       window.removeEventListener("sari-extension-reply", handler);
-      resolve({ ok: false, error: "Zeitüberschreitung" });
+      resolve({ ok: false, error: "Timeout" });
     }, timeoutMs);
   });
 }

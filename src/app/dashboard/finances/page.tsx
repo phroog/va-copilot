@@ -144,12 +144,12 @@ export default function FinancesPage() {
         {/* Tax estimate */}
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">🧾 Steuerschätzung (Jahr)</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">🧾 Tax estimate (year)</p>
             <p className="text-2xl font-extrabold text-kawaii-coral">{formatMoney(estimatedTax, baseCurrency)}</p>
-            <p className="text-xs text-slate-400 mt-1">bei {taxRate}% Steuersatz</p>
+            <p className="text-xs text-slate-400 mt-1">at {taxRate}% tax rate</p>
             <div className="border-t border-kawaii-lavender/20 mt-3 pt-3">
-              <p className="text-sm text-slate-500 flex justify-between"><span>Brutto</span><span className="font-semibold">{formatMoney(totalYear, baseCurrency)}</span></p>
-              <p className="text-sm text-slate-500 flex justify-between mt-1"><span>Netto (geschätzt)</span><span className="font-semibold text-green-600 dark:text-green-400">{formatMoney(netYear, baseCurrency)}</span></p>
+              <p className="text-sm text-slate-500 flex justify-between"><span>Gross</span><span className="font-semibold">{formatMoney(totalYear, baseCurrency)}</span></p>
+              <p className="text-sm text-slate-500 flex justify-between mt-1"><span>Net (estimated)</span><span className="font-semibold text-green-600 dark:text-green-400">{formatMoney(netYear, baseCurrency)}</span></p>
             </div>
           </CardContent>
         </Card>
@@ -165,7 +165,7 @@ export default function FinancesPage() {
                 <span className="text-slate-400 font-medium">({code})</span>
               </span>
             ))}
-            <span className="text-xs text-slate-400 self-center">→ in {baseCurrency} umgerechnet</span>
+            <span className="text-xs text-slate-400 self-center">→ converted to {baseCurrency}</span>
           </CardContent>
         </Card>
       )}
@@ -211,7 +211,7 @@ export default function FinancesPage() {
                 <Input type="number" step="0.01" value={addAmount} onChange={(e) => setAddAmount(e.target.value)} placeholder="0.00" />
               </div>
               <div>
-                <Label className="text-xs">Währung</Label>
+                <Label className="text-xs">Currency</Label>
                 <select
                   value={addCurrency}
                   onChange={(e) => setAddCurrency(e.target.value)}

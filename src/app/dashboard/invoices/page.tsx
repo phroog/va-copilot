@@ -251,14 +251,14 @@ export default function InvoicesPage() {
       price = isNaN(parsed) ? 0 : parsed;
     }
     if (price <= 0) {
-      showToast("Kein Budget für diesen Job vorhanden", "error");
+      showToast("No budget available for this job", "error");
       return;
     }
     setItems((prev) => [
       ...prev,
-      { description: `${job.title} — Festpreis (einmalig)`, quantity: 1, unit_price: price },
+      { description: `${job.title} — Fixed price (one-time)`, quantity: 1, unit_price: price },
     ]);
-    showToast(`Festpreis ${formatMoney(price, currency)} hinzugefügt 💰`);
+    showToast(`Fixed price of ${formatMoney(price, currency)} added 💰`);
   };
 
   // ── Compliance check (before you send a real invoice) ─────────────
@@ -477,7 +477,7 @@ export default function InvoicesPage() {
                         onClick={addFixedPriceFromJob}
                         className="mt-2 w-full text-xs font-bold text-kawaii-purple dark:text-kawaii-lavender border border-dashed border-kawaii-purple/40 rounded-xl py-2 hover:bg-kawaii-purple/10 transition-colors"
                       >
-                        💰 Festpreis aus Job-Budget als Position hinzufügen (einmaliges Projekt)
+                        💰 Add fixed price from job budget as a line item (one-time project)
                       </button>
                     </div>
                   )}
@@ -511,7 +511,7 @@ export default function InvoicesPage() {
                   <Input id="inv-dueDate" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Währung</Label>
+                  <Label className="text-xs">Currency</Label>
                   <select
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}

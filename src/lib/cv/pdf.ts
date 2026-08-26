@@ -46,7 +46,7 @@ export async function generateCvPdf(data: Partial<CvData> | null | undefined): P
         margin: [0, -66, 0, 20],
         columns: [
           {
-            text: (cv.full_name || "Dein Name") + "\n",
+            text: (cv.full_name || "Your Name") + "\n",
             fontSize: 26,
             bold: true,
             color: "white",
@@ -63,9 +63,9 @@ export async function generateCvPdf(data: Partial<CvData> | null | undefined): P
       contact.length
         ? { text: contact.join("   ·   "), fontSize: 9.5, color: MUTED, margin: [0, 0, 0, 14], alignment: "center" }
         : {},
-      ...(cv.summary ? section("PROFIL", [{ text: cv.summary, fontSize: 10, lineHeight: 1.35, color: DARK }]) : []),
+      ...(cv.summary ? section("PROFILE", [{ text: cv.summary, fontSize: 10, lineHeight: 1.35, color: DARK }]) : []),
       ...(cv.skills?.length
-        ? section("FÄHIGKEITEN", [
+        ? section("SKILLS", [
             {
               columns: (cv.skills || []).map((s) => ({
                 text: "▸ " + s,
@@ -77,9 +77,9 @@ export async function generateCvPdf(data: Partial<CvData> | null | undefined): P
             },
           ])
         : []),
-      ...(experienceRows.length ? section("ERFAHRUNG", experienceRows) : []),
+      ...(experienceRows.length ? section("EXPERIENCE", experienceRows) : []),
       ...(cv.education?.length
-        ? section("AUSBILDUNG", [
+        ? section("EDUCATION", [
             {
               ul: (cv.education || []).map((e) => [e.degree, e.school, e.year].filter(Boolean).join(" — ")),
               fontSize: 10,
@@ -88,12 +88,12 @@ export async function generateCvPdf(data: Partial<CvData> | null | undefined): P
           ])
         : []),
       ...(cv.certifications?.length
-        ? section("ZERTIFIKATE", [
+        ? section("CERTIFICATIONS", [
             { text: (cv.certifications || []).join("  ·  "), fontSize: 10, color: DARK },
           ])
         : []),
       ...(cv.languages?.length
-        ? section("SPRACHEN", [
+        ? section("LANGUAGES", [
             { text: (cv.languages || []).map((l) => `${l.name}${l.level ? " (" + l.level + ")" : ""}`).join("  ·  "), fontSize: 10, color: DARK },
           ])
         : []),

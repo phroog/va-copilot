@@ -118,7 +118,7 @@ export default function CvPage() {
       if (!res.ok) throw new Error(data?.error || "Upload failed");
       setFileUrl(data.url);
       setFileName(data.fileName);
-      showToast("CV-Datei hochgeladen");
+      showToast("CV file uploaded");
     } catch (e: any) {
       showToast(e?.message || "Upload failed", "error");
     } finally { setUploading(false); }
@@ -137,18 +137,18 @@ export default function CvPage() {
     <div className="space-y-6 animate-fade-in max-w-3xl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-extrabold">📄 Mein CV</h1>
+          <h1 className="text-3xl font-extrabold">📄 My CV</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Dein CV wird automatisch in jeden generierten Pitch eingebaut und als schönes PDF exportiert.
+            Your CV is automatically included in every generated pitch and exported as a beautiful PDF.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={downloadPdf} disabled={pdfBusy}>
-            {pdfBusy ? "Generiere…" : "📥 PDF"}
+            {pdfBusy ? "Generating…" : "📥 PDF"}
           </Button>
           {username && (
             <Link href={`/va/${username}`} target="_blank">
-              <Button variant="ghost" size="sm">🌐 Öffentliches Profil</Button>
+              <Button variant="ghost" size="sm">🌐 Public Profile</Button>
             </Link>
           )}
         </div>
@@ -156,30 +156,30 @@ export default function CvPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>👤 Persönliche Daten</CardTitle>
-          <CardDescription>Grunddaten, die oben auf dem CV stehen.</CardDescription>
+          <CardTitle>👤 Personal Information</CardTitle>
+          <CardDescription>Basic details shown at the top of your CV.</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1"><Label>Vollständiger Name</Label><Input value={cv.full_name || ""} onChange={(e) => set({ full_name: e.target.value })} /></div>
-          <div className="space-y-1"><Label>Titel / Headline</Label><Input value={cv.headline || ""} onChange={(e) => set({ headline: e.target.value })} placeholder="z. B. Virtual Assistant" /></div>
-          <div className="space-y-1"><Label>E-Mail</Label><Input value={cv.email || ""} onChange={(e) => set({ email: e.target.value })} /></div>
-          <div className="space-y-1"><Label>Telefon</Label><Input value={cv.phone || ""} onChange={(e) => set({ phone: e.target.value })} /></div>
-          <div className="space-y-1"><Label>Standort</Label><Input value={cv.location || ""} onChange={(e) => set({ location: e.target.value })} /></div>
+          <div className="space-y-1"><Label>Full Name</Label><Input value={cv.full_name || ""} onChange={(e) => set({ full_name: e.target.value })} /></div>
+          <div className="space-y-1"><Label>Title / Headline</Label><Input value={cv.headline || ""} onChange={(e) => set({ headline: e.target.value })} placeholder="e.g. Virtual Assistant" /></div>
+          <div className="space-y-1"><Label>Email</Label><Input value={cv.email || ""} onChange={(e) => set({ email: e.target.value })} /></div>
+          <div className="space-y-1"><Label>Phone</Label><Input value={cv.phone || ""} onChange={(e) => set({ phone: e.target.value })} /></div>
+          <div className="space-y-1"><Label>Location</Label><Input value={cv.location || ""} onChange={(e) => set({ location: e.target.value })} /></div>
           <div className="space-y-1"><Label>Website</Label><Input value={cv.website || ""} onChange={(e) => set({ website: e.target.value })} /></div>
           <div className="space-y-1 sm:col-span-2"><Label>LinkedIn</Label><Input value={cv.linkedin || ""} onChange={(e) => set({ linkedin: e.target.value })} /></div>
-          <div className="space-y-1 sm:col-span-2"><Label>Profil / Zusammenfassung</Label><Textarea rows={4} value={cv.summary || ""} onChange={(e) => set({ summary: e.target.value })} placeholder="Kurze Zusammenfassung deiner Erfahrung…" /></div>
+          <div className="space-y-1 sm:col-span-2"><Label>Profile / Summary</Label><Textarea rows={4} value={cv.summary || ""} onChange={(e) => set({ summary: e.target.value })} placeholder="Short summary of your experience…" /></div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>🎯 Fähigkeiten</CardTitle><CardDescription>Enter oder Komma fügt einen Begriff hinzu.</CardDescription></CardHeader>
-        <CardContent><ChipInput values={cv.skills || []} onChange={(v) => set({ skills: v })} placeholder="Skill eingeben + Enter" /></CardContent>
+        <CardHeader><CardTitle>🎯 Skills</CardTitle><CardDescription>Press Enter or comma to add a term.</CardDescription></CardHeader>
+        <CardContent><ChipInput values={cv.skills || []} onChange={(v) => set({ skills: v })} placeholder="Type a skill + Enter" /></CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>💼 Erfahrung</CardTitle>
-          <CardDescription>Deine bisherigen Positionen.</CardDescription>
+          <CardTitle>💼 Experience</CardTitle>
+          <CardDescription>Your previous positions.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {(cv.experience || []).map((exp, i) => (
@@ -189,60 +189,60 @@ export default function CvPage() {
                 <button type="button" onClick={() => set({ experience: (cv.experience || []).filter((_, j) => j !== i) })} className="text-slate-400 hover:text-red-500 text-sm">🗑️</button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Input placeholder="Rolle" value={exp.role || ""} onChange={(e) => { const a = [...(cv.experience || [])]; a[i] = { ...exp, role: e.target.value }; set({ experience: a }); }} />
-                <Input placeholder="Firma" value={exp.company || ""} onChange={(e) => { const a = [...(cv.experience || [])]; a[i] = { ...exp, company: e.target.value }; set({ experience: a }); }} />
-                <Input placeholder="Start (z. B. 2021)" value={exp.start || ""} onChange={(e) => { const a = [...(cv.experience || [])]; a[i] = { ...exp, start: e.target.value }; set({ experience: a }); }} />
-                <Input placeholder="Ende (z. B. 2024)" value={exp.end || ""} onChange={(e) => { const a = [...(cv.experience || [])]; a[i] = { ...exp, end: e.target.value }; set({ experience: a }); }} />
+                <Input placeholder="Role" value={exp.role || ""} onChange={(e) => { const a = [...(cv.experience || [])]; a[i] = { ...exp, role: e.target.value }; set({ experience: a }); }} />
+                <Input placeholder="Company" value={exp.company || ""} onChange={(e) => { const a = [...(cv.experience || [])]; a[i] = { ...exp, company: e.target.value }; set({ experience: a }); }} />
+                <Input placeholder="Start (e.g. 2021)" value={exp.start || ""} onChange={(e) => { const a = [...(cv.experience || [])]; a[i] = { ...exp, start: e.target.value }; set({ experience: a }); }} />
+                <Input placeholder="End (e.g. 2024)" value={exp.end || ""} onChange={(e) => { const a = [...(cv.experience || [])]; a[i] = { ...exp, end: e.target.value }; set({ experience: a }); }} />
               </div>
               <ChipInput
                 values={exp.bullets || []}
                 onChange={(v) => { const a = [...(cv.experience || [])]; a[i] = { ...exp, bullets: v }; set({ experience: a }); }}
-                placeholder="Aufgabe/Bullet + Enter"
+                placeholder="Task/Bullet + Enter"
               />
             </div>
           ))}
-          <Button variant="outline" size="sm" onClick={() => set({ experience: [...(cv.experience || []), { role: "", company: "", bullets: [] } as CvExperience] })}>➕ Erfahrung hinzufügen</Button>
+          <Button variant="outline" size="sm" onClick={() => set({ experience: [...(cv.experience || []), { role: "", company: "", bullets: [] } as CvExperience] })}>➕ Add Experience</Button>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>🎓 Ausbildung</CardTitle></CardHeader>
+        <CardHeader><CardTitle>🎓 Education</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {(cv.education || []).map((ed, i) => (
             <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_80px_auto] gap-2 items-center">
-              <Input placeholder="Abschluss" value={ed.degree || ""} onChange={(e) => { const a = [...(cv.education || [])]; a[i] = { ...ed, degree: e.target.value }; set({ education: a }); }} />
-              <Input placeholder="Schule/Uni" value={ed.school || ""} onChange={(e) => { const a = [...(cv.education || [])]; a[i] = { ...ed, school: e.target.value }; set({ education: a }); }} />
-              <Input placeholder="Jahr" value={ed.year || ""} onChange={(e) => { const a = [...(cv.education || [])]; a[i] = { ...ed, year: e.target.value }; set({ education: a }); }} />
+              <Input placeholder="Degree" value={ed.degree || ""} onChange={(e) => { const a = [...(cv.education || [])]; a[i] = { ...ed, degree: e.target.value }; set({ education: a }); }} />
+              <Input placeholder="School/University" value={ed.school || ""} onChange={(e) => { const a = [...(cv.education || [])]; a[i] = { ...ed, school: e.target.value }; set({ education: a }); }} />
+              <Input placeholder="Year" value={ed.year || ""} onChange={(e) => { const a = [...(cv.education || [])]; a[i] = { ...ed, year: e.target.value }; set({ education: a }); }} />
               <button type="button" onClick={() => set({ education: (cv.education || []).filter((_, j) => j !== i) })} className="text-slate-400 hover:text-red-500">🗑️</button>
             </div>
           ))}
-          <Button variant="outline" size="sm" onClick={() => set({ education: [...(cv.education || []), { degree: "", school: "" } as CvEducation] })}>➕ Ausbildung hinzufügen</Button>
+          <Button variant="outline" size="sm" onClick={() => set({ education: [...(cv.education || []), { degree: "", school: "" } as CvEducation] })}>➕ Add Education</Button>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>📜 Zertifikate</CardTitle></CardHeader>
-        <CardContent><ChipInput values={cv.certifications || []} onChange={(v) => set({ certifications: v })} placeholder="Zertifikat + Enter" /></CardContent>
+        <CardHeader><CardTitle>📜 Certifications</CardTitle></CardHeader>
+        <CardContent><ChipInput values={cv.certifications || []} onChange={(v) => set({ certifications: v })} placeholder="Certificate + Enter" /></CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>🗣️ Sprachen</CardTitle></CardHeader>
+        <CardHeader><CardTitle>🗣️ Languages</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {(cv.languages || []).map((l, i) => (
             <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-center">
-              <Input placeholder="Sprache" value={l.name || ""} onChange={(e) => { const a = [...(cv.languages || [])]; a[i] = { ...l, name: e.target.value }; set({ languages: a }); }} />
-              <Input placeholder="Niveau" value={l.level || ""} onChange={(e) => { const a = [...(cv.languages || [])]; a[i] = { ...l, level: e.target.value }; set({ languages: a }); }} />
+              <Input placeholder="Language" value={l.name || ""} onChange={(e) => { const a = [...(cv.languages || [])]; a[i] = { ...l, name: e.target.value }; set({ languages: a }); }} />
+              <Input placeholder="Level" value={l.level || ""} onChange={(e) => { const a = [...(cv.languages || [])]; a[i] = { ...l, level: e.target.value }; set({ languages: a }); }} />
               <button type="button" onClick={() => set({ languages: (cv.languages || []).filter((_, j) => j !== i) })} className="text-slate-400 hover:text-red-500">🗑️</button>
             </div>
           ))}
-          <Button variant="outline" size="sm" onClick={() => set({ languages: [...(cv.languages || []), { name: "" } as CvLanguage] })}>➕ Sprache hinzufügen</Button>
+          <Button variant="outline" size="sm" onClick={() => set({ languages: [...(cv.languages || []), { name: "" } as CvLanguage] })}>➕ Add Language</Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>📎 CV-Datei hochladen</CardTitle>
-          <CardDescription>Falls du bereits eine fertige CV-Datei hast (PDF/PNG/JPG/DOCX/TXT).</CardDescription>
+          <CardTitle>📎 Upload CV File</CardTitle>
+          <CardDescription>If you already have a finished CV file (PDF/PNG/JPG/DOCX/TXT).</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <input
@@ -252,19 +252,19 @@ export default function CvPage() {
             onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }}
             className="text-sm text-slate-500 dark:text-slate-400"
           />
-          {uploading && <p className="text-xs text-slate-400 animate-pulse">Lädt hoch…</p>}
+          {uploading && <p className="text-xs text-slate-400 animate-pulse">Uploading…</p>}
           {fileUrl && (
             <div className="flex items-center gap-2 text-sm">
-              <span>📄 {fileName || "CV-Datei"}:</span>
-              <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="text-kawaii-purple underline">Öffnen</a>
+              <span>📄 {fileName || "CV file"}:</span>
+              <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="text-kawaii-purple underline">Open</a>
             </div>
           )}
         </CardContent>
       </Card>
 
       <div className="flex items-center gap-3 pb-8">
-        <Button onClick={save} disabled={saving}>{saving ? "Speichere…" : "💾 CV Speichern"}</Button>
-        {saved && <span className="text-sm text-green-500 animate-fade-in">✅ Gespeichert!</span>}
+        <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "💾 Save CV"}</Button>
+        {saved && <span className="text-sm text-green-500 animate-fade-in">✅ Saved!</span>}
       </div>
     </div>
   );

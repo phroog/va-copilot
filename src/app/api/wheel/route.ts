@@ -40,7 +40,7 @@ export async function POST() {
     .eq("user_id", user.id)
     .eq("spin_date", today)
     .maybeSingle();
-  if (existing) return NextResponse.json({ error: "Schon heute gedreht – morgen wieder!" }, { status: 429 });
+  if (existing) return NextResponse.json({ error: "Already spun today – try again tomorrow!" }, { status: 429 });
 
   const reward = spinWheel();
 

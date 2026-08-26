@@ -12,10 +12,10 @@ import { quickUrlCheck, heuristicEvidence, type ScamEvidence } from "@/lib/clien
 import { detectExtension, isMobileDevice, scanWithExtension } from "@/lib/client/extension-scan";
 
 const LEVEL_META: Record<string, { emoji: string; label: string; cls: string }> = {
-  green: { emoji: "🟢", label: "Gering", cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
-  yellow: { emoji: "🟡", label: "Mittel", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" },
-  orange: { emoji: "🟠", label: "Erhöht", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" },
-  red: { emoji: "🔴", label: "Hoch", cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
+  green: { emoji: "🟢", label: "Low", cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
+  yellow: { emoji: "🟡", label: "Medium", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" },
+  orange: { emoji: "🟠", label: "Elevated", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" },
+  red: { emoji: "🔴", label: "High", cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
 };
 
 export default function ScamCheckPage() {
@@ -34,7 +34,7 @@ export default function ScamCheckPage() {
     const q = u.searchParams.get("url");
     if (q) setUrl(q);
     const j = u.searchParams.get("job");
-    if (j) setSource(`Aus Job ${j}`);
+    if (j) setSource(`From Job ${j}`);
   }, []);
 
   // Detect the extension on desktop.
@@ -49,7 +49,7 @@ export default function ScamCheckPage() {
     // Open the page in the user's own tab (works on desktop & mobile).
     const tab = window.open(target, "_blank", "noopener");
     if (!tab) {
-      showToast("Pop-up wurde blockiert – bitte erlauben und erneut versuchen.", "error");
+      showToast("Pop-up was blocked – please allow it and try again.", "error");
       return;
     }
 
@@ -92,7 +92,7 @@ export default function ScamCheckPage() {
     const res = await scanWithExtension(target);
     if (!res.ok || !res.evidence) {
       setChecking(false);
-      showToast(res.error || "Extension-Scan fehlgeschlagen – versuche den simplen Scan.", "error");
+      showToast(res.error || "Extension scan failed – try the simple scan.", "error");
       return;
     }
     let ev = res.evidence as ScamEvidence;
@@ -115,11 +115,11 @@ export default function ScamCheckPage() {
   const handleScan = () => {
     const target = url.trim();
     if (!target) {
-      showToast("Bitte eine Job-URL eingeben oder einen Job auswählen.", "error");
+      showToast("Please enter a job URL or select a job.", "error");
       return;
     }
     if (!/^https?:\/\//i.test(target)) {
-      showToast("Bitte eine gültige URL mit http(s):// eingeben.", "error");
+      showToast("Please enter a valid URL with http(s)://.", "error");
       return;
     }
     const pre = quickUrlCheck(target);
@@ -138,16 +138,16 @@ export default function ScamCheckPage() {
     <div className="space-y-6 animate-fade-in max-w-3xl">
       <h1 className="text-3xl font-extrabold">🕵️ {t("scamCheck")}</h1>
       <p className="text-slate-500 dark:text-slate-400">
-        Job-URL eingeben (oder einen Job aus Live-Feed / Extension nutzen) und auf Scan drücken.
+        Enter a job URL (or use a job from Live Feed / extension) and press Scan.
       </p>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">🔍 Job-Scam-Scan</CardTitle>
+          <CardTitle className="text-lg">🔍 Job Scam Scan</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label className="text-sm font-semibold">Job-URL</Label>
+            <Label className="text-sm font-semibold">Job URL</Label>
             <div className="flex gap-2 mt-1">
               <Input
                 placeholder="https://www.upwork.com/jobs/..."
@@ -172,26 +172,26 @@ export default function ScamCheckPage() {
           <div className={`rounded-2xl border p-3 text-sm ${mobile ? "border-amber-300/60 bg-amber-50/70 dark:bg-amber-900/10" : ext === "yes" ? "border-green-300/60 bg-green-50/70 dark:bg-green-900/10" : "border-kawaii-lavender/40 bg-kawaii-lavender/10 dark:bg-dark-surface"}`}>
             {mobile ? (
               <p className="text-amber-700 dark:text-amber-300">
-                ⚠️ <strong>Vorsicht – nur ein grober Scan.</strong> Auf dem Handy kann Sari die Seite nicht direkt lesen;
-                das Ergebnis basiert auf ein paar kleinen Fakten (Domain + KI). Für den richtigen Scan bitte den PC verwenden.
+                ⚠️ <strong>Caution – only a rough scan.</strong> On mobile, Sari can't read the page directly;
+                the result is based on a few small facts (domain + AI). For a full scan, please use your PC.
               </p>
             ) : ext === "checking" ? (
-              <p className="text-slate-500">Prüfe Browser-Extension…</p>
+              <p className="text-slate-500">Checking browser extension…</p>
             ) : ext === "yes" ? (
               <p className="text-green-700 dark:text-green-300">
-                ✅ Browser-Extension erkannt – der Scan öffnet die echte Seite und prüft sie dort vollständig (DOM).
+                ✅ Browser extension detected – the scan opens the real page and fully checks it there (DOM).
               </p>
             ) : (
               <div className="space-y-2">
                 <p className="text-kawaii-purple dark:text-kawaii-lavender">
-                  🧩 Browser-Extension nicht installiert. Für den <strong>vollen Scan</strong> auf der echten Seite:
+                  🧩 Browser extension not installed. For a <strong>full scan</strong> on the real page:
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" onClick={() => window.open("https://chrome.google.com/webstore", "_blank")}>
-                    📥 Sari-Extension installieren
+                    📥 Install Sari extension
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => simpleScan(url.trim())} disabled={checking || !url.trim()}>
-                    Oder: simpler Scan (wie am Handy) →
+                    Or: simple scan (like on mobile) →
                   </Button>
                 </div>
               </div>
@@ -209,12 +209,12 @@ export default function ScamCheckPage() {
                     <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-lg ${m?.cls}`}>
                       {m?.emoji} {m?.label}
                     </span>
-                    <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">{result.score}% Risiko</span>
+                    <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">{result.score}% Risk</span>
                   </div>
                   <p className="text-xs text-slate-400 mt-1 break-all">{result.pageTitle || result.pageUrl}</p>
                   {!result.inspected && (
                     <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                      ⚠ Seite konnte nicht direkt gelesen werden (Sicherheitsbeschränkung) – Ergebnis basiert auf Domain + KI.
+                      ⚠ The page could not be read directly (security restriction) – the result is based on domain + AI.
                     </p>
                   )}
                 </div>
@@ -222,7 +222,7 @@ export default function ScamCheckPage() {
 
               {result.flags.length > 0 && (
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Gefundene Hinweise</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Signals found</p>
                   <ul className="space-y-1.5">
                     {result.flags.map((f, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
@@ -236,13 +236,13 @@ export default function ScamCheckPage() {
 
               {result.signals.offPlatformLinks.length > 0 && (
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Links auf andere Seiten</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Links to other pages</p>
                   <p className="text-xs text-slate-500 break-all">{result.signals.offPlatformLinks.join(", ")}</p>
                 </div>
               )}
               {result.signals.suspiciousSites.length > 0 && (
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-red-400 mb-1">Verdächtige Ziele</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-red-400 mb-1">Suspicious targets</p>
                   <p className="text-xs text-red-500 break-all">{result.signals.suspiciousSites.join(", ")}</p>
                 </div>
               )}
@@ -277,16 +277,16 @@ function scanDom(doc: Document, baseUrl: string): Partial<ScamEvidence> {
     }
   }
   const addFlag = (label: string, sev: number) => { if (!seen.has(label)) { seen.add(label); flags.push({ label, severity: sev }); } };
-  if (/western union|moneygram|wire transfer|gift card|bitcoin|crypto|paypal\s*(friends|family)/i.test(text)) addFlag("Zahlung per Überweisung/Geschenkkarte", 30);
-  if (/credit card|card details|bank account|ssn|social security|passport|id copy/i.test(text)) addFlag("Sensible Daten angefordert", 25);
-  if (/processing|application|registration|activation fee|pay to (register|apply)|deposit.*(secure|reserve)|payment.*(upfront|in advance)/i.test(text)) addFlag("Gebühr vorab / Zahlung verlangt", 30);
-  if (/unlimited earning|guaranteed (income|salary|profit)|get rich|residual income|passive income/i.test(text)) addFlag("Zu gut um wahr zu sein", 25);
-  if (/recruiters? needed|referral (bonus|commission)|network marketing|multi[- ]level/i.test(text)) addFlag("MLM/Recruiting-Muster", 20);
-  if (/(work|do|test|sample).*(free|without pay)|unpaid (trial|test)/i.test(text)) addFlag("Unbezahlte Testarbeit", 25);
-  if (/urgent|start (immediately|now|today)|no interview/i.test(text)) addFlag("Dringlichkeit/Druck", 10);
+  if (/western union|moneygram|wire transfer|gift card|bitcoin|crypto|paypal\s*(friends|family)/i.test(text)) addFlag("Payment by bank transfer/gift card", 30);
+  if (/credit card|card details|bank account|ssn|social security|passport|id copy/i.test(text)) addFlag("Sensitive data requested", 25);
+  if (/processing|application|registration|activation fee|pay to (register|apply)|deposit.*(secure|reserve)|payment.*(upfront|in advance)/i.test(text)) addFlag("Upfront fee / payment required", 30);
+  if (/unlimited earning|guaranteed (income|salary|profit)|get rich|residual income|passive income/i.test(text)) addFlag("Too good to be true", 25);
+  if (/recruiters? needed|referral (bonus|commission)|network marketing|multi[- ]level/i.test(text)) addFlag("MLM/recruiting pattern", 20);
+  if (/(work|do|test|sample).*(free|without pay)|unpaid (trial|test)/i.test(text)) addFlag("Unpaid test work", 25);
+  if (/urgent|start (immediately|now|today)|no interview/i.test(text)) addFlag("Urgency/pressure", 10);
   const tg = Array.from(doc.querySelectorAll('a[href*="t.me"], a[href*="wa.me"], a[href*="whatsapp"]')).length;
-  if (tg > 0) addFlag("Kontakt über Telegram/WhatsApp", 25);
-  if (signals.suspiciousSites.length > 0) addFlag("Verdächtige Links auf der Seite", 25);
+  if (tg > 0) addFlag("Contact via Telegram/WhatsApp", 25);
+  if (signals.suspiciousSites.length > 0) addFlag("Suspicious links on the page", 25);
   let score = 10;
   for (const f of flags) score += f.severity;
   score = Math.max(0, Math.min(100, score));

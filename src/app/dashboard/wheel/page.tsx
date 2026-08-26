@@ -151,7 +151,7 @@ export default function WheelPage() {
                 <div className="rounded-2xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 px-6 py-3">
                   <p className="text-xs uppercase tracking-wider text-slate-400 font-bold">{t("wheelResult")}</p>
                   <p className="text-xl font-extrabold text-kawaii-purple dark:text-kawaii-lavender">
-                    {result.type === "credits" ? `🪙 +${result.amount} Credits` : `📋 +${result.amount} Job-Views`}
+                    {result.type === "credits" ? `🪙 +${result.amount} Credits` : `📋 +${result.amount} Job Views`}
                   </p>
                 </div>
               ) : (

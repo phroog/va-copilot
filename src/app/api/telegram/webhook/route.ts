@@ -91,7 +91,7 @@ async function handleMessage(chatId: number, text: string, username: string) {
     return;
   }
 
-  await sendTelegram(chatId, "Verfügbare Befehle:\n/match\n/stats\n/invoices");
+  await sendTelegram(chatId, "Available commands:\n/match\n/stats\n/invoices");
 }
 
 async function cmdMatch(userId: string, chatId: number) {

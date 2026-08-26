@@ -4,7 +4,7 @@ const KEYS = ["upwork", "onlinejobs", "guru", "freelancer", "workingnomads", "re
 function sendMsg(msg, timeoutMs = 60000) {
   return Promise.race([
     chrome.runtime.sendMessage(msg),
-    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout – Background antwortet nicht (Erweiterung neu laden?)")), timeoutMs)),
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout – background not responding (try reloading the extension?)")), timeoutMs)),
   ]);
 }
 
@@ -28,7 +28,7 @@ function buildRows(platforms) {
     if (k === "upwork") {
       const id = document.createElement("span");
       id.className = "pid";
-      id.textContent = p.sourceId ? "✓ Source-ID" : "keine Source-ID";
+      id.textContent = p.sourceId ? "✓ source ID" : "no source ID";
       row.appendChild(id);
     } else {
       const u = document.createElement("input");
@@ -36,7 +36,7 @@ function buildRows(platforms) {
       u.value = p.url || "";
       u.dataset.urlKey = k;
       u.className = "purl";
-      u.placeholder = "Jobs-URL";
+      u.placeholder = "Jobs URL";
       row.appendChild(u);
     }
     wrap.appendChild(row);
@@ -62,13 +62,13 @@ function renderStatus(s) {
   const el = $("status");
   const when = s && s.ts ? new Date(s.ts).toLocaleTimeString() : "–";
   if (!s || !s.platforms) {
-    el.textContent = s && s.error ? "Fehler: " + s.error : "Noch kein Poll.";
+    el.textContent = s && s.error ? "Error: " + s.error : "No poll yet.";
     el.className = s && s.error ? "err" : "";
     return;
   }
-  const lines = [`Letzter Poll: ${when}`];
+  const lines = [`Last poll: ${when}`];
   const keys = Object.keys(s.platforms);
-  if (!keys.length) lines.push(s.note || "keine Plattform aktiviert");
+  if (!keys.length) lines.push(s.note || "no platform enabled");
   for (const k of keys) {
     const r = s.platforms[k];
     const dbg = r.debug
@@ -76,8 +76,8 @@ function renderStatus(s) {
       : "";
     lines.push(
       r.ok
-        ? `✓ ${k}: ${r.got} geladen · ${r.fresh} neu · ${r.inserted} eingefügt (${r.mode})${r.warning ? ` ⚠ ${r.warning}` : ""}${dbg}`
-        : `✗ ${k}: FEHLER – ${r.error}`
+        ? `✓ ${k}: ${r.got} loaded · ${r.fresh} new · ${r.inserted} inserted (${r.mode})${r.warning ? ` ⚠ ${r.warning}` : ""}${dbg}`
+        : `✗ ${k}: ERROR – ${r.error}`
     );
   }
   el.textContent = lines.join("\n");
@@ -95,9 +95,9 @@ async function load() {
     buildRows(cfg.platforms);
     renderStatus(status);
     const len = cfg.adminSecret ? cfg.adminSecret.length : 0;
-    $("status").textContent += `\nAdmin-Secret gespeichert: ${len === 0 ? "LEER (bitte unten eintippen)" : "Länge " + len}`;
+    $("status").textContent += `\nAdmin secret saved: ${len === 0 ? "EMPTY (please type below)" : "length " + len}`;
   } catch (err) {
-    $("status").textContent = "Fehler: " + err.message;
+    $("status").textContent = "Error: " + err.message;
     $("status").className = "err";
   }
 }
@@ -118,7 +118,7 @@ async function load() {
 });
 
 $("save").addEventListener("click", async () => {
-  $("status").textContent = "Speichere & polle …";
+  $("status").textContent = "Saving & polling…";
   $("status").className = "";
   const cfg = {
     enabled: $("enabled").checked,
@@ -132,32 +132,32 @@ $("save").addEventListener("click", async () => {
     const res = await sendMsg({ type: "SAVE_CONFIG", cfg });
     if (res && res.ok) {
       renderStatus(res.status);
-      $("status").textContent += `\n\nSecret gespeichert: Länge ${res.savedSecretLen} (Feld: ${cfg.adminSecret.length})`;
+      $("status").textContent += `\n\nSecret saved: length ${res.savedSecretLen} (Feld: ${cfg.adminSecret.length})`;
       $("status").className = res.status && res.status.ok ? "ok" : "err";
     } else {
-      $("status").textContent = "Fehler: " + (res && res.error ? res.error : "unbekannt");
+      $("status").textContent = "Error: " + (res && res.error ? res.error : "unbekannt");
       $("status").className = "err";
     }
   } catch (err) {
-    $("status").textContent = "Fehler: " + err.message;
+    $("status").textContent = "Error: " + err.message;
     $("status").className = "err";
   }
 });
 
 $("now").addEventListener("click", async () => {
-  $("status").textContent = "Poll läuft…";
+  $("status").textContent = "Polling…";
   $("status").className = "";
   try {
     const status = await sendMsg({ type: "POLL_NOW" });
     renderStatus(status);
   } catch (err) {
-    $("status").textContent = "Fehler: " + err.message;
+    $("status").textContent = "Error: " + err.message;
     $("status").className = "err";
   }
 });
 
 $("test").addEventListener("click", async () => {
-  $("status").textContent = "Teste API…";
+  $("status").textContent = "Testing API…";
   $("status").className = "";
   const cfg = {
     apiUrl: $("apiUrl").value.trim(),
@@ -166,34 +166,34 @@ $("test").addEventListener("click", async () => {
   try {
     const r = await sendMsg({ type: "TEST_API", cfg }, 15000);
     if (r && r.ok) {
-      $("status").textContent = "API OK – Secret gültig.";
+      $("status").textContent = "API OK – secret valid.";
       $("status").className = "ok";
     } else {
-      $("status").textContent = "API-Fehler: " + (r && r.error ? r.error : "unbekannt");
+      $("status").textContent = "API-Error: " + (r && r.error ? r.error : "unbekannt");
       $("status").className = "err";
     }
   } catch (err) {
-    $("status").textContent = "Fehler: " + err.message;
+    $("status").textContent = "Error: " + err.message;
     $("status").className = "err";
   }
 });
 
 $("cleanup").addEventListener("click", async () => {
-  $("status").textContent = "Cleanup läuft…";
+  $("status").textContent = "Cleanup running…";
   $("status").className = "";
   try {
     const r = await sendMsg({ type: "CLEANUP_FUTURE" }, 90000);
     if (r && r.ok) {
       $("status").textContent =
-        `Cleanup OK – Zukunfts-datiert: ${r.deletedFuture ?? 0} · Irrelevante: ${r.purged ?? 0} · Alt (>72h, ungespeichert): ${r.removedOld ?? 0}.` +
-        ` Nächster Poll spielt aktuelle Jobs neu ein.`;
+        `Cleanup OK – future-dated: ${r.deletedFuture ?? 0} · irrelevant: ${r.purged ?? 0} · old (>72h, unsaved): ${r.removedOld ?? 0}.` +
+        ` Next poll will re-ingest current jobs.`;
       $("status").className = "ok";
     } else {
-      $("status").textContent = "Cleanup-Fehler: " + (r && r.error ? r.error : "unbekannt");
+      $("status").textContent = "Cleanup-Error: " + (r && r.error ? r.error : "unbekannt");
       $("status").className = "err";
     }
   } catch (err) {
-    $("status").textContent = "Fehler: " + err.message;
+    $("status").textContent = "Error: " + err.message;
     $("status").className = "err";
   }
 });

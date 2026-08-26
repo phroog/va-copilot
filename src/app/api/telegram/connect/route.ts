@@ -34,7 +34,7 @@ export async function POST() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!telegramConfigured()) {
-    return NextResponse.json({ error: "Telegram-Bot ist noch nicht konfiguriert (TELEGRAM_BOT_TOKEN fehlt)." }, { status: 503 });
+    return NextResponse.json({ error: "Telegram bot is not configured yet (TELEGRAM_BOT_TOKEN is missing)." }, { status: 503 });
   }
 
   const { data: existing } = await supabase
@@ -43,7 +43,7 @@ export async function POST() {
     .eq("user_id", user.id)
     .maybeSingle();
   if (existing) {
-    return NextResponse.json({ error: "Bereits verbunden." }, { status: 409 });
+    return NextResponse.json({ error: "Already connected." }, { status: 409 });
   }
 
   const code = crypto.randomInt(100000, 1000000).toString();
@@ -52,7 +52,7 @@ export async function POST() {
     { onConflict: "user_id" }
   );
   if (codeError) {
-    return NextResponse.json({ error: "Code konnte nicht gespeichert werden: " + codeError.message }, { status: 500 });
+    return NextResponse.json({ error: "Could not save code: " + codeError.message }, { status: 500 });
   }
 
   return NextResponse.json({ code, botUsername: process.env.TELEGRAM_BOT_USERNAME || "" });

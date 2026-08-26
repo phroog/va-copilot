@@ -188,7 +188,7 @@ async function refreshSessionTab(key, p) {
           if (clicks < 3 && Date.now() - lastClickAt > 2500) {
             clicks++;
             lastClickAt = Date.now();
-            log(key, "Cloudflare-Challenge → Checkbox-Klick " + clicks);
+            log(key, "Cloudflare challenge → checkbox click " + clicks);
             await clickCloudflareCheckbox(tab.id);
           }
           continue; // keep waiting for auto-solve
@@ -361,10 +361,10 @@ async function fetchUpworkWorker(cfg) {
     body: JSON.stringify({ query, variables: { requestVariables: { sort: "recency", highlight: true, paging: { offset: 0, count: cfg.count } } } }),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error("Worker-Fetch Upwork HTTP " + res.status + ": " + text.slice(0, 200));
+  if (!res.ok) throw new Error("Worker fetch Upwork HTTP " + res.status + ": " + text.slice(0, 200));
   const j = JSON.parse(text);
   const feed = j && j.data && j.data.search && j.data.search.universalSearchNuxt && j.data.search.universalSearchNuxt.visitorJobSearchV1;
-  if (!feed) throw new Error("Unbekannte Feed-Struktur");
+  if (!feed) throw new Error("Unknown feed structure");
   return { total: feed.paging ? feed.paging.total : null, jobs: (feed.results || []).map(mapWorkerUpworkJob) };
 }
 
@@ -405,7 +405,7 @@ async function fetchRedditWorker(cfg) {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  if (!subs.length) throw new Error("Keine Subreddits konfiguriert");
+  if (!subs.length) throw new Error("No subreddits configured");
   const out = [];
   const seen = new Set();
   for (const sub of subs) {
@@ -442,7 +442,7 @@ async function fetchRedditWorker(cfg) {
 }
 
 async function uploadJobs(cfg, jobs, sourceId) {
-  if (!cfg.adminSecret) throw new Error("Kein ADMIN_SECRET konfiguriert (gespeicherte Länge: " + String(cfg.adminSecret || "").length + ")");
+  if (!cfg.adminSecret) throw new Error("No ADMIN_SECRET configured (saved length: " + String(cfg.adminSecret || "").length + ")");
   if (!jobs.length) return { inserted: 0 };
   const payload = { jobs };
   if (sourceId && UUID_RE.test(sourceId.trim())) payload.sourceId = sourceId.trim();
@@ -485,7 +485,7 @@ function platformForUrl(url) {
 }
 
 async function testApi(cfg) {
-  if (!cfg.adminSecret) return { ok: false, error: "Kein ADMIN_SECRET konfiguriert" };
+  if (!cfg.adminSecret) return { ok: false, error: "No ADMIN_SECRET configured" };
   try {
     const res = await fetch(cfg.apiUrl + "/api/jobs/pending-web-sources", {
       headers: { "x-admin-secret": cfg.adminSecret },
@@ -517,23 +517,23 @@ async function fetchPlatformData(key, p, cfg) {
     if (data) return { data, mode: "tab" };
     const w = await fetchUpworkWorker(cfg);
     if (w) return { data: w, mode: "worker" };
-    throw new Error("Upwork-Daten nicht abrufbar");
+    throw new Error("Upwork data unavailable");
   }
   if (key === "reddit") {
     let data = await fetchViaTab(key, p.url, cfg);
     if (data) return { data, mode: "tab" };
     const w = await fetchRedditWorker(cfg);
     if (w) return { data: w, mode: "worker" };
-    throw new Error("Reddit-Daten nicht abrufbar");
+    throw new Error("Reddit data unavailable");
   }
   if (key === "facebook") {
     const data = await fetchViaTab(key, p.url, cfg);
-    if (!data || !data.posts) throw new Error("Kein Facebook-Tab offen (Groups-Feed öffnen)");
+    if (!data || !data.posts) throw new Error("No Facebook tab open (open the Groups feed)");
     return { data, mode: "tab" };
   }
   // HTML/DOM platforms need an open tab (same-origin fetch / DOM reader).
   const data = await fetchViaTab(key, p.url, cfg);
-  if (!data) throw new Error("Kein " + p.name + "-Tab offen");
+  if (!data) throw new Error("No " + p.name + " tab open");
   return { data, mode: "tab" };
 }
 
@@ -546,14 +546,14 @@ async function fetchWithSessionRetry(key, p, cfg) {
     return await fetchPlatformData(key, p, cfg);
   } catch (err) {
     const msg = err.message || "";
-    const isSession = /401|authentication failed|auth failed|blocked|unreachable|Kein .*Tab offen/i.test(msg);
+    const isSession = /401|authentication failed|auth failed|blocked|unreachable|No .*tab open/i.test(msg);
     if (isSession) {
       // Case 1: the open tab is stuck on a Cloudflare challenge — bring it to
       // the foreground (the checkbox only works while visible), click once and
       // retry directly (no new tab needed).
       const tabId = await findPlatformTabId(key);
       if (tabId && (await isCloudflareTab(tabId))) {
-        log(key, "CF-Challenge auf offenem Tab → Tab aktivieren + Checkbox-Klick + Retry");
+        log(key, "CF challenge on open tab → activate tab + checkbox click + retry");
         await focusTab(tabId);
         await new Promise((r) => setTimeout(r, 1500));
         await clickCloudflareCheckbox(tabId);
@@ -562,7 +562,7 @@ async function fetchWithSessionRetry(key, p, cfg) {
         if (retried) return retried;
       }
       // Case 2: re-open the tab (new tab + close old) and retry once.
-      log(key, "fetch fehlgeschlagen → Session-Refresh: " + msg.slice(0, 80));
+      log(key, "fetch failed → session refresh: " + msg.slice(0, 80));
       const refreshed = await refreshSessionTab(key, p);
       if (refreshed) {
         await setLastRefresh(key, Date.now());
@@ -590,7 +590,7 @@ async function pollPlatform(key, p, cfg) {
       result.got = posts.length;
       result.debug = data.debug || null;
       if (posts.length) {
-        if (!cfg.adminSecret) throw new Error("Kein ADMIN_SECRET konfiguriert");
+        if (!cfg.adminSecret) throw new Error("No ADMIN_SECRET configured");
         const res = await fetch(cfg.apiUrl + "/api/jobs/facebook", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-admin-secret": cfg.adminSecret },
@@ -617,7 +617,7 @@ async function pollPlatform(key, p, cfg) {
       const empties = (await getEmptyCount(key)) + 1;
       await setEmptyCount(key, empties);
       if (empties >= 2) {
-        log(key, "leerer Feed (" + empties + "×) → neuen Tab öffnen + Recheck");
+        log(key, "empty feed (" + empties + "×) → opening a fresh tab + recheck");
         const refreshed = await refreshSessionTab(key, p);
         if (refreshed) {
           await setLastRefresh(key, Date.now());
@@ -629,12 +629,12 @@ async function pollPlatform(key, p, cfg) {
             mode = again.mode;
             result.mode = mode;
             await setEmptyCount(key, 0);
-            log(key, "Recheck ok – nach Refresh " + data.jobs.length + " Jobs");
+            log(key, "Recheck OK – after refresh " + data.jobs.length + " Jobs");
           } else {
-            result.warning = "Leerer Feed auch nach Tab-Refresh";
+            result.warning = "Empty feed even after tab refresh";
           }
         } else {
-          result.warning = "Leerer Feed (Tab-Refresh nicht möglich)";
+          result.warning = "Empty feed (tab refresh not possible)";
         }
       } else {
         result.warning = "Leerer Feed (" + empties + "×)";
@@ -659,7 +659,7 @@ async function pollPlatform(key, p, cfg) {
     result.ok = false;
     result.error = err.message || "unbekannt";
     if (key === "upwork" && /401|authentication failed/i.test(result.error)) {
-      result.error = "⚠ Upwork-Session abgelaufen – bitte neu einloggen (Upwork-Tab öffnen).";
+      result.error = "⚠ Upwork session expired – please log in again (open the Upwork tab).";
       await setCooldown(key, 30);
     }
   }
@@ -669,7 +669,7 @@ async function pollPlatform(key, p, cfg) {
 async function poll() {
   const cfg = await config();
   if (!cfg.enabled) {
-    await setStatus({ ok: true, ts: Date.now(), platforms: {}, note: "Polling deaktiviert (Enabled ist aus)" });
+    await setStatus({ ok: true, ts: Date.now(), platforms: {}, note: "Polling disabled (Enabled is off)" });
     return;
   }
   const results = {};
@@ -681,7 +681,7 @@ async function poll() {
     const until = await getCooldown(key);
     if (until > Date.now()) {
       const mins = Math.max(1, Math.ceil((until - Date.now()) / 60000));
-      results[key] = { ok: false, mode: null, got: 0, fresh: 0, total: null, inserted: 0, error: key === "upwork" ? `⏸ Upwork pausiert (Retry in ${mins} Min)` : `⏸ ${key} pausiert (Retry in ${mins} Min)` };
+      results[key] = { ok: false, mode: null, got: 0, fresh: 0, total: null, inserted: 0, error: key === "upwork" ? `⏸ Upwork paused (retry in ${mins} Min)` : `⏸ ${key} paused (retry in ${mins} Min)` };
       any = true;
       continue;
     }
@@ -764,7 +764,7 @@ chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
     (async () => {
       try {
         const url = await getJobUrlById(msg.id);
-        if (!url) { sendResponse({ ok: false, error: "keine URL bekannt" }); return; }
+        if (!url) { sendResponse({ ok: false, error: "no URL known" }); return; }
         await chrome.windows.create({ url, type: "popup", width: 1100, height: 820 });
         sendResponse({ ok: true });
       } catch (e) {
@@ -784,7 +784,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     (async () => {
       try {
         const url = await getJobUrlById(msg.id);
-        if (!url) { sendResponse({ ok: false, error: "keine URL bekannt (Job noch nicht gepollt)" }); return; }
+        if (!url) { sendResponse({ ok: false, error: "no URL known (job not polled yet)" }); return; }
         // Popup window WITHOUT an address bar: the user sees the real page,
         // but the link stays hidden until a credit reveals it.
         await chrome.windows.create({ url, type: "popup", width: 1100, height: 820 });
@@ -832,16 +832,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
               }
             } catch {}
           });
-          if (/western union|moneygram|wire transfer|gift card|bitcoin|crypto|paypal\s*(friends|family)/i.test(text)) { push("Zahlung per Überweisung/Geschenkkarte", 30); signals.paymentMethods.push("Zahlungsmethode"); }
-          if (/credit card|card details|bank account|ssn|social security|passport|id copy|copy of (id|passport)/i.test(text)) { push("Sensible Daten angefordert", 25); signals.requestedData.push("Sensible Daten"); }
-          if (/processing|application|registration|activation fee|pay to (register|apply)|deposit.*(secure|reserve)|payment.*(upfront|in advance)/i.test(text)) push("Gebühr vorab / Zahlung verlangt", 30);
-          if (/unlimited earning|guaranteed (income|salary|profit)|get rich|residual income|passive income/i.test(text)) push("Zu gut um wahr zu sein", 25);
-          if (/recruiters? needed|referral (bonus|commission)|network marketing|multi[- ]level/i.test(text)) push("MLM/Recruiting-Muster", 20);
-          if (/(work|do|test|sample).*(free|without pay)|unpaid (trial|test)/i.test(text)) push("Unbezahlte Testarbeit", 25);
-          if (/urgent|start (immediately|now|today)|no interview/i.test(text)) push("Dringlichkeit/Druck", 10);
+          if (/western union|moneygram|wire transfer|gift card|bitcoin|crypto|paypal\s*(friends|family)/i.test(text)) { push("Payment via wire transfer/gift card", 30); signals.paymentMethods.push("payment method"); }
+          if (/credit card|card details|bank account|ssn|social security|passport|id copy|copy of (id|passport)/i.test(text)) { push("Sensitive data requested", 25); signals.requestedData.push("sensitive data"); }
+          if (/processing|application|registration|activation fee|pay to (register|apply)|deposit.*(secure|reserve)|payment.*(upfront|in advance)/i.test(text)) push("Upfront fee / payment requested", 30);
+          if (/unlimited earning|guaranteed (income|salary|profit)|get rich|residual income|passive income/i.test(text)) push("Too good to be true", 25);
+          if (/recruiters? needed|referral (bonus|commission)|network marketing|multi[- ]level/i.test(text)) push("MLM/recruiting pattern", 20);
+          if (/(work|do|test|sample).*(free|without pay)|unpaid (trial|test)/i.test(text)) push("Unpaid trial work", 25);
+          if (/urgent|start (immediately|now|today)|no interview/i.test(text)) push("Urgency/pressure", 10);
           const tg = document.querySelectorAll('a[href*="t.me"], a[href*="wa.me"], a[href*="whatsapp"]').length;
-          if (tg > 0) push("Kontakt über Telegram/WhatsApp", 25);
-          if (signals.suspiciousSites.length > 0) push("Verdächtige Links auf der Seite", 25);
+          if (tg > 0) push("Contact via Telegram/WhatsApp", 25);
+          if (signals.suspiciousSites.length > 0) push("Suspicious links on the page", 25);
           let score = 10;
           for (const f of flags) score += f.severity;
           score = Math.max(0, Math.min(100, score));
@@ -856,7 +856,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         };
         const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: fn }).catch(() => null);
         const ev = results && results[0] && results[0].result ? results[0].result : null;
-        if (!ev) { sendResponse({ ok: false, error: "Seite konnte nicht gescannt werden" }); return; }
+        if (!ev) { sendResponse({ ok: false, error: "Could not scan the page" }); return; }
         // Close the scan tab if we opened it fresh, so the user isn't flooded.
         // (Keep it open on mobile-like flows where the user wants to review.)
         sendResponse({ ok: true, evidence: ev });
@@ -910,7 +910,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "CLEANUP_FUTURE") {
     (async () => {
       const cfg = await config();
-      if (!cfg.adminSecret) return sendResponse({ ok: false, error: "Kein ADMIN_SECRET konfiguriert" });
+      if (!cfg.adminSecret) return sendResponse({ ok: false, error: "No ADMIN_SECRET configured" });
       const headers = { "x-admin-secret": cfg.adminSecret };
       const [futureRes, purgeRes, oldRes] = await Promise.all([
         fetch(cfg.apiUrl + "/api/jobs/cleanup-future", { method: "POST", headers }).catch(() => null),
@@ -921,7 +921,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         if (!r) return null;
         const t = await r.text();
         if (!r.ok) return { error: "HTTP " + r.status + ": " + (t || "").slice(0, 200) };
-        try { return JSON.parse(t); } catch { return { error: "Ungültige Antwort" }; }
+        try { return JSON.parse(t); } catch { return { error: "Invalid response" }; }
       };
       const future = await parse(futureRes);
       const purge = await parse(purgeRes);

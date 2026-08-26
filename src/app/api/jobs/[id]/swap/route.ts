@@ -21,7 +21,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     .select("id")
     .eq("id", id)
     .maybeSingle();
-  if (jobErr || !job) return NextResponse.json({ error: "Job nicht gefunden" }, { status: 404 });
+  if (jobErr || !job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
   const { data: sub } = await supabase.from("subscriptions").select("plan, status").eq("user_id", user.id).maybeSingle();
   const plan = ((sub?.plan as PlanKey) || "free");
@@ -37,7 +37,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   const swapUsed = view?.swaps ?? 0;
   if (swapUsed >= limit) {
-    return NextResponse.json({ error: "Swap-Kontingent für heute aufgebraucht" }, { status: 429 });
+    return NextResponse.json({ error: "Swap limit for today reached" }, { status: 429 });
   }
 
   await supabase.from("user_job_interactions").upsert(

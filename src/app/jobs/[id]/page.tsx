@@ -7,10 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
 const SCAM_META: Record<string, { emoji: string; label: string; cls: string }> = {
-  green: { emoji: "🟢", label: "Gering", cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
-  yellow: { emoji: "🟡", label: "Mittel", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" },
-  orange: { emoji: "🟠", label: "Erhöht", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" },
-  red: { emoji: "🔴", label: "Hoch", cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
+  green: { emoji: "🟢", label: "Low", cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
+  yellow: { emoji: "🟡", label: "Medium", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" },
+  orange: { emoji: "🟠", label: "Elevated", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" },
+  red: { emoji: "🔴", label: "High", cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
 };
 
 export default function GlobalJobDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -25,10 +25,10 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
       setId(jobId);
       try {
         const res = await fetch(`/api/jobs/global/${jobId}`);
-        if (!res.ok) { setError("Job nicht gefunden"); return; }
+        if (!res.ok) { setError("Job not found"); return; }
         const data = await res.json();
         setJob(data.job);
-      } catch { setError("Laden fehlgeschlagen"); } finally { setLoading(false); }
+      } catch { setError("Failed to load"); } finally { setLoading(false); }
     })();
   }, [params]);
 
@@ -36,15 +36,15 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
     try { return window.localStorage.getItem("sari_ext_id"); } catch { return null; }
   }
 
-  if (loading) return <div className="min-h-screen bg-[#FFF0F5] dark:bg-dark-bg flex items-center justify-center"><p className="text-slate-400 animate-pulse">Lade Job…</p></div>;
+  if (loading) return <div className="min-h-screen bg-[#FFF0F5] dark:bg-dark-bg flex items-center justify-center"><p className="text-slate-400 animate-pulse">Loading job…</p></div>;
 
   if (error || !job) {
     return (
       <div className="min-h-screen bg-[#FFF0F5] dark:bg-dark-bg flex items-center justify-center p-4">
         <Card><CardContent className="p-8 text-center">
           <p className="text-4xl mb-3">😢</p>
-          <p className="text-slate-500">{error || "Job nicht gefunden"}</p>
-          <Link href="/dashboard/live-feed" className="inline-block mt-4 text-sm text-kawaii-purple underline">← Zurück zum Feed</Link>
+          <p className="text-slate-500">{error || "Job not found"}</p>
+          <Link href="/dashboard/live-feed" className="inline-block mt-4 text-sm text-kawaii-purple underline">← Back to feed</Link>
         </CardContent></Card>
       </div>
     );
@@ -55,7 +55,7 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
   return (
     <div className="min-h-screen bg-[#FFF0F5] dark:bg-dark-bg">
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-5">
-        <Link href="/dashboard/live-feed" className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">← Zurück zum Feed</Link>
+        <Link href="/dashboard/live-feed" className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">← Back to feed</Link>
 
         <Card>
           <CardContent className="p-6">
@@ -63,7 +63,7 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
               {job.platform && <Badge variant="outline" className="text-xs">{job.platform}</Badge>}
               <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${scam.cls}`}>{scam.emoji} {scam.label} ({job.scam_risk}%)</span>
               {job.profile_match != null && (
-                <span className="text-xs font-extrabold px-2 py-0.5 rounded-lg bg-kawaii-purple/10 text-kawaii-purple dark:text-kawaii-lavender" title="5-Achsen-Match">🎯 {job.profile_match}%</span>
+                <span className="text-xs font-extrabold px-2 py-0.5 rounded-lg bg-kawaii-purple/10 text-kawaii-purple dark:text-kawaii-lavender" title="5-axis match">🎯 {job.profile_match}%</span>
               )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-slate-100">{job.title}</h1>
@@ -85,14 +85,14 @@ export default function GlobalJobDetail({ params }: { params: Promise<{ id: stri
 
         <Card>
           <CardContent className="p-6">
-            <h2 className="font-extrabold text-sm uppercase tracking-wider text-slate-500 mb-3">Beschreibung</h2>
+            <h2 className="font-extrabold text-sm uppercase tracking-wider text-slate-500 mb-3">Description</h2>
             <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-              {(job.detail?.description || job.description || "Keine Beschreibung vorhanden.")}
+              {(job.detail?.description || job.description || "No description available.")}
             </p>
             {job.url && (
               <div className="mt-5">
                 <a href={job.url} target="_blank" rel="noopener noreferrer">
-                  <Button>↗ Zur Original-Seite</Button>
+                  <Button>↗ View original page</Button>
                 </a>
               </div>
             )}

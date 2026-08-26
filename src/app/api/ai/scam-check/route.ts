@@ -66,12 +66,12 @@ export async function POST(request: Request) {
   const has = (re: RegExp) => re.test(signalText);
   let detScore = 8; // neutral baseline (safe)
   const concrete = [];
-  if (has(/(fee|pay to (register|apply)|upfront|in advance|deposit.*(secure|reserve)|activation (fee|cost)|registration fee|processing fee)/i)) { detScore += 28; concrete.push("Gebühr vorab verlangt"); }
-  if (has(/(western union|moneygram|wire transfer|gift card|bitcoin|crypto|paypal\s*(friends|family)|zelle|remitly)/i)) { detScore += 28; concrete.push("Zahlung per Wire/Gift-Card"); }
-  if (has(/(credit card (number|details)|bank account (number|details)|ssn|social security|passport (copy|number)|id copy|driver'?s license copy|copy of (id|passport))/i)) { detScore += 25; concrete.push("Sensible Daten angefordert"); }
-  if (has(/contact.*(only.*)?(telegram|whatsapp)|message.*(telegram|whatsapp)/i)) { detScore += 22; concrete.push("Kontakt nur über Telegram/WhatsApp"); }
-  if (has(/(work|do|test|sample).*(free|without pay)|unpaid (trial|test|task)/i)) { detScore += 25; concrete.push("Unbezahlte Testarbeit"); }
-  if (has(/unlimited earning|guaranteed (income|salary|profit|earnings)|get rich|residual income|passive income|make \$\d{2,3}[k,]?\/?day/i)) { detScore += 22; concrete.push("Zu gut um wahr zu sein"); }
+  if (has(/(fee|pay to (register|apply)|upfront|in advance|deposit.*(secure|reserve)|activation (fee|cost)|registration fee|processing fee)/i)) { detScore += 28; concrete.push("Upfront fee requested"); }
+  if (has(/(western union|moneygram|wire transfer|gift card|bitcoin|crypto|paypal\s*(friends|family)|zelle|remitly)/i)) { detScore += 28; concrete.push("Payment via wire/gift card"); }
+  if (has(/(credit card (number|details)|bank account (number|details)|ssn|social security|passport (copy|number)|id copy|driver'?s license copy|copy of (id|passport))/i)) { detScore += 25; concrete.push("Sensitive data requested"); }
+  if (has(/contact.*(only.*)?(telegram|whatsapp)|message.*(telegram|whatsapp)/i)) { detScore += 22; concrete.push("Contact only via Telegram/WhatsApp"); }
+  if (has(/(work|do|test|sample).*(free|without pay)|unpaid (trial|test|task)/i)) { detScore += 25; concrete.push("Unpaid test work"); }
+  if (has(/unlimited earning|guaranteed (income|salary|profit|earnings)|get rich|residual income|passive income|make \$\d{2,3}[k,]?\/?day/i)) { detScore += 22; concrete.push("Too good to be true"); }
   if (has(/recruiters? needed|referral (bonus|commission)|network marketing|multi[- ]level/i)) { detScore += 18; concrete.push("MLM/Recruiting"); }
   detScore = Math.max(5, Math.min(100, detScore));
 

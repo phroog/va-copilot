@@ -8,6 +8,7 @@ const LOCALES = [
   { code: "en", flag: "🇺🇸", label: "English" },
   { code: "vi", flag: "🇻🇳", label: "Tiếng Việt" },
   { code: "ph", flag: "🇵🇭", label: "Filipino" },
+  { code: "th", flag: "🇹🇭", label: "ไทย" },
 ] as const;
 
 export function LanguageDropdown({ align = "right" }: { align?: "right" | "left" }) {

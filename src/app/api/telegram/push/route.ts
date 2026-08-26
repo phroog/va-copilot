@@ -52,9 +52,9 @@ export async function GET() {
         .slice(0, 3);
 
       if (fresh.length > 0) {
-        const lines = ["🎯 <b>Neue Matches für dich:</b>\n"];
+        const lines = ["🎯 <b>New matches for you:</b>\n"];
         for (const j of fresh) {
-          lines.push(`<b>${j.title}</b> (${j.match}%)\n${j.platform} · ${j.budget || "k.A."}\n`);
+          lines.push(`<b>${j.title}</b> (${j.match}%)\n${j.platform} · ${j.budget || "n/a"}\n`);
           await markPushed(link.user_id, j.id);
         }
         messages.push(lines.join("\n"));
@@ -76,7 +76,7 @@ export async function GET() {
       });
 
       if (due.length > 0) {
-        const lines = ["⏰ <b>Fällige Follow-ups:</b>\n"];
+        const lines = ["⏰ <b>Due follow-ups:</b>\n"];
         for (const f of due.slice(0, 5)) {
           lines.push(`• ${f.action} (${new Date(f.due_date).toLocaleDateString()})`);
         }

@@ -377,33 +377,33 @@ export default function Aquarium({ className = "" }: { className?: string }) {
           <button
             onClick={() => setMode("knock")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${mode === "knock" ? "bg-kawaii-purple text-white" : "text-slate-500 hover:bg-kawaii-lavender/20"}`}
-            title="Ans Fenster klopfen – Fische erschrecken"
+            title="Tap the glass to scare the fish"
           >
-            👋 Klopfen
+            👋 Knock
           </button>
           <button
             onClick={() => setMode("feed")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${mode === "feed" ? "bg-kawaii-purple text-white" : "text-slate-500 hover:bg-kawaii-lavender/20"}`}
-            title="Klick wirft Futter"
+            title="Click to throw food"
           >
-            🐟 Füttern
+            🐟 Feed
           </button>
         </div>
         <div className="flex rounded-2xl bg-white/70 dark:bg-dark-card/70 backdrop-blur px-1.5 py-1 gap-1">
-          <button onClick={() => setCount((c) => Math.max(2, c - 1))} className="px-2 py-1.5 rounded-xl text-sm text-slate-600 dark:text-slate-300 hover:bg-kawaii-lavender/20" title="Weniger Fische">−</button>
+          <button onClick={() => setCount((c) => Math.max(2, c - 1))} className="px-2 py-1.5 rounded-xl text-sm text-slate-600 dark:text-slate-300 hover:bg-kawaii-lavender/20" title="Fewer fish">−</button>
           <span className="px-1 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 self-center">{count}</span>
-          <button onClick={() => setCount((c) => Math.min(30, c + 1))} className="px-2 py-1.5 rounded-xl text-sm text-slate-600 dark:text-slate-300 hover:bg-kawaii-lavender/20" title="Mehr Fische">+</button>
+          <button onClick={() => setCount((c) => Math.min(30, c + 1))} className="px-2 py-1.5 rounded-xl text-sm text-slate-600 dark:text-slate-300 hover:bg-kawaii-lavender/20" title="More fish">+</button>
         </div>
         <button
           onClick={() => setSound((s) => !s)}
           className={`rounded-2xl px-2.5 py-1.5 text-sm backdrop-blur ${sound ? "bg-kawaii-purple text-white" : "bg-white/70 dark:bg-dark-card/70 text-slate-500"}`}
-          title="Sound an/aus"
+          title="Sound on/off"
         >
           {sound ? "🔊" : "🔇"}
         </button>
       </div>
       <p className="absolute bottom-2 right-3 text-[11px] text-white/50 font-medium pointer-events-none select-none">
-        {mode === "knock" ? "👋 Klick aufs Glas klopft" : "🐟 Klick wirft Futter"}
+        {mode === "knock" ? "👋 Click on the glass to knock" : "🐟 Click to throw food"}
       </p>
     </div>
   );

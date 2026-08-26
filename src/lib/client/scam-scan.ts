@@ -94,22 +94,22 @@ export function scanPageDom(doc: Document, baseUrl: string): Partial<ScamEvidenc
   if (PAYMENT_METHODS.test(text)) {
     const m = text.match(PAYMENT_METHODS);
     if (m && !signals.paymentMethods.includes(m[0])) signals.paymentMethods.push(m[0]);
-    pushFlag(flags, "Zahlung per Überweisung/Geschenkkarte", 30, seen);
+    pushFlag(flags, "Payment via bank transfer/gift card", 30, seen);
   }
   if (DATA_REQUESTS.test(text)) {
     const m = text.match(DATA_REQUESTS);
     if (m && !signals.requestedData.includes(m[0])) signals.requestedData.push(m[0]);
-    pushFlag(flags, "Sensible Daten angefordert", 25, seen);
+    pushFlag(flags, "Sensitive data requested", 25, seen);
   }
-  if (UPFRONT.test(text)) pushFlag(flags, "Gebühr vorab / Zahlung verlangt", 30, seen);
-  if (TOO_GOOD.test(text)) pushFlag(flags, "Zu gut um wahr zu sein", 25, seen);
-  if (MLM.test(text)) pushFlag(flags, "MLM/Recruiting-Muster", 20, seen);
-  if (UNPAID.test(text)) pushFlag(flags, "Unbezahlte Testarbeit", 25, seen);
-  if (URGENCY.test(text)) pushFlag(flags, "Dringlichkeit/Druck", 10, seen);
+  if (UPFRONT.test(text)) pushFlag(flags, "Upfront fee / payment required", 30, seen);
+  if (TOO_GOOD.test(text)) pushFlag(flags, "Too good to be true", 25, seen);
+  if (MLM.test(text)) pushFlag(flags, "MLM/recruiting pattern", 20, seen);
+  if (UNPAID.test(text)) pushFlag(flags, "Unpaid test work", 25, seen);
+  if (URGENCY.test(text)) pushFlag(flags, "Urgency/pressure", 10, seen);
 
-  if (mailCount >= 2) pushFlag(flags, "Kontakt über freie E-Mail-Adressen", 20, seen);
-  if (telegram > 0 || whatsapp > 0) pushFlag(flags, "Kontakt über Telegram/WhatsApp", 25, seen);
-  if (signals.suspiciousSites.length > 0) pushFlag(flags, "Verdächtige Links/Downloads auf Seite", 25, seen);
+  if (mailCount >= 2) pushFlag(flags, "Contact via free email addresses", 20, seen);
+  if (telegram > 0 || whatsapp > 0) pushFlag(flags, "Contact via Telegram/WhatsApp", 25, seen);
+  if (signals.suspiciousSites.length > 0) pushFlag(flags, "Suspicious links/downloads on page", 25, seen);
 
   let score = 10;
   for (const f of flags) score += f.severity;
@@ -127,13 +127,13 @@ export function quickUrlCheck(url: string): string | null {
   try {
     const u = new URL(url);
     const host = u.hostname;
-    if (SUSPICIOUS_TLDS.test(host)) return "Verdächtige Domain-Endung (Spam-TLD).";
+    if (SUSPICIOUS_TLDS.test(host)) return "Suspicious domain ending (spam TLD).";
     if (/paypal|account|verify|login|secure|update|billing/i.test(host) && !/paypal\.com$/.test(host)) {
-      return "Domain sieht wie ein Phishing-/Login-Fake aus.";
+      return "Domain looks like a phishing/login fake.";
     }
     return null;
   } catch {
-    return "Keine gültige URL.";
+    return "Not a valid URL.";
   }
 }
 
@@ -142,9 +142,9 @@ export function heuristicEvidence(url: string): ScamEvidence {
   const u = (() => { try { return new URL(url); } catch { return null; } })();
   const host = u?.hostname || url;
   const flags: { label: string; severity: number }[] = [];
-  if (SUSPICIOUS_TLDS.test(host)) flags.push({ label: "Verdächtige Domain-Endung", severity: 25 });
+  if (SUSPICIOUS_TLDS.test(host)) flags.push({ label: "Suspicious domain ending", severity: 25 });
   if (/paypal|verify|login|secure|update|billing/i.test(host) && !/paypal\.com$/.test(host)) {
-    flags.push({ label: "Domain wirkt wie ein Phishing-Fake", severity: 30 });
+    flags.push({ label: "Domain looks like a phishing fake", severity: 30 });
   }
   let score = 10;
   for (const f of flags) score += f.severity;

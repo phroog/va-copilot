@@ -179,10 +179,10 @@ export default function DashboardHome() {
   const quotaPct = quota.limit ? Math.min(100, Math.round(((quota.used ?? 0) / quota.limit) * 100)) : 100;
 
   const stats = [
-    { label: "Dieser Monat", value: formatMoney(monthEarnings, baseCurrency), emoji: "💰", color: "from-kawaii-purple to-kawaii-pink", href: "/dashboard/finances" },
-    { label: "Offene Rechnungen", value: formatMoney(outstanding, baseCurrency), emoji: "📄", color: "from-kawaii-coral to-kawaii-pink", href: "/dashboard/invoices" },
+    { label: "This Month", value: formatMoney(monthEarnings, baseCurrency), emoji: "💰", color: "from-kawaii-purple to-kawaii-pink", href: "/dashboard/finances" },
+    { label: "Open Invoices", value: formatMoney(outstanding, baseCurrency), emoji: "📄", color: "from-kawaii-coral to-kawaii-pink", href: "/dashboard/invoices" },
     { label: "Credits", value: String(credits), emoji: "🪙", color: "from-kawaii-peach to-kawaii-purple", href: "/dashboard/credits" },
-    { label: "Heute getrackt", value: formatDuration(todayHours) + (todayEarnings > 0 ? ` · ${formatMoney(todayEarnings, baseCurrency)}` : ""), emoji: "⏱", color: "from-kawaii-mint to-kawaii-purple", href: "/dashboard/time-tracker" },
+    { label: "Tracked Today", value: formatDuration(todayHours) + (todayEarnings > 0 ? ` · ${formatMoney(todayEarnings, baseCurrency)}` : ""), emoji: "⏱", color: "from-kawaii-mint to-kawaii-purple", href: "/dashboard/time-tracker" },
   ];
 
   const statusColors: Record<string, string> = {
@@ -236,21 +236,21 @@ export default function DashboardHome() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center justify-between">
-              <span>🎯 Tageskontingent (passende Jobs)</span>
-              <Link href="/dashboard/live-feed" className="text-xs text-kawaii-purple underline font-medium">Zum Feed</Link>
+              <span>🎯 Daily Quota (matching jobs)</span>
+              <Link href="/dashboard/live-feed" className="text-xs text-kawaii-purple underline font-medium">Open Feed</Link>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {quota.limit == null ? (
-              <p className="text-sm text-slate-500">💎 Unbegrenzte Job-Ansichten (Pro)</p>
+              <p className="text-sm text-slate-500">💎 Unlimited job views (Pro)</p>
             ) : (
               <>
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-slate-600 dark:text-slate-300">
-                    <strong>{quota.used ?? 0}</strong> von <strong>{quota.limit}</strong> passenden Jobs heute gesehen
+                    <strong>{quota.used ?? 0}</strong> of <strong>{quota.limit}</strong> matching jobs seen today
                   </span>
                   <span className="text-xs text-slate-400">
-                    {quota.bonus ? `🎁 inkl. +${quota.bonus} Bonus` : ""}
+                    {quota.bonus ? `🎁 incl. +${quota.bonus} bonus` : ""}
                   </span>
                 </div>
                 <div className="h-3 bg-kawaii-lavender/20 dark:bg-dark-surface rounded-full overflow-hidden">
@@ -260,10 +260,10 @@ export default function DashboardHome() {
             )}
             <div className="flex gap-2 mt-4">
               <Link href="/dashboard/wheel" className="flex-1">
-                <Button variant="outline" size="sm" className="w-full">🎡 Glücksrad (täglich)</Button>
+                <Button variant="outline" size="sm" className="w-full">🎡 Lucky Wheel (daily)</Button>
               </Link>
               <Link href="/pricing" className="flex-1">
-                <Button variant="outline" size="sm" className="w-full">📈 Mehr Jobs</Button>
+                <Button variant="outline" size="sm" className="w-full">📈 More Jobs</Button>
               </Link>
             </div>
           </CardContent>
@@ -291,7 +291,7 @@ export default function DashboardHome() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Heute: {formatDuration(todayHours)}{todayEarnings > 0 ? ` — ${formatMoney(todayEarnings, baseCurrency)} verdient` : ""}
+                    Today: {formatDuration(todayHours)}{todayEarnings > 0 ? ` — ${formatMoney(todayEarnings, baseCurrency)} earned` : ""}
                   </p>
                 </div>
                 <Link href="/dashboard/time-tracker">
@@ -308,13 +308,13 @@ export default function DashboardHome() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center justify-between">
-              <span>🎯 Beste Matches</span>
-              <Link href="/dashboard/live-feed" className="text-xs text-kawaii-purple underline font-medium">Alle ansehen</Link>
+              <span>🎯 Best Matches</span>
+              <Link href="/dashboard/live-feed" className="text-xs text-kawaii-purple underline font-medium">View all</Link>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {topMatches.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">Noch keine Matches — richte dein Profil in den Einstellungen ein.</p>
+              <p className="text-sm text-slate-400 text-center py-6">No matches yet — set up your profile in the settings.</p>
             ) : (
               <div className="space-y-2">
                 {topMatches.map((job) => (
@@ -343,15 +343,15 @@ export default function DashboardHome() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center justify-between">
-              <span>📄 Rechnungen</span>
+              <span>📄 Invoices</span>
               <Link href="/dashboard/invoices" className="text-xs text-kawaii-purple underline font-medium">
-                {invoiceCount > 0 ? `${invoiceCount} gesamt` : "Rechnung erstellen"}
+                {invoiceCount > 0 ? `${invoiceCount} total` : "Create invoice"}
               </Link>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {recentInvoices.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">Noch keine Rechnungen.</p>
+              <p className="text-sm text-slate-400 text-center py-6">No invoices yet.</p>
             ) : (
               <div className="space-y-2">
                 {recentInvoices.map((inv) => {
@@ -384,7 +384,7 @@ export default function DashboardHome() {
       {upcomingEvents.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">📅 Kommende Termine</CardTitle>
+            <CardTitle className="text-lg">📅 Upcoming events</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">

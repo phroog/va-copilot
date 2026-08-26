@@ -29,21 +29,21 @@
   <input id="adminSecret" type="password" />
   <div class="row" style="display:flex; gap:8px;">
     <div style="flex:1;">
-      <label>Intervall (Min, z. B. 1.5)</label>
+      <label>Interval (min, e.g. 1.5)</label>
       <input id="intervalMin" type="number" min="0.5" step="0.5" />
     </div>
     <div style="flex:1;">
-      <label>Upwork-Jobs/Poll</label>
+      <label>Upwork jobs/poll</label>
       <input id="count" type="number" min="1" max="200" />
     </div>
   </div>
-  <h2>Plattformen (Source-IDs werden automatisch aus dem Backend geholt)</h2>
+  <h2>Platforms (source IDs are fetched automatically from the backend)</h2>
   <div id="platforms"></div>
   <div class="actions">
     <button id="save">Save &amp; Poll</button>
     <button id="now">Check now</button>
     <button id="test">Test API</button>
-    <button id="cleanup" title="Löscht Jobs mit posted_at in der Zukunft">Cleanup</button>
+    <button id="cleanup" title="Deletes jobs with a posted_at date in the future">Cleanup</button>
   </div>
   <div id="status">Loading…</div>
   <script src="popup.js"></script>
