@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getStripe, PLANS, GRACE_DAYS, planFromPriceId, type PlanKey } from "@/lib/payments";
+import { sendEmail, layoutEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -55,6 +56,23 @@ async function startGracePeriod(stripeSubscriptionId: string) {
     .from("subscriptions")
     .update({ status: "cancelled", access_until: graceUntil })
     .eq("user_id", row.user_id);
+
+  // Inform the user their access is ending soon (grace period is running).
+  const { data: authUser } = await supabase().auth.admin.getUserById(row.user_id);
+  const email = authUser?.user?.email;
+  if (email) {
+    const until = new Date(graceUntil).toLocaleDateString();
+    await sendEmail({
+      to: email,
+      subject: "Your Sari access ends soon",
+      html: layoutEmail(
+        "Access ending",
+        `<p>Your Sari subscription has ended. As a courtesy you keep access until <b>${until}</b> (grace period).</p>
+         <p>After that you'll continue on the free <b>Sari Sprout</b> plan — you can resubscribe at any time on the
+         <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://va-copilot-theta.vercel.app"}/pricing">pricing page</a>.</p>`
+      ),
+    });
+  }
 }
 
 /**
