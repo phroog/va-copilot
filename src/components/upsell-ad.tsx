@@ -24,6 +24,7 @@ const ADS: Record<string, { emoji: string; title: string; text: string; cta: str
 
 export default function UpsellAd() {
   const [plan, setPlan] = useState<string | null>(null);
+  const [idx] = useState(() => Math.floor(Math.random() * 100));
 
   useEffect(() => {
     let active = true;
@@ -37,9 +38,7 @@ export default function UpsellAd() {
   const ads = plan ? ADS[plan] : null;
   if (!ads || ads.length === 0) return null;
 
-  // pick a stable ad per session
-  const [idx] = useState(() => Math.floor(Math.random() * ads.length));
-  const ad = ads[Math.min(idx, ads.length - 1)];
+  const ad = ads[idx % ads.length];
 
   return (
     <Card className="border-kawaii-lavender/40 dark:border-dark-surface bg-gradient-to-r from-kawaii-lavender/15 to-kawaii-pink/10 dark:from-kawaii-lavender/10 dark:to-kawaii-pink/5">
