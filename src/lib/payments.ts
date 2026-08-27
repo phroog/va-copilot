@@ -3,12 +3,31 @@ import Stripe from "stripe";
 /* Central plan configuration — swap the payment provider here later without
    touching the plan/limit logic. */
 export const PLANS = {
-  free: { dailyJobLimit: 20, monthlyCredits: 5, label: "Free", priceId: null as string | null },
-  basic: { dailyJobLimit: 100, monthlyCredits: 50, label: "Basic", priceId: (process.env.STRIPE_PRICE_BASIC || "") as string },
-  pro: { dailyJobLimit: null, monthlyCredits: 200, label: "Pro", priceId: (process.env.STRIPE_PRICE_PRO || "") as string },
+  free: { dailyJobLimit: 20, monthlyCredits: 5, label: "Sari Sprout", priceId: null as string | null },
+  basic: { dailyJobLimit: 100, monthlyCredits: 50, label: "Sari Bloom", priceId: (process.env.STRIPE_PRICE_BASIC || "") as string },
+  pro: { dailyJobLimit: null, monthlyCredits: 200, label: "Sari Money Club", priceId: (process.env.STRIPE_PRICE_PRO || "") as string },
 } as const;
 
 export type PlanKey = keyof typeof PLANS;
+
+/* Grace period after a subscription ends before the user drops back to free. */
+export const GRACE_DAYS = 2;
+
+/* Compute the plan the user should effectively have, honouring the grace
+   period: after cancellation the plan stays active until access_until passes. */
+export function effectivePlan(sub?: {
+  plan?: string | null;
+  status?: string | null;
+  access_until?: string | null;
+} | null): PlanKey {
+  if (!sub || !sub.plan || sub.plan === "free") return "free";
+  if (sub.status === "active") return sub.plan as PlanKey;
+  if (sub.access_until) {
+    const until = new Date(sub.access_until).getTime();
+    if (until > Date.now()) return sub.plan as PlanKey; // grace period
+  }
+  return "free";
+}
 
 export function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;

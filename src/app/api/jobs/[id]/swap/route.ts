@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { PLANS, SWAP_LIMITS, type PlanKey } from "@/lib/payments";
+import { SWAP_LIMITS, effectivePlan } from "@/lib/payments";
 
 /**
  * POST /api/jobs/[id]/swap
@@ -23,8 +23,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     .maybeSingle();
   if (jobErr || !job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
-  const { data: sub } = await supabase.from("subscriptions").select("plan, status").eq("user_id", user.id).maybeSingle();
-  const plan = ((sub?.plan as PlanKey) || "free");
+  const { data: sub } = await supabase.from("subscriptions").select("plan, status, access_until").eq("user_id", user.id).maybeSingle();
+  const plan = effectivePlan(sub);
   const limit = SWAP_LIMITS[plan];
   const today = new Date().toISOString().slice(0, 10);
 

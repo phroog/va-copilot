@@ -16,6 +16,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import UpsellAd from "@/components/upsell-ad";
 
 interface FeedJob {
   id: string;
@@ -398,6 +399,8 @@ export default function LiveFeedPage() {
           </Button>
         </div>
       </div>
+
+      <UpsellAd />
 
       {/* Tier limit banner */}
       {limitInfo.limitReached ? (

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { getStripe, PLANS, planFromPriceId, type PlanKey } from "@/lib/payments";
+import { getStripe, PLANS, GRACE_DAYS, planFromPriceId, type PlanKey } from "@/lib/payments";
 
 export const runtime = "nodejs";
 
@@ -20,6 +20,8 @@ async function upsertSubscription(
     stripe_subscription_id: stripeSubscriptionId,
     current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
   };
+  // A (re)activated subscription clears the grace-period cutoff.
+  if (status === "active") payload.access_until = null;
   await supabase().from("subscriptions").upsert(payload, { onConflict: "user_id" });
 
   // Reflect the plan limits on the profile for quick reads.
@@ -39,15 +41,20 @@ async function awardCredits(userId: string, plan: PlanKey) {
   await supabase().from("ai_credits").upsert({ user_id: userId, balance, total_used: 0 }, { onConflict: "user_id" });
 }
 
-async function resetToFree(stripeSubscriptionId: string) {
+/* Subscription ended: keep the plan for the grace period so the user doesn't
+   lose access immediately, then it falls back to free automatically. */
+async function startGracePeriod(stripeSubscriptionId: string) {
   const { data: row } = await supabase()
     .from("subscriptions")
     .select("user_id")
     .eq("stripe_subscription_id", stripeSubscriptionId)
     .maybeSingle();
   if (!row) return;
-  await supabase().from("subscriptions").update({ plan: "free", status: "cancelled", stripe_subscription_id: null }).eq("user_id", row.user_id);
-  await supabase().from("profiles").update({ daily_job_limit: 20, monthly_ai_credits: 5 }).eq("user_id", row.user_id);
+  const graceUntil = new Date(Date.now() + GRACE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  await supabase()
+    .from("subscriptions")
+    .update({ status: "cancelled", access_until: graceUntil })
+    .eq("user_id", row.user_id);
 }
 
 /**
@@ -93,7 +100,20 @@ export async function POST(request: Request) {
         break;
       }
       case "customer.subscription.deleted": {
-        await resetToFree(event.data.object.id);
+        await startGracePeriod(event.data.object.id);
+        break;
+      }
+      case "invoice.paid": {
+        const s = event.data.object;
+        if (s.subscription) {
+          const sub = s.subscription;
+          const { data: row } = await supabase().from("subscriptions").select("user_id").eq("stripe_subscription_id", sub).maybeSingle();
+          if (row) {
+            const plan = planFromPriceId(s.lines?.data?.[0]?.price?.id);
+            await upsertSubscription(row.user_id, plan, "active", sub, s.period_end);
+            await awardCredits(row.user_id, plan);
+          }
+        }
         break;
       }
     }

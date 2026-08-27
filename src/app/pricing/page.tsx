@@ -14,10 +14,37 @@ export default function PricingPage() {
   const [checking, setChecking] = useState(true);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
+  const [currentPlan, setCurrentPlan] = useState<string | null>(null);
+  const [inGrace, setInGrace] = useState(false);
+  const [accessUntil, setAccessUntil] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
-    fetch("/api/subscription-status").then(() => setChecking(false)).catch(() => setChecking(false));
+    fetch("/api/subscription-status")
+      .then(async (r) => {
+        if (!r.ok) return;
+        const d = await r.json();
+        setCurrentPlan(d.plan ?? "free");
+        setInGrace(!!d.inGrace);
+        setAccessUntil(d.accessUntil ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setChecking(false));
   }, []);
+
+  const cancelSubscription = async () => {
+    if (!confirm("Cancel your subscription? You keep access until the end of the current billing period (plus a short grace period).")) return;
+    setCancelling(true);
+    setMsg("");
+    try {
+      const r = await fetch("/api/subscription/cancel", { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Cancellation failed");
+      setMsg("✅ Subscription will not renew. You keep access until the end of the period.");
+    } catch (e: any) {
+      setMsg(e?.message || "Cancellation failed");
+    } finally { setCancelling(false); }
+  };
 
   const TIERS = [
     {
@@ -114,7 +141,31 @@ export default function PricingPage() {
           ))}
         </div>
 
-        {msg && <p className="text-center text-sm text-red-500 mt-4">{msg}</p>}
+        {msg && <p className="text-center text-sm mt-4 text-slate-600 dark:text-slate-300">{msg}</p>}
+
+        {/* Current plan + cancel */}
+        {!checking && currentPlan && currentPlan !== "free" && (
+          <div className="mt-8 rounded-3xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white/70 dark:bg-dark-card/70 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-wider font-bold text-slate-400">Your plan</p>
+              <p className="text-xl font-extrabold text-slate-800 dark:text-slate-100">
+                {currentPlan === "pro" ? t("planProName") : t("planBasicName")}
+              </p>
+              {inGrace && accessUntil ? (
+                <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
+                  Access until {new Date(accessUntil).toLocaleDateString()} (grace period)
+                </p>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Cancel anytime — you keep access until the end of the billing period.
+                </p>
+              )}
+            </div>
+            <Button variant="outline" size="sm" onClick={cancelSubscription} disabled={cancelling}>
+              {cancelling ? "Cancelling…" : "Cancel subscription (no renewal)"}
+            </Button>
+          </div>
+        )}
         <p className="text-center text-xs text-slate-400 mt-8">{t("pricingFooter")}</p>
       </div>
     </div>

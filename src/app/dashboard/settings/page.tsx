@@ -298,7 +298,7 @@ export default function SettingsPage() {
             <>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Plan</span>
-                <span className="font-bold capitalize text-kawaii-purple">{sub.plan}</span>
+                <span className="font-bold text-kawaii-purple">{sub.planLabel || sub.plan}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Jobs seen today</span>

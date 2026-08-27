@@ -11,6 +11,7 @@ import { useProfileName } from "@/lib/use-profile-name";
 import { formatDuration } from "@/lib/utils";
 import { formatMoney, convert, normalizeCurrency } from "@/lib/currency";
 import TelegramCta from "@/components/telegram-cta";
+import UpsellAd from "@/components/upsell-ad";
 
 interface FeedJob {
   id: string;
@@ -46,7 +47,7 @@ interface TimeEntry {
   hourly_rate: number;
 }
 
-const PLAN_LABELS: Record<string, string> = { free: "Free", basic: "Basic", pro: "Pro" };
+const PLAN_LABELS: Record<string, string> = { free: "Sari Sprout", basic: "Sari Bloom", pro: "Sari Money Club" };
 
 export default function DashboardHome() {
   const { t } = useLocale();
@@ -231,6 +232,7 @@ export default function DashboardHome() {
       </div>
 
       {/* Quota + Timer */}
+      <UpsellAd />
       <TelegramCta />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>

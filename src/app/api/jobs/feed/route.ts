@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { classifyJobVector, matchVectors, validateUserVector, type Vector } from "@/lib/jobs/profile-vector";
 import { computeScore } from "@/lib/jobs/scoring";
 import { scamScore } from "@/lib/jobs/scam-score";
-import { PLANS, SWAP_LIMITS, MATCH_THRESHOLD, dailyBonus, type PlanKey } from "@/lib/payments";
+import { PLANS, SWAP_LIMITS, MATCH_THRESHOLD, dailyBonus, effectivePlan } from "@/lib/payments";
 
 const WINDOW_CAP = 4000;
 
@@ -152,8 +152,8 @@ export async function GET(request: Request) {
   // are exactly the ones you can "swap". Views count only on user-initiated
   // loads (count_views=1); background merge refreshes (count_views=0) re-show
   // already-seen jobs without charging.
-  const { data: sub } = await supabase.from("subscriptions").select("plan, status").eq("user_id", user.id).maybeSingle();
-  const plan = ((sub?.plan as PlanKey) || "free");
+  const { data: sub } = await supabase.from("subscriptions").select("plan, status, access_until").eq("user_id", user.id).maybeSingle();
+  const plan = effectivePlan(sub);
   const planLimit = PLANS[plan].dailyJobLimit; // null = unlimited (pro)
   const today = new Date().toISOString().slice(0, 10);
 
