@@ -1,9 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Sari - VA Assistant",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Your all-in-one freelancing companion for VAs",
-  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
   "host_permissions": [
     "https://va-copilot-theta.vercel.app/*",
     "http://localhost:3000/*",
@@ -32,7 +37,9 @@
         "https://www.onlinejobs.ph/*",
         "https://www.linkedin.com/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     },
     {
@@ -40,7 +47,9 @@
         "http://*/*",
         "https://*/*"
       ],
-      "js": ["autofill.js"],
+      "js": [
+        "autofill.js"
+      ],
       "run_at": "document_idle"
     },
     {
@@ -48,7 +57,9 @@
         "https://va-copilot-theta.vercel.app/*",
         "http://localhost:3000/*"
       ],
-      "js": ["webapp-bridge.js"],
+      "js": [
+        "webapp-bridge.js"
+      ],
       "run_at": "document_idle"
     }
   ],

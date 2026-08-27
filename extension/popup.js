@@ -80,7 +80,7 @@ const toolBackBtn = $("tool-back-btn");
 
 const TOOL_GROUPS = [
   {
-    label: "👋 Arbeit",
+    label: "👋 Work",
     items: [
       { id: "notes", icon: "📝", label: "Notes" },
       { id: "clients", icon: "📇", label: "Clients" },
@@ -89,14 +89,14 @@ const TOOL_GROUPS = [
     ],
   },
   {
-    label: "🛡️ Sicherheit",
+    label: "🛡️ Security",
     items: [
       { id: "scam", icon: "🕵️", label: "Scam Check" },
       { id: "vault", icon: "🔐", label: "Vault" },
     ],
   },
   {
-    label: "🤖 KI & Assistenz",
+    label: "🤖 AI & Assistant",
     items: [
       { id: "mochi", icon: "🤖", label: "Mochi AI" },
     ],
