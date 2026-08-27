@@ -3,49 +3,110 @@
 <head>
   <meta charset="utf-8" />
   <style>
-    body { width: 340px; font: 13px system-ui; padding: 12px; }
-    h1 { font-size: 15px; margin: 0 0 10px; }
-    h2 { font-size: 13px; margin: 14px 0 6px; }
-    label { display: block; margin: 8px 0 3px; font-weight: 600; }
-    input { width: 100%; box-sizing: border-box; padding: 4px 6px; }
-    .prow { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
-    .prow input[type="checkbox"] { width: auto; flex: none; }
-    .pname { min-width: 92px; font-weight: 600; }
-    .purl { flex: 1; font-size: 11px; }
-    .pid { font-size: 11px; color: #3a8a4f; white-space: nowrap; }
-    .actions { margin-top: 12px; display: flex; gap: 8px; }
-    button { flex: 1; padding: 6px; cursor: pointer; }
-    #status { margin-top: 12px; padding: 8px; background: #f2f4f7; border-radius: 6px; white-space: pre-wrap; font-size: 11px; max-height: 220px; overflow: auto; }
-    #status.ok { background: #e3f7e8; }
-    #status.err { background: #fde9e9; }
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      width: 380px;
+      font-family: 'Nunito', system-ui, sans-serif;
+      background: #FFF8F0;
+      color: #1e293b;
+      font-size: 13px;
+    }
+    .wrap { padding: 16px; }
+    h1 { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    h1 .logo { width: 28px; height: 28px; border-radius: 10px; background: linear-gradient(135deg,#6C4E8F,#E78FB3); display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .sub { color: #94a3b8; font-size: 11px; margin: 2px 0 12px 36px; }
+    .section {
+      background: #fff; border: 1px solid #efe3ee; border-radius: 14px; padding: 12px; margin-bottom: 10px;
+    }
+    .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; color: #6C4E8F; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+    label { display: block; margin: 8px 0 3px; font-weight: 700; font-size: 11px; color: #64748b; }
+    input[type="text"], input[type="password"], input[type="number"] {
+      width: 100%; padding: 7px 9px; border: 1px solid #e5d9e8; border-radius: 9px; font-size: 12px; background: #fff; color: #1e293b;
+    }
+    input:focus { outline: 2px solid #6C4E8F33; border-color: #6C4E8F; }
+    .row2 { display: flex; gap: 8px; }
+    .row2 > div { flex: 1; }
+    .switch { position: relative; width: 34px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .slider { position: absolute; inset: 0; background: #ddd; border-radius: 999px; transition: .2s; }
+    .switch .slider:before { content: ""; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+    .switch input:checked + .slider { background: #6C4E8F; }
+    .switch input:checked + .slider:before { transform: translateX(14px); }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; }
+    .toggle-row .tlabel { font-weight: 700; }
+    .hint { color: #94a3b8; font-size: 11px; margin-top: 6px; }
+    .platforms { max-height: 190px; overflow-y: auto; }
+    .pgroup { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #b18ab8; margin: 8px 0 4px; }
+    .prow { display: flex; align-items: center; gap: 8px; padding: 4px 2px; border-radius: 8px; }
+    .prow:hover { background: #f7f0fa; }
+    .pname { flex: 1; font-weight: 600; }
+    .pid { font-size: 10px; color: #3a8a4f; font-weight: 700; }
+    .purl { flex: 1.2; font-size: 11px; }
+    .actions { display: flex; gap: 6px; }
+    button {
+      flex: 1; padding: 8px 6px; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; transition: .15s;
+    }
+    button.primary { background: linear-gradient(135deg,#6C4E8F,#a06db3); color: #fff; }
+    button.primary:hover { opacity: .9; }
+    button.ghost { background: #fff; color: #6C4E8F; border: 1px solid #d9c6e4; }
+    button.ghost:hover { background: #f7f0fa; }
+    .status-box {
+      background: #fff; border: 1px solid #efe3ee; border-radius: 14px; padding: 10px; margin-top: 10px; max-height: 180px; overflow-y: auto;
+      font-size: 11px; line-height: 1.5; white-space: pre-wrap; color: #475569;
+    }
+    .status-box.ok { background: #f0fbf4; border-color: #bfe6cd; }
+    .status-box.err { background: #fdf0ef; border-color: #f3c2c0; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; margin: 2px 2px 0 0; }
+    .pill.ok { background: #d9f2e2; color: #137a3f; }
+    .pill.err { background: #fbe4e2; color: #b3261e; }
+    .pill.warn { background: #fdeecb; color: #8a5a00; }
+    .meta { color: #94a3b8; font-size: 10px; margin-top: 8px; }
   </style>
 </head>
 <body>
-  <h1>Sari Job Radar</h1>
-  <label>Enabled <input type="checkbox" id="enabled" /></label>
-  <label>Sari API URL</label>
-  <input id="apiUrl" type="text" />
-  <label>Admin Secret</label>
-  <input id="adminSecret" type="password" />
-  <div class="row" style="display:flex; gap:8px;">
-    <div style="flex:1;">
-      <label>Interval (min, e.g. 1.5)</label>
-      <input id="intervalMin" type="number" min="0.5" step="0.5" />
+  <div class="wrap">
+    <h1><span class="logo">🍠</span> Sari Job Radar</h1>
+    <p class="sub">Polling extension · pulls jobs from open tabs</p>
+
+    <!-- Connection -->
+    <div class="section">
+      <div class="section-title">Connection</div>
+      <label>Sari API URL</label>
+      <input id="apiUrl" type="text" spellcheck="false" />
+      <label>Admin Secret</label>
+      <input id="adminSecret" type="password" />
+      <div style="margin-top:8px;"><button class="ghost" id="test">Test API</button></div>
     </div>
-    <div style="flex:1;">
-      <label>Upwork jobs/poll</label>
-      <input id="count" type="number" min="1" max="200" />
+
+    <!-- Polling -->
+    <div class="section">
+      <div class="section-title">Polling</div>
+      <div class="toggle-row">
+        <span class="tlabel">Enabled</span>
+        <label class="switch"><input type="checkbox" id="enabled" /><span class="slider"></span></label>
+      </div>
+      <div class="row2" style="margin-top:8px;">
+        <div><label>Interval (min)</label><input id="intervalMin" type="number" min="0.5" step="0.5" /></div>
+        <div><label>Upwork jobs/poll</label><input id="count" type="number" min="1" max="200" /></div>
+      </div>
     </div>
+
+    <!-- Platforms -->
+    <div class="section">
+      <div class="section-title">Platforms <span class="hint">source IDs auto-fetched</span></div>
+      <div class="platforms" id="platforms"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button class="primary" id="save">Save &amp; Poll</button>
+      <button class="ghost" id="now">Check now</button>
+      <button class="ghost" id="cleanup" title="Delete future-dated and old irrelevant jobs">Cleanup</button>
+    </div>
+
+    <!-- Status -->
+    <div class="status-box" id="status">Loading…</div>
   </div>
-  <h2>Platforms (source IDs are fetched automatically from the backend)</h2>
-  <div id="platforms"></div>
-  <div class="actions">
-    <button id="save">Save &amp; Poll</button>
-    <button id="now">Check now</button>
-    <button id="test">Test API</button>
-    <button id="cleanup" title="Deletes jobs with a posted_at date in the future">Cleanup</button>
-  </div>
-  <div id="status">Loading…</div>
   <script src="popup.js"></script>
 </body>
 </html>

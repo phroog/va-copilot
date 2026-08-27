@@ -657,7 +657,7 @@ async function pollPlatform(key, p, cfg) {
     await setCooldown(key, 0); // success resets any backoff
   } catch (err) {
     result.ok = false;
-    result.error = err.message || "unbekannt";
+    result.error = err.message || "unknown";
     if (key === "upwork" && /401|authentication failed/i.test(result.error)) {
       result.error = "⚠ Upwork session expired – please log in again (open the Upwork tab).";
       await setCooldown(key, 30);

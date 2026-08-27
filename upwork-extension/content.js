@@ -236,7 +236,7 @@ async function fetchUpwork(count) {
   const j = JSON.parse(text);
   const feed =
     j && j.data && j.data.search && j.data.search.universalSearchNuxt && j.data.search.universalSearchNuxt.visitorJobSearchV1;
-  if (!feed) throw new Error("Unbekannte Feed-Struktur in Upwork-Antwort");
+  if (!feed) throw new Error("Unknown feed structure in Upwork response");
   return { total: feed.paging ? feed.paging.total : null, jobs: (feed.results || []).map(mapUpworkJob) };
 }
 
@@ -442,7 +442,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg && msg.type === "FETCH_FEED") {
     const platform = PLATFORMS[msg.platform];
     if (!platform) {
-      sendResponse({ ok: false, error: "Unbekannte Plattform: " + msg.platform });
+      sendResponse({ ok: false, error: "Unknown platform: " + msg.platform });
       return;
     }
     const p =

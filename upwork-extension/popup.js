@@ -1,5 +1,12 @@
 const $ = (id) => document.getElementById(id);
+
 const KEYS = ["upwork", "onlinejobs", "guru", "freelancer", "workingnomads", "remoteok", "jobspresso", "peopleperhour", "indeed", "hubstaff", "reddit", "facebook"];
+
+// Grouping shown in the popup (verified vs best-effort).
+const GROUPS = [
+  { label: "Verified", keys: ["upwork", "onlinejobs", "guru", "freelancer", "reddit", "hubstaff", "facebook"] },
+  { label: "Best-effort", keys: ["workingnomads", "remoteok", "jobspresso", "peopleperhour", "indeed"] },
+];
 
 function sendMsg(msg, timeoutMs = 60000) {
   return Promise.race([
@@ -11,35 +18,42 @@ function sendMsg(msg, timeoutMs = 60000) {
 function buildRows(platforms) {
   const wrap = $("platforms");
   wrap.innerHTML = "";
-  for (const k of KEYS) {
-    const p = (platforms || {})[k];
-    if (!p) continue;
-    const row = document.createElement("div");
-    row.className = "prow";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = p.enabled !== false;
-    cb.dataset.key = k;
-    const lbl = document.createElement("span");
-    lbl.className = "pname";
-    lbl.textContent = p.name;
-    row.appendChild(cb);
-    row.appendChild(lbl);
-    if (k === "upwork") {
-      const id = document.createElement("span");
-      id.className = "pid";
-      id.textContent = p.sourceId ? "✓ source ID" : "no source ID";
-      row.appendChild(id);
-    } else {
-      const u = document.createElement("input");
-      u.type = "text";
-      u.value = p.url || "";
-      u.dataset.urlKey = k;
-      u.className = "purl";
-      u.placeholder = "Jobs URL";
-      row.appendChild(u);
+  for (const group of GROUPS) {
+    const label = document.createElement("div");
+    label.className = "pgroup";
+    label.textContent = group.label;
+    wrap.appendChild(label);
+    for (const k of group.keys) {
+      const p = (platforms || {})[k];
+      if (!p) continue;
+      const row = document.createElement("div");
+      row.className = "prow";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "switch";
+      cb.checked = p.enabled !== false;
+      cb.dataset.key = k;
+      const lbl = document.createElement("span");
+      lbl.className = "pname";
+      lbl.textContent = p.name;
+      row.appendChild(cb);
+      row.appendChild(lbl);
+      if (k === "upwork") {
+        const id = document.createElement("span");
+        id.className = "pid";
+        id.textContent = p.sourceId ? "✓ source ID" : "no source ID";
+        row.appendChild(id);
+      } else {
+        const u = document.createElement("input");
+        u.type = "text";
+        u.value = p.url || "";
+        u.dataset.urlKey = k;
+        u.className = "purl";
+        u.placeholder = "Jobs URL";
+        row.appendChild(u);
+      }
+      wrap.appendChild(row);
     }
-    wrap.appendChild(row);
   }
 }
 
@@ -58,30 +72,40 @@ function collectPlatforms() {
   return platforms;
 }
 
+const PILL = {
+  ok: '<span class="pill ok">ok</span>',
+  err: '<span class="pill err">error</span>',
+  warn: '<span class="pill warn">⚠</span>',
+};
+
 function renderStatus(s) {
   const el = $("status");
-  const when = s && s.ts ? new Date(s.ts).toLocaleTimeString() : "–";
   if (!s || !s.platforms) {
-    el.textContent = s && s.error ? "Error: " + s.error : "No poll yet.";
+    el.innerHTML = s && s.error ? `<b>Error:</b> ${escapeHtml(s.error)}` : "No poll yet. Press <b>Save &amp; Poll</b>.";
     el.className = s && s.error ? "err" : "";
     return;
   }
-  const lines = [`Last poll: ${when}`];
+  const when = s.ts ? new Date(s.ts).toLocaleTimeString() : "–";
   const keys = Object.keys(s.platforms);
-  if (!keys.length) lines.push(s.note || "no platform enabled");
+  let html = `<b>Last poll:</b> ${when}<br>`;
+  if (!keys.length) html += (s.note || "no platform enabled");
   for (const k of keys) {
     const r = s.platforms[k];
-    const dbg = r.debug
-      ? `\n   art=${r.debug.articles} feed=${r.debug.feeds} unit=${r.debug.feedUnits} imgs=${r.debug.imgs} len=${r.debug.bodyLen}\n   text: ${(r.debug.bodyHead || "").replace(/\n+/g, " | ").slice(0, 220)}`
-      : "";
-    lines.push(
-      r.ok
-        ? `✓ ${k}: ${r.got} loaded · ${r.fresh} new · ${r.inserted} inserted (${r.mode})${r.warning ? ` ⚠ ${r.warning}` : ""}${dbg}`
-        : `✗ ${k}: ERROR – ${r.error}`
-    );
+    const name = (k[0].toUpperCase() + k.slice(1)).replace("onlinejobs", "OnlineJobs.ph").replace("peopleperhour", "PeoplePerHour");
+    if (r.ok) {
+      html += `${PILL.ok} <b>${name}</b>: ${r.got} loaded · ${r.fresh} new · ${r.inserted} inserted (${r.mode})`;
+      if (r.warning) html += ` ${PILL.warn} ${escapeHtml(r.warning)}`;
+    } else {
+      html += `${PILL.err} <b>${name}</b>: ${escapeHtml(r.error || "failed")}`;
+    }
+    html += "<br>";
   }
-  el.textContent = lines.join("\n");
+  el.innerHTML = html;
   el.className = s.ok ? "ok" : "err";
+}
+
+function escapeHtml(str) {
+  return String(str || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 async function load() {
@@ -95,7 +119,8 @@ async function load() {
     buildRows(cfg.platforms);
     renderStatus(status);
     const len = cfg.adminSecret ? cfg.adminSecret.length : 0;
-    $("status").textContent += `\nAdmin secret saved: ${len === 0 ? "EMPTY (please type below)" : "length " + len}`;
+    const secretNote = len === 0 ? "Admin secret not set (type it below)" : `Admin secret saved (length ${len})`;
+    $("status").innerHTML += `<div class="meta">${secretNote}</div>`;
   } catch (err) {
     $("status").textContent = "Error: " + err.message;
     $("status").className = "err";
@@ -132,10 +157,10 @@ $("save").addEventListener("click", async () => {
     const res = await sendMsg({ type: "SAVE_CONFIG", cfg });
     if (res && res.ok) {
       renderStatus(res.status);
-      $("status").textContent += `\n\nSecret saved: length ${res.savedSecretLen} (Feld: ${cfg.adminSecret.length})`;
+      $("status").innerHTML += `<div class="meta">Secret saved (length ${res.savedSecretLen})</div>`;
       $("status").className = res.status && res.status.ok ? "ok" : "err";
     } else {
-      $("status").textContent = "Error: " + (res && res.error ? res.error : "unbekannt");
+      $("status").innerHTML = `Error: ${escapeHtml(res && res.error ? res.error : "unknown")}`;
       $("status").className = "err";
     }
   } catch (err) {
@@ -169,7 +194,7 @@ $("test").addEventListener("click", async () => {
       $("status").textContent = "API OK – secret valid.";
       $("status").className = "ok";
     } else {
-      $("status").textContent = "API-Error: " + (r && r.error ? r.error : "unbekannt");
+      $("status").innerHTML = `API error: ${escapeHtml(r && r.error ? r.error : "unknown")}`;
       $("status").className = "err";
     }
   } catch (err) {
@@ -185,11 +210,11 @@ $("cleanup").addEventListener("click", async () => {
     const r = await sendMsg({ type: "CLEANUP_FUTURE" }, 90000);
     if (r && r.ok) {
       $("status").textContent =
-        `Cleanup OK – future-dated: ${r.deletedFuture ?? 0} · irrelevant: ${r.purged ?? 0} · old (>72h, unsaved): ${r.removedOld ?? 0}.` +
-        ` Next poll will re-ingest current jobs.`;
+        `Cleanup OK – future-dated: ${r.deletedFuture ?? 0} · irrelevant: ${r.purged ?? 0} · old (>72h, unsaved): ${r.removedOld ?? 0}. ` +
+        `Next poll will re-ingest current jobs.`;
       $("status").className = "ok";
     } else {
-      $("status").textContent = "Cleanup-Error: " + (r && r.error ? r.error : "unbekannt");
+      $("status").innerHTML = `Cleanup error: ${escapeHtml(r && r.error ? r.error : "unknown")}`;
       $("status").className = "err";
     }
   } catch (err) {
