@@ -94,6 +94,8 @@ function renderStatus(s) {
     const name = (k[0].toUpperCase() + k.slice(1)).replace("onlinejobs", "OnlineJobs.ph").replace("peopleperhour", "PeoplePerHour");
     if (r.ok) {
       html += `${PILL.ok} <b>${name}</b>: ${r.got} loaded · ${r.fresh} new · ${r.inserted} inserted (${r.mode})`;
+      if (r.duplicates > 0) html += ` · ${r.duplicates} duplicates`;
+      if (r.filtered > 0) html += ` · ${r.filtered} filtered (not VA/WFH)`;
       if (r.warning) html += ` ${PILL.warn} ${escapeHtml(r.warning)}`;
     } else {
       html += `${PILL.err} <b>${name}</b>: ${escapeHtml(r.error || "failed")}`;

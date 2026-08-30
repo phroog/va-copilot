@@ -456,7 +456,7 @@ async function uploadJobs(cfg, jobs, sourceId) {
   let parsed = {};
   try { parsed = JSON.parse(text); } catch {}
   if (parsed.mapped) await storeJobUrlMapping(parsed.mapped);
-  return { inserted: parsed.inserted || 0, duplicates: parsed.duplicates || 0 };
+  return { inserted: parsed.inserted || 0, duplicates: parsed.duplicates || 0, filtered: parsed.filtered || 0 };
 }
 
 /* Remember global-job-id → original URL so on-demand detail enrichment can look
@@ -576,7 +576,7 @@ async function fetchWithSessionRetry(key, p, cfg) {
 }
 
 async function pollPlatform(key, p, cfg) {
-  const result = { ok: true, mode: "tab", got: 0, fresh: 0, total: null, inserted: 0, error: null, warning: null };
+  const result = { ok: true, mode: "tab", got: 0, fresh: 0, total: null, inserted: 0, duplicates: 0, filtered: 0, error: null, warning: null };
   try {
     let { data, mode } = await fetchWithSessionRetry(key, p, cfg);
     result.mode = mode;
@@ -652,6 +652,8 @@ async function pollPlatform(key, p, cfg) {
 
     const up = await uploadJobs(cfg, fresh, p.sourceId);
     result.inserted = up.inserted || 0;
+    result.duplicates = up.duplicates || 0;
+    result.filtered = up.filtered || 0;
 
     await addSeen(key, data.jobs.map((j) => j.external_id));
     await setCooldown(key, 0); // success resets any backoff
