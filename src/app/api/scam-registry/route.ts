@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { effectivePlan, SCAM_REGISTRY_FULL_PLANS } from "@/lib/payments";
 
 export const runtime = "nodejs";
@@ -60,7 +61,9 @@ export async function GET(request: Request) {
 /**
  * POST /api/scam-registry  { domain, company_name, description }
  * Flag a company/URL. Stored as pending, risk suggested by rules; an admin
- * approves it to become "official".
+ * approves it to become "official". Mutation runs with the service role (the
+ * endpoint is authenticated; the user id comes from the verified session) so
+ * RLS never blocks the insert.
  */
 export async function POST(request: Request) {
   const supabase = createClient();
@@ -78,24 +81,28 @@ export async function POST(request: Request) {
   domain = domain.replace(/^https?:\/\//, "");
 
   const risk = suggestRisk(domain, body.description || "");
+  const admin = createServiceRoleClient();
 
-  const { data, error } = await supabase
+  // Unique(domain) handles duplicates; a conflict means it's already reported.
+  const { data, error } = await admin
     .from("scam_registry")
-    .upsert(
-      {
-        domain,
-        company_name: (body.company_name || "").trim(),
-        description: (body.description || "").trim(),
-        risk,
-        status: "pending",
-        flagged_by: user.id,
-      },
-      { onConflict: "domain" }
-    )
+    .insert({
+      domain,
+      company_name: (body.company_name || "").trim(),
+      description: (body.description || "").trim(),
+      risk,
+      status: "pending",
+      flagged_by: user.id,
+    })
     .select()
-    .single();
+    .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    if (/duplicate key/i.test(error.message)) {
+      return NextResponse.json({ error: "This domain has already been reported." }, { status: 409 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({ entry: data, message: "Report submitted for review." });
 }

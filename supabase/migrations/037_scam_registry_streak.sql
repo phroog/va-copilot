@@ -31,7 +31,7 @@ drop policy if exists "insert registry" on scam_registry;
 create policy "read approved registry"
   on scam_registry for select using (auth.role() = 'authenticated' and status = 'approved');
 create policy "insert registry"
-  on scam_registry for insert with check (auth.role() = 'authenticated');
+  on scam_registry for insert with check (auth.uid() is not null);
 
 drop policy if exists "read own votes" on scam_registry_votes;
 drop policy if exists "insert own votes" on scam_registry_votes;
@@ -41,7 +41,7 @@ create policy "read own votes"
 create policy "insert own votes"
   on scam_registry_votes for insert with check (auth.uid() = user_id);
 create policy "update own votes"
-  on scam_registry_votes for update using (auth.uid() = user_id);
+  on scam_registry_votes for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ═══════════════════════════════════════════════════════════════
 -- Dream Streak (daily activity + milestone rewards)
