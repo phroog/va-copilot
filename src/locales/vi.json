@@ -227,7 +227,7 @@
   "downloadCheatsheets": "Tải tài liệu",
   "noVaultItems": "Chưa có mục nào trong kho. Thêm mật khẩu đầu tiên!",
   "agency": "Công ty",
-  "agencyDesc": "Quản lý thành viên công ty và tài nguyên chia sẻ.",
+  "agencyDesc": "Chế độ đội nhóm",
   "createAgency": "Tạo Công ty",
   "createAgencyDesc": "Tạo công ty để cộng tác với nhóm của bạn.",
   "agencyName": "Tên Công ty",
@@ -445,5 +445,21 @@
     "ph": "🇵🇭 Filipino"
   },
   "streak": "🔥 Dream Streak",
-  "scamDirectory": "🛡️ Scam Registry"
+  "scamDirectory": "🛡️ Scam Registry",
+  "home": "Trang chủ",
+  "homeDesc": "Tổng quan của bạn",
+  "money": "Money",
+  "moneyDesc": "Tìm và thắng việc",
+  "safe": "Safe",
+  "safeDesc": "Kiểm tra trước khi tin",
+  "time": "Thời gian",
+  "timeDesc": "Giờ công được trả",
+  "cash": "Tiền",
+  "cashDesc": "Tiền vào, tiền ra",
+  "connect": "Kết nối",
+  "connectDesc": "Khách hàng & cộng đồng",
+  "grow": "Phát triển",
+  "growDesc": "Học & lên level",
+  "setup": "Cài đặt",
+  "setupDesc": "Gói & phần thưởng"
 }

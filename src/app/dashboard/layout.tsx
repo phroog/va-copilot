@@ -9,7 +9,7 @@ import { LanguageDropdown } from "@/components/language-dropdown";
 import { useLocale } from "@/lib/i18n/context";
 import { useProfileName } from "@/lib/use-profile-name";
 import { useState, useEffect } from "react";
-import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, RadioTower, Fish, Dices, Flame, ShieldAlert } from "lucide-react";
+import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, RadioTower, Fish, Dices, Flame, ShieldAlert, Send } from "lucide-react";
 import dynamic from "next/dynamic";
 const MochiHub = dynamic(() => import("@/components/mochi-hub"), { ssr: false });
 import { ToastProvider } from "@/components/toast";
@@ -18,22 +18,34 @@ import ClientErrorReporter from "@/components/client-error-reporter";
 
 const sidebarGroups = [
   {
-    labelKey: "workspace",
+    labelKey: "home", emoji: "🏠", descKey: "homeDesc",
     defaultOpen: true,
     links: [
       { href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard },
-      { href: "/dashboard/jobs", labelKey: "jobs", icon: Briefcase },
-      { href: "/dashboard/live-feed", labelKey: "liveFeed", icon: RadioTower },
-      { href: "/dashboard/cv", labelKey: "cv", icon: FileText },
-      { href: "/dashboard/milestones", labelKey: "milestones", icon: GitBranch },
-      { href: "/dashboard/pipeline", labelKey: "pipeline", icon: GitBranch },
-      { href: "/dashboard/vault", labelKey: "vault", icon: Shield },
-      { href: "/academy/dashboard", labelKey: "academy", icon: BookOpen },
-      { href: "/dashboard/clients", labelKey: "clients", icon: Users },
     ],
   },
   {
-    labelKey: "tracking",
+    labelKey: "money", emoji: "💰", descKey: "moneyDesc",
+    defaultOpen: true,
+    links: [
+      { href: "/dashboard/live-feed", labelKey: "liveFeed", icon: RadioTower },
+      { href: "/dashboard/jobs", labelKey: "jobs", icon: Briefcase },
+      { href: "/dashboard/cv", labelKey: "cv", icon: FileText },
+      { href: "/dashboard/pipeline", labelKey: "pipeline", icon: GitBranch },
+      { href: "/dashboard/applications", labelKey: "applications", icon: Send },
+      { href: "/dashboard/milestones", labelKey: "milestones", icon: GitBranch },
+    ],
+  },
+  {
+    labelKey: "safe", emoji: "🛡️", descKey: "safeDesc",
+    defaultOpen: true,
+    links: [
+      { href: "/dashboard/scam-check", labelKey: "scamCheck", icon: Search },
+      { href: "/dashboard/scam-directory", labelKey: "scamDirectory", icon: ShieldAlert },
+    ],
+  },
+  {
+    labelKey: "time", emoji: "⏱️", descKey: "timeDesc",
     defaultOpen: true,
     links: [
       { href: "/dashboard/time-tracker", labelKey: "timeTracker", icon: Timer },
@@ -42,7 +54,7 @@ const sidebarGroups = [
     ],
   },
   {
-    labelKey: "finance",
+    labelKey: "cash", emoji: "💸", descKey: "cashDesc",
     defaultOpen: false,
     links: [
       { href: "/dashboard/finances", labelKey: "finances", icon: DollarSign },
@@ -50,15 +62,24 @@ const sidebarGroups = [
     ],
   },
   {
-    labelKey: "community",
+    labelKey: "connect", emoji: "🤝", descKey: "connectDesc",
     defaultOpen: false,
     links: [
+      { href: "/dashboard/clients", labelKey: "clients", icon: Users },
       { href: "/dashboard/chat", labelKey: "chat", icon: MessageCircle },
+      { href: "/dashboard/vault", labelKey: "vault", icon: Shield },
       { href: "/dashboard/aquarium", labelKey: "aquarium", icon: Fish },
     ],
   },
   {
-    labelKey: "agency",
+    labelKey: "grow", emoji: "🎓", descKey: "growDesc",
+    defaultOpen: false,
+    links: [
+      { href: "/academy/dashboard", labelKey: "academy", icon: BookOpen },
+    ],
+  },
+  {
+    labelKey: "agency", emoji: "🏢", descKey: "agencyDesc",
     defaultOpen: false,
     links: [
       { href: "/dashboard/agency", labelKey: "agency", icon: Shield },
@@ -66,15 +87,13 @@ const sidebarGroups = [
     ],
   },
   {
-    labelKey: "configuration",
+    labelKey: "setup", emoji: "⚙️", descKey: "setupDesc",
     defaultOpen: false,
     links: [
       { href: "/dashboard/settings", labelKey: "settings", icon: Settings },
       { href: "/dashboard/credits", labelKey: "credits", icon: Coins },
-      { href: "/dashboard/wheel", labelKey: "wheel", icon: Dices },
       { href: "/dashboard/streak", labelKey: "streak", icon: Flame },
-      { href: "/dashboard/scam-directory", labelKey: "scamDirectory", icon: ShieldAlert },
-      { href: "/dashboard/scam-check", labelKey: "scamCheck", icon: Search },
+      { href: "/dashboard/wheel", labelKey: "wheel", icon: Dices },
     ],
   },
 ];
@@ -145,9 +164,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     onClick={() => setOpenGroups((prev) => ({ ...prev, [group.labelKey]: !prev[group.labelKey] }))}
                     className="flex items-center gap-2 w-full px-3 py-2 rounded-2xl text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider hover:bg-kawaii-lavender/10 dark:hover:bg-dark-surface/30 transition-all"
                   >
+                    <span className="text-base leading-none">{group.emoji}</span>
+                    <span className="flex-1 text-left">{t(group.labelKey)}</span>
                     {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                    {t(group.labelKey)}
                   </button>
+                  {group.descKey && (
+                    <p className="px-3 pb-1 -mt-0.5 text-[10px] text-slate-400 dark:text-slate-500 not-uppercase">{t(group.descKey)}</p>
+                  )}
                   {isOpen && (
                     <div className="ml-1 space-y-0.5 mt-0.5">
                       {group.links.map((link) => {

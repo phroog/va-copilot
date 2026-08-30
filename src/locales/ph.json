@@ -227,7 +227,7 @@
   "downloadCheatsheets": "I-download ang resources",
   "noVaultItems": "Walang laman ang iyong vault. Idagdag ang iyong unang password!",
   "agency": "Ahensya",
-  "agencyDesc": "Pamahalaan ang mga miyembro ng iyong ahensya at shared resources.",
+  "agencyDesc": "Team mode",
   "createAgency": "Gumawa ng Ahensya",
   "createAgencyDesc": "Gumawa ng ahensya para makipagtulungan sa iyong team.",
   "agencyName": "Pangalan ng Ahensya",
@@ -445,5 +445,21 @@
     "ph": "🇵🇭 Filipino"
   },
   "streak": "🔥 Dream Streak",
-  "scamDirectory": "🛡️ Scam Registry"
+  "scamDirectory": "🛡️ Scam Registry",
+  "home": "Home",
+  "homeDesc": "Ang iyong pangkalahatan",
+  "money": "Money",
+  "moneyDesc": "Maghanap at manalo ng trabaho",
+  "safe": "Safe",
+  "safeDesc": "I-check bago magtiwala",
+  "time": "Oras",
+  "timeDesc": "Oras na may bayad",
+  "cash": "Cash",
+  "cashDesc": "Perang pumapasok at lumalabas",
+  "connect": "Kumonekta",
+  "connectDesc": "Kliyente at komunidad",
+  "grow": "Lumago",
+  "growDesc": "Matuto at mag-level up",
+  "setup": "Setup",
+  "setupDesc": "Plano at rewards"
 }

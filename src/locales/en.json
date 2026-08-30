@@ -229,7 +229,7 @@
   "downloadCheatsheets": "Download resources",
   "noVaultItems": "No items in your vault. Add your first password!",
   "agency": "Agency",
-  "agencyDesc": "Manage your agency members and shared resources.",
+  "agencyDesc": "Team mode",
   "createAgency": "Create Agency",
   "createAgencyDesc": "Create an agency to collaborate with your team and share jobs, vault items, and more.",
   "agencyName": "Agency Name",
@@ -446,5 +446,21 @@
     "th": "🇹🇭 ไทย"
   },
   "streak": "🔥 Dream Streak",
-  "scamDirectory": "🛡️ Scam Registry"
+  "scamDirectory": "🛡️ Scam Registry",
+  "home": "Home",
+  "homeDesc": "Your overview",
+  "money": "Money",
+  "moneyDesc": "Find & win jobs",
+  "safe": "Safe",
+  "safeDesc": "Check before you trust",
+  "time": "Time",
+  "timeDesc": "Hours that pay",
+  "cash": "Cash",
+  "cashDesc": "Money in, money out",
+  "connect": "Connect",
+  "connectDesc": "Clients & community",
+  "grow": "Grow",
+  "growDesc": "Learn & level up",
+  "setup": "Setup",
+  "setupDesc": "Plan & rewards"
 }
