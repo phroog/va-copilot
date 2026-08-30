@@ -9,7 +9,7 @@ import { LanguageDropdown } from "@/components/language-dropdown";
 import { useLocale } from "@/lib/i18n/context";
 import { useProfileName } from "@/lib/use-profile-name";
 import { useState, useEffect } from "react";
-import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, RadioTower, Fish, Dices, Flame, ShieldAlert, Send } from "lucide-react";
+import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, RadioTower, Fish, Dices, Flame, ShieldAlert, Send, Mic } from "lucide-react";
 import dynamic from "next/dynamic";
 const MochiHub = dynamic(() => import("@/components/mochi-hub"), { ssr: false });
 import { ToastProvider } from "@/components/toast";
@@ -75,7 +75,8 @@ const sidebarGroups = [
     labelKey: "grow", emoji: "🎓", descKey: "growDesc",
     defaultOpen: false,
     links: [
-      { href: "/academy/dashboard", labelKey: "academy", icon: BookOpen },
+      { href: "/dashboard/interview", labelKey: "interview", icon: Mic },
+      { href: "/academy", labelKey: "academy", icon: BookOpen },
     ],
   },
   {

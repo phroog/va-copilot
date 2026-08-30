@@ -14,6 +14,8 @@ interface CallOptions {
   temperature?: number;
   maxTokens?: number;
   history?: { role: string; content: string }[];
+  /** Skip the per-call credit deduction (credits managed by the caller). */
+  free?: boolean;
 }
 
 interface CallResult {
@@ -189,9 +191,11 @@ export async function callDeepSeek(
       const cost = tokensInput * PRICING.input + tokensOutput * PRICING.output;
 
       // Deduct credit only after a successful API response
-      const hasCredits = await deductCredit(userId);
-      if (!hasCredits) {
-        throw Object.assign(new Error("Insufficient AI credits"), { status: 402, code: "INSUFFICIENT_CREDITS" });
+      if (!options.free) {
+        const hasCredits = await deductCredit(userId);
+        if (!hasCredits) {
+          throw Object.assign(new Error("Insufficient AI credits"), { status: 402, code: "INSUFFICIENT_CREDITS" });
+        }
       }
 
       await logUsage(userId, "deepseek", tokensInput, tokensOutput, cost);

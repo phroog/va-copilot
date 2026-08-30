@@ -23,11 +23,9 @@ export default function AcademyLayout({ children }: { children: React.ReactNode 
   const isLanding = pathname === "/academy";
 
   const navLinks = [
-    { href: "/academy", label: "🎓 " + t("academy"), active: pathname === "/academy" },
-    { href: "/academy/dashboard", label: "📊 " + t("dashboard"), active: pathname.startsWith("/academy/dashboard") },
-    { href: "/academy/masterclasses", label: "📚 " + t("allMasterclasses"), active: pathname.startsWith("/academy/masterclass") || pathname === "/academy/masterclasses" },
-    { href: "/dashboard/chat", label: "💬 " + t("community"), active: false },
-    { href: "/dashboard", label: "🍠 Sari", active: false },
+    { href: "/academy", label: "🎓 Academy", active: pathname === "/academy" },
+    { href: "/dashboard", label: "🍠 Dashboard", active: false },
+    { href: "/", label: "🏠 Home", active: false },
   ];
 
   return (
