@@ -18,17 +18,19 @@ security definer
 set search_path = public
 as $$
 begin
-  -- Fire-and-forget HTTP POST to the Edge Function.
-  -- Edge Function URL: https://<project-ref>.supabase.co/functions/v1/telegram-push
-  -- The secret is optional but recommended (see .env example).
-  perform net.http_post(
-    url := current_setting('app.telegram_push_url', true),
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || current_setting('app.telegram_push_secret', true)
-    ),
-    body := jsonb_build_object('record', to_jsonb(new))
-  );
+  -- Only fire the HTTP request when the push URL is configured. Otherwise this
+  -- trigger MUST be a no-op: a pg_net call with a NULL url raises a not-null
+  -- error that rolls back the whole global_jobs insert (breaking every upload).
+  if current_setting('app.telegram_push_url', true) is not null then
+    perform net.http_post(
+      url := current_setting('app.telegram_push_url', true),
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || current_setting('app.telegram_push_secret', true)
+      ),
+      body := jsonb_build_object('record', to_jsonb(new))
+    );
+  end if;
   return new;
 end;
 $$;
@@ -47,14 +49,16 @@ security definer
 set search_path = public
 as $$
 begin
-  perform net.http_post(
-    url := current_setting('app.telegram_push_url', true),
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || current_setting('app.telegram_push_secret', true)
-    ),
-    body := jsonb_build_object('record', to_jsonb(new))
-  );
+  if current_setting('app.telegram_push_url', true) is not null then
+    perform net.http_post(
+      url := current_setting('app.telegram_push_url', true),
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || current_setting('app.telegram_push_secret', true)
+      ),
+      body := jsonb_build_object('record', to_jsonb(new))
+    );
+  end if;
   return new;
 end;
 $$;
