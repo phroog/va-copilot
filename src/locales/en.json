@@ -175,7 +175,6 @@
   "pause": "Pause",
   "resume": "Resume",
   "cv": "CV",
-  "stop": "Stop",
   "focus": "Focus",
   "sounds": "Soundscapes",
   "add": "Add",
@@ -445,5 +444,7 @@
     "vi": "🇻🇳 Tiếng Việt",
     "ph": "🇵🇭 Filipino",
     "th": "🇹🇭 ไทย"
-  }
+  },
+  "streak": "🔥 Dream Streak",
+  "scamDirectory": "🛡️ Scam Registry"
 }

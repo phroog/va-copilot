@@ -103,6 +103,10 @@ export async function POST(request: Request) {
         if (userId) {
           await upsertSubscription(userId, plan, "active", s.subscription, s.current_period_end);
           await awardCredits(userId, plan);
+          // The Dream Streak free month is consumed by this checkout.
+          if (s.metadata?.freeMonth === "1") {
+            await supabase().from("profiles").update({ free_month_available: false }).eq("user_id", userId);
+          }
         }
         break;
       }

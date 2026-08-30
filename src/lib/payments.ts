@@ -45,6 +45,10 @@ export function planFromPriceId(priceId: string | null | undefined): PlanKey {
 /* Swap allowance per plan — generous, but capped so it can't be farmed. */
 export const SWAP_LIMITS: Record<PlanKey, number> = { free: 3, basic: 10, pro: 30 };
 
+/* Plans that get FULL access to the scam registry (Sprout = free gets a teaser).
+   Change this single constant to adjust the gating. */
+export const SCAM_REGISTRY_FULL_PLANS: PlanKey[] = ["basic", "pro"];
+
 /* Minimum match score for a job to count against the matched daily quota. */
 export const MATCH_THRESHOLD = 50;
 

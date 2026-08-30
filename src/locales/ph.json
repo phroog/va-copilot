@@ -173,7 +173,6 @@
   "pause": "I-pause",
   "resume": "Ipagpatuloy",
   "cv": "CV",
-  "stop": "Itigil",
   "focus": "Focus",
   "sounds": "Soundscapes",
   "add": "Idagdag",
@@ -444,5 +443,7 @@
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",
     "ph": "🇵🇭 Filipino"
-  }
+  },
+  "streak": "🔥 Dream Streak",
+  "scamDirectory": "🛡️ Scam Registry"
 }

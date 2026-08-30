@@ -26,15 +26,33 @@ export async function POST(request: Request) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
 
+  // Dream Streak reward: a free Money Club month (first invoice 100% off) via
+  // a Stripe coupon. Applied when the user has the reward and chooses Money Club.
+  let freeMonth = false;
+  if (plan === "pro") {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("free_month_available")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    freeMonth = !!profile?.free_month_available;
+  }
+
+  const discounts: any[] = [];
+  if (freeMonth) {
+    try { discounts.push({ coupon: "moneyclub-free-month" }); } catch {}
+  }
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
     client_reference_id: user.id,
-    metadata: { plan },
+    metadata: { plan, freeMonth: freeMonth ? "1" : "0" },
     success_url: `${appUrl}/dashboard?upgrade=success`,
     cancel_url: `${appUrl}/pricing`,
     subscription_data: { metadata: { plan } },
+    ...(discounts.length ? { discounts } : {}),
   });
 
-  return NextResponse.json({ url: session.url });
+  return NextResponse.json({ url: session.url, freeMonth });
 }

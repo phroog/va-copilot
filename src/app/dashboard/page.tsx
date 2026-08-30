@@ -12,6 +12,7 @@ import { formatDuration } from "@/lib/utils";
 import { formatMoney, convert, normalizeCurrency } from "@/lib/currency";
 import TelegramCta from "@/components/telegram-cta";
 import UpsellAd from "@/components/upsell-ad";
+import StreakCard from "@/components/streak-card";
 
 interface FeedJob {
   id: string;
@@ -232,6 +233,7 @@ export default function DashboardHome() {
       </div>
 
       {/* Quota + Timer */}
+      <StreakCard />
       <UpsellAd />
       <TelegramCta />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

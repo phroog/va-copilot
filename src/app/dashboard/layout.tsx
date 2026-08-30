@@ -9,7 +9,7 @@ import { LanguageDropdown } from "@/components/language-dropdown";
 import { useLocale } from "@/lib/i18n/context";
 import { useProfileName } from "@/lib/use-profile-name";
 import { useState, useEffect } from "react";
-import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, RadioTower, Fish, Dices } from "lucide-react";
+import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, RadioTower, Fish, Dices, Flame, ShieldAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 const MochiHub = dynamic(() => import("@/components/mochi-hub"), { ssr: false });
 import { ToastProvider } from "@/components/toast";
@@ -72,6 +72,8 @@ const sidebarGroups = [
       { href: "/dashboard/settings", labelKey: "settings", icon: Settings },
       { href: "/dashboard/credits", labelKey: "credits", icon: Coins },
       { href: "/dashboard/wheel", labelKey: "wheel", icon: Dices },
+      { href: "/dashboard/streak", labelKey: "streak", icon: Flame },
+      { href: "/dashboard/scam-directory", labelKey: "scamDirectory", icon: ShieldAlert },
       { href: "/dashboard/scam-check", labelKey: "scamCheck", icon: Search },
     ],
   },

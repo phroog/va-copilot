@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -136,9 +137,9 @@ export default function ScamCheckPage() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
-      <h1 className="text-3xl font-extrabold">🕵️ {t("scamCheck")}</h1>
+<h1 className="text-3xl font-extrabold">🕵️ {t("scamCheck")}</h1>
       <p className="text-slate-500 dark:text-slate-400">
-        Enter a job URL (or use a job from Live Feed / extension) and press Scan.
+        Check a URL or client for scam patterns — and consult the community <Link href="/dashboard/scam-directory" className="text-kawaii-purple dark:text-kawaii-lavender underline">Scam Registry</Link>.
       </p>
 
       <Card>

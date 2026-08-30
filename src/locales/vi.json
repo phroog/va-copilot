@@ -173,7 +173,6 @@
   "pause": "Tạm dừng",
   "resume": "Tiếp tục",
   "cv": "CV",
-  "stop": "Dừng",
   "focus": "Tập trung",
   "sounds": "Âm thanh",
   "add": "Thêm",
@@ -444,5 +443,7 @@
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",
     "ph": "🇵🇭 Filipino"
-  }
+  },
+  "streak": "🔥 Dream Streak",
+  "scamDirectory": "🛡️ Scam Registry"
 }
