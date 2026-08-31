@@ -131,8 +131,7 @@ export default function WheelPage() {
               ref={canvasRef}
               width={320}
               height={320}
-              className="rounded-full shadow-xl"
-              style={{ width: 320, height: 320 }}
+              className="rounded-full shadow-xl w-full max-w-[320px] h-auto aspect-square"
             />
           </div>
 
