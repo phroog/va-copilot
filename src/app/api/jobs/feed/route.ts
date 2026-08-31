@@ -118,8 +118,13 @@ export async function GET(request: Request) {
   const platforms = Array.from(new Set(rows.map((j: any) => j.platform).filter(Boolean))).sort();
   const categories = Array.from(new Set(rows.map((j: any) => j.category).filter(Boolean))).sort();
 
+  // Always list every configured platform in the dropdown — not only the ones
+  // that happen to have fresh jobs in the window right now.
+  const { data: srcPlats } = await supabase.from("job_sources").select("platform").not("platform", "is", null);
+  const allPlatforms = Array.from(new Set([...platforms, ...(srcPlats ?? []).map((s: any) => s.platform).filter(Boolean)])).sort();
+
   if (q) rows = rows.filter((j: any) => ((j.title || "") + " " + (j.description || "")).toLowerCase().includes(q));
-  if (platform !== "all") rows = rows.filter((j: any) => j.platform === platform);
+  if (platform !== "all") rows = rows.filter((j: any) => String(j.platform || "").toLowerCase() === platform.toLowerCase());
   if (category !== "all") rows = rows.filter((j: any) => j.category === category);
   if (score === "high") rows = rows.filter((j: any) => (j.matching_score ?? 0) >= 70);
   else if (score === "medium") rows = rows.filter((j: any) => (j.matching_score ?? 0) >= 40 && (j.matching_score ?? 0) < 70);
@@ -214,12 +219,23 @@ export async function GET(request: Request) {
   const limitReached = dailyLimit != null && countViews && usedToday + newUsed >= dailyLimit;
   const hasMore = offset + limit < total && (dailyLimit == null || usedToday + matchedCount(page) < dailyLimit);
 
+  // ── Clickability / gating ─────────────────────────────────────────
+  // Pro (Money Club) can open everything. Sprout + Bloom: only jobs that match
+  // well are clickable; low matches are grayed out. When the daily matched
+  // quota is reached, good matches turn into "locked" cards instead.
+  const isPro = plan === "pro";
+  jobsOut = jobsOut.map((j: any) => {
+    const canClick = isPro || (j.profile_match ?? 0) >= MATCH_THRESHOLD;
+    const locked = !isPro && canClick && limitReached;
+    return { ...j, clickable: canClick, locked };
+  });
+
   return NextResponse.json({
     jobs: jobsOut,
     total,
     hasMore,
     offset,
-    platforms,
+    platforms: allPlatforms,
     categories,
     plan,
     used,

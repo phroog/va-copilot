@@ -44,6 +44,8 @@ interface FeedJob {
   scam_risk: number | null;
   scam_level: string | null;
   scam_flags?: string[];
+  clickable?: boolean;
+  locked?: boolean;
 }
 
 function timeAgo(dateStr: string | null): string {
@@ -599,11 +601,14 @@ function FeedJobCard({
   onGeneratePitch: () => void;
   onSwap: () => void;
 }) {
+  const grayed = job.clickable === false && !job.locked;
+  const locked = !!job.locked;
+  const openable = !grayed && !locked;
   return (
     <Card
-      className={`flex border-kawaii-lavender/30 dark:border-dark-surface hover:border-kawaii-purple/50 transition-all ${
+      className={`flex border-kawaii-lavender/30 dark:border-dark-surface transition-all ${
         isNew ? "ring-2 ring-kawaii-purple/60 bg-kawaii-purple/5 dark:bg-kawaii-purple/10" : ""
-      }`}
+      } ${grayed ? "opacity-45 hover:opacity-60" : "hover:border-kawaii-purple/50"} ${locked ? "opacity-80" : ""}`}
     >
       <CardContent className="p-4 flex flex-col md:flex-row md:items-start gap-3 w-full">
         <div className="flex-1 min-w-0">
@@ -611,6 +616,16 @@ function FeedJobCard({
             {isNew && (
               <span className="text-xs px-2 py-0.5 bg-kawaii-purple/15 text-kawaii-purple dark:text-kawaii-lavender rounded-full font-bold animate-pulse">
                 ✨ NEW
+              </span>
+            )}
+            {grayed && (
+              <span className="text-xs px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-full font-bold">
+                🎯 Low match
+              </span>
+            )}
+            {locked && (
+              <span className="text-xs px-2 py-0.5 bg-kawaii-coral/20 text-kawaii-coral dark:text-kawaii-coral rounded-full font-bold">
+                🔒 Daily limit
               </span>
             )}
             {job.category && (
@@ -631,13 +646,17 @@ function FeedJobCard({
             {job.budget && <span className="text-sm font-bold text-slate-700 dark:text-slate-200">💰 {job.budget}</span>}
           </div>
           <h3 className="font-extrabold text-base text-slate-800 dark:text-slate-100 leading-snug">
-            <Link
-              href={`/jobs/${job.id}`}
-              className="hover:text-kawaii-purple dark:hover:text-kawaii-lavender transition-colors"
-              title="View details on Sari"
-            >
-              {job.title} <span className="text-xs text-slate-300 dark:text-slate-500">↗</span>
-            </Link>
+            {openable ? (
+              <Link
+                href={`/jobs/${job.id}`}
+                className="hover:text-kawaii-purple dark:hover:text-kawaii-lavender transition-colors"
+                title="View details on Sari"
+              >
+                {job.title} <span className="text-xs text-slate-300 dark:text-slate-500">↗</span>
+              </Link>
+            ) : (
+              <span className="text-slate-400 dark:text-slate-500">{job.title}</span>
+            )}
           </h3>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
             📅 {job.posted_at ? "Posted " + timeAgo(job.posted_at) : "Collected " + timeAgo(job.collected_at)}
@@ -683,17 +702,23 @@ function FeedJobCard({
               <ScamBadge level={job.scam_level} risk={job.scam_risk} flags={job.scam_flags} />
             )}
           </div>
-          <div className="flex items-center gap-2 md:flex-col md:items-stretch">
-            <Button size="sm" variant={job.is_saved ? "outline" : "primary"} onClick={onToggleSave} disabled={saving}>
-              {saving ? "..." : job.is_saved ? "💾 Saved" : "💾 Save"}
-            </Button>
-            <Button size="sm" variant="outline" onClick={onGeneratePitch} disabled={generating}>
-              {generating ? "Loading..." : job.pitch_id ? "🚀 View Pitch" : "🚀 Pitch"}
-            </Button>
-            <Button size="sm" variant="outline" onClick={onSwap} disabled={swapping} title="Swaps the job for a better match">
-              {swapping ? "..." : "🔄 Swap"}
-            </Button>
-          </div>
+          {locked ? (
+            <Link href="/pricing">
+              <Button size="sm" variant="primary" className="whitespace-nowrap">🔒 Unlock with Money Club</Button>
+            </Link>
+          ) : (
+            <div className="flex items-center gap-2 md:flex-col md:items-stretch">
+              <Button size="sm" variant={job.is_saved ? "outline" : "primary"} onClick={onToggleSave} disabled={saving || grayed}>
+                {saving ? "..." : job.is_saved ? "💾 Saved" : "💾 Save"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={onGeneratePitch} disabled={generating || grayed}>
+                {generating ? "Loading..." : job.pitch_id ? "🚀 View Pitch" : "🚀 Pitch"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={onSwap} disabled={swapping || grayed} title="Swaps the job for a better match">
+                {swapping ? "..." : "🔄 Swap"}
+              </Button>
+            </div>
+          )}
           {job.is_saved && <span className="text-xs text-kawaii-purple dark:text-kawaii-lavender">💾 Saved</span>}
           {job.is_applied && <span className="text-xs text-green-600 dark:text-green-400">✅ Applied</span>}
         </div>
