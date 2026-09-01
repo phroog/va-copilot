@@ -433,6 +433,109 @@ async function fetchHubstaffDom() {
       external_id: url,
     });
   });
+return { total: out.length, jobs: out };
+}
+
+/* ---------- WorkingNomads (public JSON API) ---------- */
+async function fetchWorkingNomads() {
+  const res = await fetch("https://www.workingnomads.com/api/exposed_jobs", { credentials: "include" });
+  const text = await res.text();
+  if (!res.ok) throw new Error("WorkingNomads HTTP " + res.status);
+  let list = [];
+  try { list = JSON.parse(text); } catch { throw new Error("WorkingNomads bad JSON"); }
+  if (!Array.isArray(list)) throw new Error("WorkingNomads unexpected payload");
+  const jobs = list.filter((j) => j).map((j) => ({
+    title: clean(j.title || ""),
+    description: clean((j.description || "").replace(/<[^>]*>/g, " ")),
+    budget: null,
+    budget_type: null,
+    url: j.apply_url || j.url || ("https://www.workingnomads.com/job/" + (j.slug || "") + "/"),
+    platform: PLATFORMS.workingnomads.name,
+    skills: [],
+    posted_at: j.date ? new Date(j.date).toISOString() : null,
+    client_name: j.company_name || "",
+    experience_level: "",
+    external_id: "wn:" + (j.id || j.slug || j.url || ""),
+  }));
+  return { total: jobs.length, jobs };
+}
+
+/* ---------- RemoteOK (public JSON API) ---------- */
+async function fetchRemoteOkApi() {
+  const res = await fetch("https://remoteok.com/api", { credentials: "include" });
+  const text = await res.text();
+  if (!res.ok) throw new Error("RemoteOK HTTP " + res.status);
+  let list = [];
+  try { list = JSON.parse(text); } catch { throw new Error("RemoteOK bad JSON"); }
+  if (!Array.isArray(list)) throw new Error("RemoteOK unexpected payload");
+  const jobs = list.filter((j) => j && j.id).map((j) => ({
+    title: clean(j.position || ""),
+    description: clean((j.description || "").replace(/<[^>]*>/g, " ")),
+    budget: null,
+    budget_type: null,
+    url: j.url || ("https://remoteok.com/remote-jobs/" + (j.slug || "") + "/"),
+    platform: PLATFORMS.remoteok.name,
+    skills: Array.isArray(j.tags) ? j.tags.map((t) => String(t)) : [],
+    posted_at: j.date ? new Date(j.date).toISOString() : null,
+    client_name: j.company || "",
+    experience_level: "",
+    external_id: "rok:" + j.id,
+  }));
+  return { total: jobs.length, jobs };
+}
+
+/* ---------- Jobspresso (RSS feed) ---------- */
+async function fetchJobspressoRss() {
+  const res = await fetch("https://jobspresso.co/feed/", { credentials: "include" });
+  const text = await res.text();
+  if (!res.ok) throw new Error("Jobspresso HTTP " + res.status);
+  const doc = new DOMParser().parseFromString(text, "text/xml");
+  const jobs = Array.from(doc.querySelectorAll("item")).map((it) => ({
+    title: clean(it.querySelector("title")?.textContent || ""),
+    description: clean((it.querySelector("description")?.textContent || "").replace(/<[^>]*>/g, " ")),
+    budget: null,
+    budget_type: null,
+    url: it.querySelector("link")?.textContent || "",
+    platform: PLATFORMS.jobspresso.name,
+    skills: [],
+    posted_at: it.querySelector("pubDate") ? new Date(it.querySelector("pubDate").textContent).toISOString() : null,
+    client_name: "",
+    experience_level: "",
+    external_id: "jp:" + (it.querySelector("guid")?.textContent || it.querySelector("link")?.textContent || ""),
+  }));
+  return { total: jobs.length, jobs };
+}
+
+/* ---------- Freelancer (parse the open projects page) ---------- */
+async function fetchFreelancerApi() {
+  const targetUrl = location.href;
+  const res = await fetch(targetUrl, { credentials: "include" });
+  const text = await res.text();
+  if (!res.ok) throw new Error("Freelancer HTTP " + res.status);
+  const doc = new DOMParser().parseFromString(text, "text/html");
+  const out = [];
+  const seen = new Set();
+  for (const a of Array.from(doc.querySelectorAll("a[href*='/projects/']"))) {
+    const urlStr = (a.href || "").split("#")[0];
+    if (!urlStr || seen.has(urlStr)) continue;
+    const title = clean(a.textContent || "");
+    if (!title || title.length < 4) continue;
+    seen.add(urlStr);
+    out.push({
+      title,
+      description: "",
+      budget: null,
+      budget_type: null,
+      url: urlStr,
+      platform: PLATFORMS.freelancer.name,
+      skills: [],
+      posted_at: null,
+      client_name: "",
+      experience_level: "",
+      external_id: urlStr,
+    });
+  }
+  if (out.length === 0) throw new Error("No Freelancer projects found on this page");
   return { total: out.length, jobs: out };
 }
 
