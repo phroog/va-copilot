@@ -121,7 +121,10 @@ async function load() {
     buildRows(cfg.platforms);
     renderStatus(status);
     const len = cfg.adminSecret ? cfg.adminSecret.length : 0;
-    const secretNote = len === 0 ? "Admin secret not set (type it below)" : `Admin secret saved (length ${len})`;
+    const secretNote =
+      len === 0
+        ? '<span style="color:#b3261e;font-weight:800">⚠ Admin secret MISSING — type it below, then Save &amp; Poll.</span>'
+        : `Admin secret saved (length ${len})`;
     $("status").innerHTML += `<div class="meta">${secretNote}</div>`;
   } catch (err) {
     $("status").textContent = "Error: " + err.message;
