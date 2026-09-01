@@ -291,8 +291,13 @@ async function setEmptyCount(key, n) {
   await chrome.storage.local.set({ [EMPTY_KEY]: { ...(s[EMPTY_KEY] || {}), [key]: n } });
 }
 
+/* Remembers why the last tab fetch failed, so the user sees the REAL reason
+   instead of a misleading "no tab open". */
+let lastTabError = null;
+
 /* Fetch one platform's feed from an open tab (page context). */
 async function fetchViaTab(key, url, cfg) {
+  lastTabError = null;
   // Candidate tab ids: the remembered one (works even on a CF challenge URL)
   // plus any tabs currently matching the host pattern.
   const ids = new Set();
@@ -302,6 +307,17 @@ async function fetchViaTab(key, url, cfg) {
   if (pattern) {
     const tabs = await chrome.tabs.query({ url: Array.isArray(pattern) ? pattern : [pattern] });
     for (const t of tabs) ids.add(t.id);
+  }
+  if (ids.size === 0) {
+    // Broad fallback: match tabs by hostname so bare domains (https://guru.com
+    // without www) or challenge/other sub-pages are still discovered.
+    const all = await chrome.tabs.query({});
+    for (const t of all) {
+      try {
+        const h = new URL(t.url || "").hostname.replace(/^www\./, "");
+        if (h === key || h.includes(key)) ids.add(t.id);
+      } catch {}
+    }
   }
   if (ids.size === 0) return null;
 
@@ -323,8 +339,9 @@ async function fetchViaTab(key, url, cfg) {
         resp = await chrome.tabs.sendMessage(meta.id, { type: "FETCH_FEED", platform: key, url, count: cfg.count });
       }
       if (resp && resp.ok) return resp;
-      if (resp && resp.error) log(key, "tab error:", resp.error);
+      if (resp && resp.error) { lastTabError = resp.error; log(key, "tab error:", resp.error); }
     } catch (err) {
+      lastTabError = lastTabError || err.message;
       log(key, "tab unreachable:", err.message);
     }
   }
@@ -533,7 +550,12 @@ async function fetchPlatformData(key, p, cfg) {
   }
   // HTML/DOM platforms need an open tab (same-origin fetch / DOM reader).
   const data = await fetchViaTab(key, p.url, cfg);
-  if (!data) throw new Error("No " + p.name + " tab open");
+  if (!data) {
+    // Surface the REAL reason: either no matching tab, or the tab's adapter
+    // threw (misleadingly reported as "no tab open" before).
+    if (lastTabError) throw new Error("No " + p.name + " tab open (scan error: " + lastTabError + ")");
+    throw new Error("No " + p.name + " tab open");
+  }
   return { data, mode: "tab" };
 }
 
