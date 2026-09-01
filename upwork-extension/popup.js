@@ -126,6 +126,14 @@ async function load() {
         ? '<span style="color:#b3261e;font-weight:800">⚠ Admin secret MISSING — type it below, then Save &amp; Poll.</span>'
         : `Admin secret saved (length ${len})`;
     $("status").innerHTML += `<div class="meta">${secretNote}</div>`;
+
+    // Ground-truth check: read storage directly (not via the background) so we
+    // can tell whether the secret truly isn't saved or the background is stale.
+    const direct = await chrome.storage.local.get(["adminSecret"]).catch(() => ({}));
+    const directLen = direct.adminSecret ? direct.adminSecret.length : 0;
+    if (directLen > 0 && len === 0) {
+      $("status").innerHTML += `<div class="meta" style="color:#8a5a00;font-weight:800">⚠ Background is stale — secret IS in storage (${directLen}). Press Save &amp; Poll.</div>`;
+    }
   } catch (err) {
     $("status").textContent = "Error: " + err.message;
     $("status").className = "err";
