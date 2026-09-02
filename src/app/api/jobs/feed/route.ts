@@ -87,7 +87,6 @@ export async function GET(request: Request) {
   const today = new Date().toISOString().slice(0, 10);
 
   let bonus = 0;
-  let usedToday = 0;
   let swapUsed = 0;
   // The daily quota = how many TOP matched jobs are auto-granted into My Matches
   // each day. Pro is unlimited.
@@ -100,7 +99,6 @@ export async function GET(request: Request) {
       .eq("view_date", today)
       .maybeSingle();
     if (view) {
-      usedToday = view.count ?? 0;
       swapUsed = view.swaps ?? 0;
       bonus = view.bonus ?? 0;
     } else {
@@ -112,6 +110,19 @@ export async function GET(request: Request) {
     }
   }
   const dailyLimit = planLimit != null ? planLimit + bonus : null;
+
+  // usedToday = number of jobs granted TODAY (source of truth: user_opened_jobs,
+  // NOT the legacy view counter — that self-heals users who only have stale
+  // view counts from before auto-granting existed).
+  let usedToday = 0;
+  if (planLimit != null) {
+    const { count } = await supabase
+      .from("user_opened_jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("opened_at", today);
+    usedToday = count ?? 0;
+  }
 
   // ── Auto-grant today's top matched jobs into My Matches ────────────
   // Fills the remaining quota with the best matching jobs automatically — the
