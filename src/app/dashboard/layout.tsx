@@ -66,7 +66,6 @@ const sidebarGroups = [
     defaultOpen: false,
     links: [
       { href: "/dashboard/clients", labelKey: "clients", icon: Users },
-      { href: "/dashboard/inbox", labelKey: "inbox", icon: Inbox },
       { href: "/dashboard/chat", labelKey: "chat", icon: MessageCircle },
       { href: "/dashboard/vault", labelKey: "vault", icon: Shield },
       { href: "/dashboard/aquarium", labelKey: "aquarium", icon: Fish },

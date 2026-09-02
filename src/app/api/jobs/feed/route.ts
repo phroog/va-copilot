@@ -34,6 +34,7 @@ export async function GET(request: Request) {
   const sort = url.searchParams.get("sort") || "match";
   const hours = Math.max(1, Math.min(168, num(url.searchParams.get("hours"), 24)));
   const countViews = url.searchParams.get("count_views") === "1";
+  const mode = url.searchParams.get("mode") || "best"; // best | matches | newest
   const cutoff = new Date(Date.now() - hours * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
 
   // Sources toggled off in Live Feed settings are hidden.
@@ -57,21 +58,36 @@ export async function GET(request: Request) {
     if (it.is_saved || it.is_applied) savedIds.push(it.global_job_id);
   }
 
+  // My Matches: the jobs this user opened/unlocked, persisted across days.
+  let openedOrder: string[] = [];
+  if (mode === "matches") {
+    const { data: opened } = await supabase
+      .from("user_opened_jobs")
+      .select("global_job_id")
+      .eq("user_id", user.id)
+      .order("opened_at", { ascending: false })
+      .limit(200);
+    openedOrder = (opened ?? []).map((o: any) => o.global_job_id);
+  }
+
   let query = supabase.from("global_jobs").select("*");
   if (excludedIds.length > 0) {
     query = query.not("source_id", "in", `(${excludedIds.join(",")})`);
   }
-  if (savedIds.length > 0) {
-    query = query.or(`collected_at.gt.${cutoff},id.in.(${savedIds.join(",")})`);
+  if (mode === "matches") {
+    if (openedOrder.length > 0) query = query.in("id", openedOrder);
   } else {
-    query = query.gt("collected_at", cutoff);
+    const w = mode === "best" ? new Date(Date.now() - 30 * 86400000).toISOString().replace(/\.\d{3}Z$/, "Z") : cutoff;
+    if (savedIds.length > 0) {
+      query = query.or(`collected_at.gt.${w},id.in.(${savedIds.join(",")})`);
+    } else {
+      query = query.gt("collected_at", w);
+    }
   }
 
-  // Generous window so "best match" sorting + filtering are computed over the
-  // whole visible set, then paginated server-side.
   const { data: jobs, error: jobsError } = await query
     .order("posted_at", { ascending: false, nullsFirst: false })
-    .limit(WINDOW_CAP);
+    .limit(mode === "best" ? 3000 : WINDOW_CAP);
   if (jobsError) return NextResponse.json({ error: jobsError.message }, { status: 500 });
 
   const { data: profile } = await supabase
@@ -147,10 +163,15 @@ export async function GET(request: Request) {
   }
 
   const total = rows.length;
-  // Matched jobs first (default), so the daily quota is spent on best fits.
-  const matchedRows = rows.filter((j: any) => (j.profile_match ?? 0) >= MATCH_THRESHOLD);
-  const otherRows = rows.filter((j: any) => (j.profile_match ?? 0) < MATCH_THRESHOLD);
-  rows = sort === "newest" ? rows : [...matchedRows, ...otherRows];
+  // My Matches: keep the order the user opened them.
+  if (mode === "matches" && openedOrder.length > 0) {
+    const idx = new Map(openedOrder.map((id, i) => [id, i]));
+    rows = [...rows].sort((a: any, b: any) => (idx.get(a.id) ?? 999) - (idx.get(b.id) ?? 999));
+  } else {
+    const matchedRows = rows.filter((j: any) => (j.profile_match ?? 0) >= MATCH_THRESHOLD);
+    const otherRows = rows.filter((j: any) => (j.profile_match ?? 0) < MATCH_THRESHOLD);
+    rows = sort === "newest" ? rows : [...matchedRows, ...otherRows];
+  }
   const page = rows.slice(offset, offset + limit);
 
   // ── Tiered daily quota: matched jobs only ──────────────────────────
@@ -158,10 +179,11 @@ export async function GET(request: Request) {
   // (profile_match >= MATCH_THRESHOLD). Unmatched jobs are free to browse and
   // are exactly the ones you can "swap". Views count only on user-initiated
   // loads (count_views=1); background merge refreshes (count_views=0) re-show
-  // already-seen jobs without charging.
+  // already-seen jobs without charging. My Matches are already unlocked — no
+  // quota applies there.
   const { data: sub } = await supabase.from("subscriptions").select("plan, status, access_until").eq("user_id", user.id).maybeSingle();
   const plan = effectivePlan(sub);
-  const planLimit = PLANS[plan].dailyJobLimit; // null = unlimited (pro)
+  const planLimit = mode === "matches" ? null : PLANS[plan].dailyJobLimit; // null = unlimited (pro / matches)
   const today = new Date().toISOString().slice(0, 10);
 
   let bonus = 0;
@@ -221,14 +243,30 @@ export async function GET(request: Request) {
   const limitReached = dailyLimit != null && countViews && usedToday + newUsed >= dailyLimit;
   const hasMore = offset + limit < total && (dailyLimit == null || usedToday + matchedCount(page) < dailyLimit);
 
+  // Record the matched jobs the user just unlocked (My Matches view) so they
+  // persist across days. Skipped in matches mode (already recorded).
+  if (countViews && mode !== "matches" && jobsOut.length > 0) {
+    const openedIds = jobsOut
+      .filter((j: any) => (j.profile_match ?? 0) >= MATCH_THRESHOLD)
+      .map((j: any) => j.id)
+      .filter(Boolean);
+    if (openedIds.length > 0) {
+      await supabase.from("user_opened_jobs").upsert(
+        openedIds.map((gid: string) => ({ user_id: user.id, global_job_id: gid, opened_at: new Date().toISOString() })),
+        { onConflict: "user_id,global_job_id" }
+      );
+    }
+  }
+
   // ── Clickability / gating ─────────────────────────────────────────
   // Pro (Money Club) can open everything. Sprout + Bloom: only jobs that match
   // well are clickable; low matches are grayed out. When the daily matched
-  // quota is reached, good matches turn into "locked" cards instead.
+  // quota is reached, good matches turn into "locked" cards instead. My Matches
+  // are already unlocked — always clickable.
   const isPro = plan === "pro";
   jobsOut = jobsOut.map((j: any) => {
-    const canClick = isPro || (j.profile_match ?? 0) >= MATCH_THRESHOLD;
-    const locked = !isPro && canClick && limitReached;
+    const canClick = mode === "matches" ? true : isPro || (j.profile_match ?? 0) >= MATCH_THRESHOLD;
+    const locked = mode !== "matches" && !isPro && canClick && limitReached;
     return { ...j, clickable: canClick, locked };
   });
 
@@ -245,5 +283,6 @@ export async function GET(request: Request) {
     bonus,
     swapsLeft: dailyLimit != null ? SWAP_LIMITS[plan] - swapUsed : null,
     limitReached,
+    mode,
   });
 }

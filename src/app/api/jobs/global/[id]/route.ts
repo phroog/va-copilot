@@ -28,6 +28,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const userVec = profile?.job_vector ? validateUserVector(profile.job_vector) : NEUTRAL_JOB_VECTOR;
   const scam = scamScore(job);
 
+  // Opening a job adds it to the user's My Matches collection.
+  await supabase.from("user_opened_jobs").upsert(
+    { user_id: user.id, global_job_id: job.id, opened_at: new Date().toISOString() },
+    { onConflict: "user_id,global_job_id" }
+  );
+
   return NextResponse.json({
     job: {
       ...job,

@@ -89,7 +89,7 @@ export default function LiveFeedPage() {
   const [riskFilter, setRiskFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [sortOrder, setSortOrder] = useState("match");
+  const [mode, setMode] = useState<"best" | "matches" | "newest">("best");
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -142,13 +142,13 @@ export default function LiveFeedPage() {
   const buildQuery = useCallback(() => {
     const p = new URLSearchParams();
     p.set("limit", String(PAGE_SIZE));
-    p.set("sort", sortOrder);
+    p.set("mode", mode);
     if (search.trim()) p.set("q", search.trim());
     if (platformFilter !== "all") p.set("platform", platformFilter);
     if (categoryFilter !== "all") p.set("category", categoryFilter);
     if (riskFilter !== "all") p.set("risk", riskFilter);
     return p.toString();
-  }, [search, riskFilter, platformFilter, categoryFilter, sortOrder]);
+  }, [search, riskFilter, platformFilter, categoryFilter, mode]);
 
   const loadPage = useCallback(async (mode: "replace" | "append" | "merge") => {
     try {
@@ -324,13 +324,27 @@ export default function LiveFeedPage() {
     }
   };
 
-const openSwap = (job: FeedJob) => {
-    // Opens a picker with the jobs you can trade for: locked high matches
-    // (quota) and other available jobs. Excludes grayed (low match) jobs.
-    const candidates = jobs.filter((j) => j.id !== job.id && j.locked !== true && j.clickable !== false);
-    const locked = jobs.filter((j) => j.id !== job.id && j.locked === true);
-    setSwapFrom(job);
-    setSwapCandidates({ candidates, locked });
+const openSwap = async (job: FeedJob) => {
+    // The swap pool is always the Best Match set (locked high matches + other
+    // available jobs), regardless of the tab you're currently viewing.
+    setSwappingIds((prev) => new Set(prev).add(job.id));
+    try {
+      const res = await fetch("/api/jobs/feed?mode=best&count_views=0&limit=50");
+      const d = await res.json();
+      const pool: FeedJob[] = d.jobs ?? [];
+      const candidates = pool.filter((j) => j.id !== job.id && j.clickable !== false && !j.locked);
+      const locked = pool.filter((j) => j.id !== job.id && j.locked === true);
+      setSwapFrom(job);
+      setSwapCandidates({ candidates, locked });
+    } catch {
+      showToast("Could not load swap options", "error");
+    } finally {
+      setSwappingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(job.id);
+        return next;
+      });
+    }
   };
 
   const doSwap = async (targetId: string) => {
@@ -465,6 +479,23 @@ const openSwap = (job: FeedJob) => {
             <option value="orange">🟠 Elevated</option>
             <option value="red">🔴 High</option>
           </select>
+          <div className="flex rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 p-0.5 gap-0.5 md:ml-auto">
+            {([
+              ["best", "🎯 Best Match"],
+              ["matches", "⭐ My Matches"],
+              ["newest", "🆕 Newest"],
+            ] as const).map(([m, label]) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                  mode === m ? "bg-kawaii-purple text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:bg-kawaii-lavender/20"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <select
             value={platformFilter}
             onChange={(e) => setPlatformFilter(e.target.value)}
@@ -484,14 +515,6 @@ const openSwap = (job: FeedJob) => {
             {categories.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
-          </select>
-          <select
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value)}
-            className="w-full md:w-auto rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 px-4 py-2 text-sm text-slate-700 dark:bg-dark-card dark:text-slate-200 dark:border-dark-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kawaii-purple"
-          >
-            <option value="newest">🆕 Newest</option>
-            <option value="match">🎯 Best Match</option>
           </select>
         </CardContent>
       </Card>

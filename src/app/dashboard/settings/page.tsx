@@ -204,15 +204,6 @@ export default function SettingsPage() {
     }
   };
 
-  const copyAlias = () => {
-    if (profile.inbox_email_alias) {
-      const fullEmail = `user+${profile.inbox_email_alias}@parse.va-copilot.com`;
-      navigator.clipboard.writeText(fullEmail);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   const handleBackup = async () => {
     setBackingUp(true);
     try {
@@ -245,10 +236,6 @@ export default function SettingsPage() {
       </div>
     );
   }
-
-  const inboxEmail = profile.inbox_email_alias
-    ? `user+${profile.inbox_email_alias}@parse.va-copilot.com`
-    : "";
 
   return (
     <div className="space-y-6 animate-fade-in max-w-2xl">
@@ -625,36 +612,6 @@ export default function SettingsPage() {
               {financeSaving ? "Saving..." : "💾 Save Finance Settings"}
             </Button>
             {financeSaved && <span className="text-sm text-green-500 animate-fade-in">✅ Saved!</span>}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Inbox Email Alias */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">💌 Unified Inbox Email</CardTitle>
-          <CardDescription>Forward your platform notifications here</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Set this email address as the forwarding address on Upwork, OnlineJobs.ph, Facebook, and other platforms.
-          </p>
-          {inboxEmail ? (
-            <div className="flex items-center gap-2">
-              <Input value={inboxEmail} readOnly className="font-mono text-sm bg-kawaii-lavender/10 dark:bg-dark-surface/50" />
-              <Button variant="outline" size="sm" onClick={copyAlias}>{copied ? "✅ Copied!" : "📋 Copy"}</Button>
-            </div>
-          ) : (
-            <p className="text-sm text-yellow-600 dark:text-yellow-400">Loading email alias...</p>
-          )}
-          <div className="bg-kawaii-peach/20 dark:bg-yellow-900/20 rounded-2xl p-4 text-sm text-slate-600 dark:text-slate-300">
-            <p className="font-bold mb-1">📌 How to set up:</p>
-            <ol className="list-decimal list-inside space-y-1">
-              <li>Copy the email address above</li>
-              <li>Go to your platform&apos;s notification settings</li>
-              <li>Set email forwarding to your Sari inbox address</li>
-              <li>Messages will appear automatically in your inbox!</li>
-            </ol>
           </div>
         </CardContent>
       </Card>
