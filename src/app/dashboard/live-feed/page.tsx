@@ -99,7 +99,8 @@ export default function LiveFeedPage() {
   const [savingAll, setSavingAll] = useState(false);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [swappingIds, setSwappingIds] = useState<Set<string>>(new Set());
-  const [swapTarget, setSwapTarget] = useState<string | null>(null);
+  const [swapFrom, setSwapFrom] = useState<FeedJob | null>(null);
+  const [swapCandidates, setSwapCandidates] = useState<{ candidates: FeedJob[]; locked: FeedJob[] } | null>(null);
   const [pitchJob, setPitchJob] = useState<FeedJob | null>(null);
   const [pitchResult, setPitchResult] = useState<string | null>(null);
   const [pitchLoading, setPitchLoading] = useState(false);
@@ -323,26 +324,25 @@ export default function LiveFeedPage() {
     }
   };
 
-const swapJob = async (job: FeedJob) => {
-    // Two-click swap: first click selects the job to trade away, second click
-    // picks which other job in the feed to swap it with.
-    if (!swapTarget) {
-      setSwapTarget(job.id);
-      showToast("Selected. Now click Swap on the job you want to trade it with.");
-      return;
-    }
-    if (swapTarget === job.id) {
-      setSwapTarget(null);
-      showToast("Swap cancelled");
-      return;
-    }
-    setSwappingIds((prev) => new Set(prev).add(job.id));
+const openSwap = (job: FeedJob) => {
+    // Opens a picker with the jobs you can trade for: locked high matches
+    // (quota) and other available jobs. Excludes grayed (low match) jobs.
+    const candidates = jobs.filter((j) => j.id !== job.id && j.locked !== true && j.clickable !== false);
+    const locked = jobs.filter((j) => j.id !== job.id && j.locked === true);
+    setSwapFrom(job);
+    setSwapCandidates({ candidates, locked });
+  };
+
+  const doSwap = async (targetId: string) => {
+    if (!swapFrom) return;
+    setSwappingIds((prev) => new Set(prev).add(swapFrom.id));
     try {
-      await fetch(`/api/jobs/${swapTarget}/swap`, { method: "POST" });
-      const res = await fetch(`/api/jobs/${job.id}/swap`, { method: "POST" });
+      await fetch(`/api/jobs/${swapFrom.id}/swap`, { method: "POST" });
+      const res = await fetch(`/api/jobs/${targetId}/swap`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Swap failed");
-      setSwapTarget(null);
+      setSwapFrom(null);
+      setSwapCandidates(null);
       showToast("Jobs swapped 🔄");
       await loadPage("replace");
     } catch (e: any) {
@@ -350,7 +350,7 @@ const swapJob = async (job: FeedJob) => {
     } finally {
       setSwappingIds((prev) => {
         const next = new Set(prev);
-        next.delete(job.id);
+        next.delete(swapFrom.id);
         return next;
       });
     }
@@ -423,15 +423,17 @@ const swapJob = async (job: FeedJob) => {
       {limitInfo.limitReached ? (
         <div className="bg-kawaii-purple/10 border border-kawaii-purple/40 rounded-2xl p-4 flex items-center justify-between gap-3">
           <div>
-            <p className="font-bold text-kawaii-purple dark:text-kawaii-lavender">You've reached your daily limit of matching jobs.</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">With Pro you get unlimited job views. See you tomorrow! 🎁</p>
+            <p className="font-bold text-kawaii-purple dark:text-kawaii-lavender">Daily limit reached — high matches are now locked 🔒</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Tap <b>Swap</b> on any available job to trade it for one of the locked high matches, or upgrade for unlimited.
+            </p>
           </div>
-          <Link href="/pricing"><Button size="sm" variant="primary">Upgrade</Button></Link>
+          <Link href="/pricing"><Button size="sm" variant="primary" className="whitespace-nowrap">Upgrade</Button></Link>
         </div>
       ) : limitInfo.limit != null ? (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-kawaii-lavender/25 dark:border-dark-surface px-3 py-2">
           <span className="text-xs text-slate-500 dark:text-slate-400">
-            You've seen <strong>{limitInfo.used ?? 0}</strong> of <strong>{limitInfo.limit}</strong> matching jobs today
+            You've viewed <strong>{limitInfo.used ?? 0}</strong> of <strong>{limitInfo.limit}</strong> matching jobs today
             {limitInfo.bonus ? <> — incl. 🎁 <strong>+{limitInfo.bonus}</strong> bonus</> : null}
             {limitInfo.swapsLeft != null ? <> · 🔄 <strong>{limitInfo.swapsLeft}</strong> swaps left</> : null}
           </span>
@@ -524,12 +526,10 @@ const swapJob = async (job: FeedJob) => {
               isNew={newIds.has(job.id)}
               saving={savingIds.has(job.id)}
               swapping={swappingIds.has(job.id)}
-              swapSelected={swapTarget === job.id}
-              swapMode={swapTarget != null}
               generating={generatingId === job.id}
               onToggleSave={() => toggleSave(job)}
               onGeneratePitch={() => generatePitch(job)}
-              onSwap={() => swapJob(job)}
+              onSwap={() => openSwap(job)}
             />
           ))}
         </div>
@@ -595,6 +595,57 @@ const swapJob = async (job: FeedJob) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Swap picker */}
+      <Dialog open={swapCandidates != null} onOpenChange={(open) => !open && setSwapCandidates(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">🔄 Swap — choose what to get</DialogTitle>
+            <DialogDescription>
+              Trading away: <b>{swapFrom?.title}</b>. Pick a job to swap it with.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
+            {swapCandidates?.locked && swapCandidates.locked.length > 0 && (
+              <>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">🔒 High matches (daily limit)</p>
+                {swapCandidates.locked.map((c) => (
+                  <SwapRow key={c.id} job={c} locked onClick={() => doSwap(c.id)} />
+                ))}
+              </>
+            )}
+            {swapCandidates?.candidates && swapCandidates.candidates.length > 0 && (
+              <>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">✓ Available jobs</p>
+                {swapCandidates.candidates.map((c) => (
+                  <SwapRow key={c.id} job={c} onClick={() => doSwap(c.id)} />
+                ))}
+              </>
+            )}
+            {swapCandidates && (swapCandidates.locked.length + swapCandidates.candidates.length) === 0 && (
+              <p className="text-sm text-slate-400">No other swappable jobs in the current feed.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function SwapRow({ job, locked, onClick }: { job: FeedJob; locked?: boolean; onClick: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/60 dark:bg-dark-surface/40 p-2.5">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold truncate text-slate-700 dark:text-slate-200">
+          {locked ? "🔒 " : ""}{job.title}
+        </p>
+        <p className="text-xs text-slate-400">
+          {job.platform}
+          {job.profile_match != null ? ` · 🎯 ${job.profile_match}%` : ""}
+          {job.budget ? ` · ${job.budget}` : ""}
+        </p>
+      </div>
+      <Button size="sm" variant={locked ? "primary" : "outline"} onClick={onClick} className="shrink-0">Swap</Button>
     </div>
   );
 }
@@ -604,8 +655,6 @@ function FeedJobCard({
   isNew,
   saving,
   swapping,
-  swapSelected,
-  swapMode,
   generating,
   onToggleSave,
   onGeneratePitch,
@@ -615,8 +664,6 @@ function FeedJobCard({
   isNew: boolean;
   saving: boolean;
   swapping: boolean;
-  swapSelected: boolean;
-  swapMode: boolean;
   generating: boolean;
   onToggleSave: () => void;
   onGeneratePitch: () => void;
@@ -629,7 +676,7 @@ function FeedJobCard({
     <Card
       className={`flex border-kawaii-lavender/30 dark:border-dark-surface transition-all ${
         isNew ? "ring-2 ring-kawaii-purple/60 bg-kawaii-purple/5 dark:bg-kawaii-purple/10" : ""
-      } ${swapSelected ? "ring-2 ring-kawaii-coral/70 bg-kawaii-coral/10 dark:bg-kawaii-coral/10" : ""} ${grayed ? "opacity-45 hover:opacity-60" : "hover:border-kawaii-purple/50"} ${locked ? "opacity-80" : ""}`}
+      } ${grayed ? "opacity-45 hover:opacity-60" : "hover:border-kawaii-purple/50"} ${locked ? "opacity-80" : ""}`}
     >
       <CardContent className="p-4 flex flex-col md:flex-row md:items-start gap-3 w-full">
         <div className="flex-1 min-w-0">
@@ -735,8 +782,8 @@ function FeedJobCard({
               <Button size="sm" variant="outline" onClick={onGeneratePitch} disabled={generating || grayed}>
                 {generating ? "Loading..." : job.pitch_id ? "🚀 View Pitch" : "🚀 Pitch"}
               </Button>
-              <Button size="sm" variant="outline" onClick={onSwap} disabled={swapping || grayed || locked} title="Trade this job with another one in the feed">
-                {swapping ? "..." : swapSelected ? "Cancel" : swapMode ? "↔ Swap with this" : "🔄 Swap"}
+              <Button size="sm" variant="outline" onClick={onSwap} disabled={swapping || grayed} title="Trade this job for another one">
+                {swapping ? "..." : "🔄 Swap"}
               </Button>
             </div>
           )}
