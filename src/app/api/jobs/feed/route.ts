@@ -13,10 +13,17 @@ function num(v: string | null, d: number): number {
 }
 
 /**
- * GET /api/jobs/feed?limit=&offset=&q=&platform=&category=&score=&sort=&hours=
- * Server-side paginated live feed. scoring + profile_match are computed on the
- * fly (deterministic, free) over the requested time window, then filtered,
- * sorted and sliced. Returns { jobs, total, hasMore }.
+ * GET /api/jobs/feed?mode=best|matches|newest&limit=&offset=&q=&platform=&category=&score=&hours=
+ *
+ * Three views:
+ * - newest  → raw incoming live feed (24h), newest first.
+ * - best    → the whole system pool ordered by match score.
+ * - matches → the user's auto-collected matched jobs (My Matches), persisted
+ *             across days, sorted by match.
+ *
+ * For Sprout/Bloom the daily quota auto-grants the TOP matched jobs into My
+ * Matches (no viewing required). Pro (Money Club) is unlimited and has no
+ * My Matches.
  */
 export async function GET(request: Request) {
   const supabase = createClient();
@@ -36,6 +43,7 @@ export async function GET(request: Request) {
   const countViews = url.searchParams.get("count_views") === "1";
   const mode = url.searchParams.get("mode") || "best"; // best | matches | newest
   const cutoff = new Date(Date.now() - hours * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
+  const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().replace(/\.\d{3}Z$/, "Z");
 
   // Sources toggled off in Live Feed settings are hidden.
   const { data: excludedSources } = await supabase
@@ -58,7 +66,99 @@ export async function GET(request: Request) {
     if (it.is_saved || it.is_applied) savedIds.push(it.global_job_id);
   }
 
-  // My Matches: the jobs this user opened/unlocked, persisted across days.
+  // Profile → match vector (neutral fallback so the feed is always usable).
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("skills, desired_rate, experience_level, job_categories, job_vector")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const userVec: Vector | null = profile?.job_vector
+    ? validateUserVector(profile.job_vector)
+    : NEUTRAL_JOB_VECTOR;
+  const profileHasData =
+    !!profile &&
+    ((Array.isArray(profile.skills) && profile.skills.length > 0) ||
+      profile.desired_rate ||
+      (Array.isArray(profile.job_categories) && profile.job_categories.length > 0));
+
+  // Plan + daily matched quota.
+  const { data: sub } = await supabase.from("subscriptions").select("plan, status, access_until").eq("user_id", user.id).maybeSingle();
+  const plan = effectivePlan(sub);
+  const isPro = plan === "pro";
+  const today = new Date().toISOString().slice(0, 10);
+
+  let bonus = 0;
+  let usedToday = 0;
+  let swapUsed = 0;
+  // The daily quota = how many TOP matched jobs are auto-granted into My Matches
+  // each day. Pro is unlimited.
+  const planLimit = isPro ? null : PLANS[plan].dailyJobLimit;
+  if (planLimit != null) {
+    const { data: view } = await supabase
+      .from("user_job_views")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("view_date", today)
+      .maybeSingle();
+    if (view) {
+      usedToday = view.count ?? 0;
+      swapUsed = view.swaps ?? 0;
+      bonus = view.bonus ?? 0;
+    } else {
+      bonus = dailyBonus();
+      await supabase.from("user_job_views").upsert(
+        { user_id: user.id, view_date: today, count: 0, swaps: 0, bonus },
+        { onConflict: "user_id,view_date" }
+      );
+    }
+  }
+  const dailyLimit = planLimit != null ? planLimit + bonus : null;
+
+  // ── Auto-grant today's top matched jobs into My Matches ────────────
+  // Fills the remaining quota with the best matching jobs automatically — the
+  // user does NOT have to view them. Runs on user-initiated loads (count_views=1).
+  if (countViews && dailyLimit != null) {
+    const remaining = Math.max(0, dailyLimit - usedToday);
+    if (remaining > 0) {
+      const { data: opened } = await supabase
+        .from("user_opened_jobs")
+        .select("global_job_id")
+        .eq("user_id", user.id);
+      const openedSet = new Set((opened ?? []).map((o: any) => o.global_job_id));
+
+      let cand = supabase
+        .from("global_jobs")
+        .select("id, profile_vector")
+        .gt("collected_at", monthAgo);
+      if (excludedIds.length > 0) cand = cand.not("source_id", "in", `(${excludedIds.join(",")})`);
+      const { data: candidates } = await cand.limit(400);
+
+      const best = (candidates ?? [])
+        .filter((j: any) => !openedSet.has(j.id))
+        .map((j: any) => {
+          const pv: Vector = Array.isArray(j.profile_vector) ? j.profile_vector : classifyJobVector(j).vector;
+          const m = userVec ? matchVectors(userVec, pv).score : 0;
+          return { id: j.id, m };
+        })
+        .filter((j: any) => j.m >= MATCH_THRESHOLD)
+        .sort((a: any, b: any) => b.m - a.m)
+        .slice(0, remaining);
+
+      if (best.length > 0) {
+        await supabase.from("user_opened_jobs").upsert(
+          best.map((j: any) => ({ user_id: user.id, global_job_id: j.id, opened_at: new Date().toISOString() })),
+          { onConflict: "user_id,global_job_id" }
+        );
+        usedToday += best.length;
+        await supabase.from("user_job_views").upsert(
+          { user_id: user.id, view_date: today, count: usedToday, swaps: swapUsed, bonus },
+          { onConflict: "user_id,view_date" }
+        );
+      }
+    }
+  }
+
+  // My Matches: the auto-granted jobs, persisted across days.
   let openedOrder: string[] = [];
   if (mode === "matches") {
     const { data: opened } = await supabase
@@ -78,12 +178,11 @@ export async function GET(request: Request) {
     if (openedOrder.length > 0) {
       query = query.in("id", openedOrder);
     } else {
-      // No opened jobs yet (or the table is empty) — force an empty result
-      // instead of accidentally returning the whole pool.
+      // No granted jobs yet — force empty instead of returning the whole pool.
       query = query.eq("id", "00000000-0000-0000-0000-000000000000");
     }
   } else {
-    const w = mode === "best" ? new Date(Date.now() - 30 * 86400000).toISOString().replace(/\.\d{3}Z$/, "Z") : cutoff;
+    const w = mode === "best" ? monthAgo : cutoff;
     if (savedIds.length > 0) {
       query = query.or(`collected_at.gt.${w},id.in.(${savedIds.join(",")})`);
     } else {
@@ -96,30 +195,12 @@ export async function GET(request: Request) {
     .limit(mode === "best" ? 3000 : WINDOW_CAP);
   if (jobsError) return NextResponse.json({ error: jobsError.message }, { status: 500 });
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("skills, desired_rate, experience_level, job_categories, job_vector")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  let userVec: Vector | null = null;
-  const profileHasData =
-    !!profile &&
-    ((Array.isArray(profile.skills) && profile.skills.length > 0) ||
-      profile.desired_rate ||
-      (Array.isArray(profile.job_categories) && profile.job_categories.length > 0));
-  // Without a personal vector (new/unset profile) use a neutral one so every
-  // job still gets a match score and the feed is usable instead of empty.
-  userVec = profile?.job_vector ? validateUserVector(profile.job_vector) : NEUTRAL_JOB_VECTOR;
-
   let rows = (jobs ?? []).map((job: any) => {
     const it = interactionMap.get(job.id) ?? {};
     const profileVector: Vector = Array.isArray(job.profile_vector) ? job.profile_vector : classifyJobVector(job).vector;
     const match = userVec ? matchVectors(userVec, profileVector) : null;
     const scored = profileHasData ? computeScore(job, profile) : null;
     const scam = scamScore(job);
-    // Jobs within the user's daily tier limit come complete: full description
-    // + link. The tier limits are the paywall; no per-job credit unlock.
     const { detail: _detail, ...jobRest } = job;
     return {
       ...jobRest,
@@ -137,13 +218,11 @@ export async function GET(request: Request) {
     };
   });
 
-  // Distinct platform/category options for the filter dropdowns — computed over
-  // the full window (before filters) so every option is always available.
+  // Distinct platform/category options for the filter dropdowns.
   const platforms = Array.from(new Set(rows.map((j: any) => j.platform).filter(Boolean))).sort();
   const categories = Array.from(new Set(rows.map((j: any) => j.category).filter(Boolean))).sort();
 
-  // Always list every configured platform in the dropdown — not only the ones
-  // that happen to have fresh jobs in the window right now.
+  // Always list every configured platform in the dropdown.
   const { data: srcPlats } = await supabase.from("job_sources").select("platform").not("platform", "is", null);
   const allPlatforms = Array.from(new Set([...platforms, ...(srcPlats ?? []).map((s: any) => s.platform).filter(Boolean)])).sort();
 
@@ -153,7 +232,6 @@ export async function GET(request: Request) {
   if (score === "high") rows = rows.filter((j: any) => (j.matching_score ?? 0) >= 70);
   else if (score === "medium") rows = rows.filter((j: any) => (j.matching_score ?? 0) >= 40 && (j.matching_score ?? 0) < 70);
   else if (score === "low") rows = rows.filter((j: any) => (j.matching_score ?? 0) < 40);
-
   if (risk !== "all") rows = rows.filter((j: any) => j.scam_level === risk);
 
   if (sort === "match") {
@@ -179,99 +257,14 @@ export async function GET(request: Request) {
   }
   const page = rows.slice(offset, offset + limit);
 
-  // ── Tiered daily quota: matched jobs only ──────────────────────────
-  // The daily limit (plan + daily bonus) applies to matched jobs
-  // (profile_match >= MATCH_THRESHOLD). Unmatched jobs are free to browse and
-  // are exactly the ones you can "swap". Views count only on user-initiated
-  // loads (count_views=1); background merge refreshes (count_views=0) re-show
-  // already-seen jobs without charging. My Matches are already unlocked — no
-  // quota applies there.
-  const { data: sub } = await supabase.from("subscriptions").select("plan, status, access_until").eq("user_id", user.id).maybeSingle();
-  const plan = effectivePlan(sub);
-  const isPro = plan === "pro";
-  // My Matches is a Sprout/Bloom concept — Pro (unlimited) doesn't need it.
-  const planLimit = mode === "matches" || isPro ? null : PLANS[plan].dailyJobLimit; // null = unlimited (pro / matches)
-  const today = new Date().toISOString().slice(0, 10);
-
-  let bonus = 0;
-  let usedToday = 0;
-  let swapUsed = 0;
-  if (planLimit != null) {
-    const { data: view } = await supabase
-      .from("user_job_views")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("view_date", today)
-      .maybeSingle();
-    if (view) {
-      usedToday = view.count ?? 0;
-      swapUsed = view.swaps ?? 0;
-      bonus = view.bonus ?? 0;
-    } else {
-      bonus = dailyBonus();
-      await supabase.from("user_job_views").upsert(
-        { user_id: user.id, view_date: today, count: 0, swaps: 0, bonus },
-        { onConflict: "user_id,view_date" }
-      );
-    }
-  }
-  const dailyLimit = planLimit != null ? planLimit + bonus : null;
-
-  const matchedCount = (arr: any[]) => arr.filter((j: any) => (j.profile_match ?? 0) >= MATCH_THRESHOLD).length;
-
-  let jobsOut = page;
-  let newUsed = 0;
-  if (dailyLimit != null) {
-    const matchedOnPage = matchedCount(page);
-    const remaining = Math.max(0, dailyLimit - usedToday);
-    if (countViews && matchedOnPage > remaining) {
-      let kept = 0;
-      jobsOut = page.filter((j: any) => {
-        if ((j.profile_match ?? 0) >= MATCH_THRESHOLD) {
-          if (kept < remaining) { kept++; return true; }
-          return false;
-        }
-        return true;
-      });
-      newUsed = matchedCount(jobsOut);
-    } else if (countViews) {
-      newUsed = matchedOnPage;
-    }
-    if (countViews && newUsed > 0) {
-      const nextCount = usedToday + newUsed;
-      await supabase.from("user_job_views").upsert(
-        { user_id: user.id, view_date: today, count: nextCount, swaps: swapUsed, bonus },
-        { onConflict: "user_id,view_date" }
-      );
-    }
-  }
-
-  const used = dailyLimit != null ? usedToday + newUsed : null;
-  const limitReached = dailyLimit != null && countViews && usedToday + newUsed >= dailyLimit;
-  const hasMore = offset + limit < total && (dailyLimit == null || usedToday + matchedCount(page) < dailyLimit);
-
-  // Record the matched jobs the user just unlocked (My Matches view) so they
-  // persist across days. Skipped in matches mode (already recorded) and for Pro
-  // (unlimited users don't use My Matches).
-  if (countViews && !isPro && mode !== "matches" && jobsOut.length > 0) {
-    const openedIds = jobsOut
-      .filter((j: any) => (j.profile_match ?? 0) >= MATCH_THRESHOLD)
-      .map((j: any) => j.id)
-      .filter(Boolean);
-    if (openedIds.length > 0) {
-      await supabase.from("user_opened_jobs").upsert(
-        openedIds.map((gid: string) => ({ user_id: user.id, global_job_id: gid, opened_at: new Date().toISOString() })),
-        { onConflict: "user_id,global_job_id" }
-      );
-    }
-  }
+  const used = dailyLimit != null ? usedToday : null;
+  const limitReached = dailyLimit != null && usedToday >= dailyLimit;
+  const hasMore = offset + limit < total;
 
   // ── Clickability / gating ─────────────────────────────────────────
-  // Pro (Money Club) can open everything. Sprout + Bloom: only jobs that match
-  // well are clickable; low matches are grayed out. When the daily matched
-  // quota is reached, good matches turn into "locked" cards instead. My Matches
-  // are already unlocked — always clickable.
-  jobsOut = jobsOut.map((j: any) => {
+  // Pro can open everything. Sprout + Bloom: matched jobs are clickable until
+  // the daily quota is reached, then they lock. My Matches are always clickable.
+  const jobsOut = page.map((j: any) => {
     const canClick = mode === "matches" ? true : isPro || (j.profile_match ?? 0) >= MATCH_THRESHOLD;
     const locked = mode !== "matches" && !isPro && canClick && limitReached;
     return { ...j, clickable: canClick, locked };
