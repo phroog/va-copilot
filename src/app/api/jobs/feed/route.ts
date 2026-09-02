@@ -38,7 +38,6 @@ export async function GET(request: Request) {
   const category = url.searchParams.get("category") || "all";
   const score = url.searchParams.get("score") || "all";
   const risk = url.searchParams.get("risk") || "all";
-  const sort = url.searchParams.get("sort") || "match";
   const hours = Math.max(1, Math.min(168, num(url.searchParams.get("hours"), 24)));
   const countViews = url.searchParams.get("count_views") === "1";
   const mode = url.searchParams.get("mode") || "best"; // best | matches | newest
@@ -234,10 +233,6 @@ export async function GET(request: Request) {
   else if (score === "low") rows = rows.filter((j: any) => (j.matching_score ?? 0) < 40);
   if (risk !== "all") rows = rows.filter((j: any) => j.scam_level === risk);
 
-  if (sort === "match") {
-    rows = [...rows].sort((a: any, b: any) => (b.profile_match ?? -1) - (a.profile_match ?? -1));
-  }
-
   // ── Swap: never re-offer jobs the user traded away ──────────────────
   const swappedIds = (interactions ?? [])
     .filter((it: any) => it.swapped)
@@ -247,13 +242,12 @@ export async function GET(request: Request) {
   }
 
   const total = rows.length;
-  // My Matches: show the best picks first.
-  if (mode === "matches") {
-    rows = [...rows].sort((a: any, b: any) => (b.profile_match ?? -1) - (a.profile_match ?? -1));
+  // Order per view: matches/best by match score, newest by recency.
+  const ts = (j: any) => new Date(j.posted_at || j.collected_at || 0).getTime();
+  if (mode === "newest") {
+    rows = [...rows].sort((a: any, b: any) => ts(b) - ts(a));
   } else {
-    const matchedRows = rows.filter((j: any) => (j.profile_match ?? 0) >= MATCH_THRESHOLD);
-    const otherRows = rows.filter((j: any) => (j.profile_match ?? 0) < MATCH_THRESHOLD);
-    rows = sort === "newest" ? rows : [...matchedRows, ...otherRows];
+    rows = [...rows].sort((a: any, b: any) => (b.profile_match ?? -1) - (a.profile_match ?? -1));
   }
   const page = rows.slice(offset, offset + limit);
 

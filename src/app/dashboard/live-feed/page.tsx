@@ -816,19 +816,18 @@ function FeedJobCard({
             <Link href="/pricing">
               <Button size="sm" variant="primary" className="whitespace-nowrap">🔒 Unlock with Money Club</Button>
             </Link>
-          ) : (
-            <div className="flex flex-wrap gap-2 md:flex-col md:items-stretch">
-              <Button size="sm" variant={job.is_saved ? "outline" : "primary"} onClick={onToggleSave} disabled={saving || grayed}>
-                {saving ? "..." : job.is_saved ? "💾 Saved" : "💾 Save"}
-              </Button>
-              <Button size="sm" variant="outline" onClick={onGeneratePitch} disabled={generating || grayed}>
-                {generating ? "Loading..." : job.pitch_id ? "🚀 View Pitch" : "🚀 Pitch"}
-              </Button>
-              <Button size="sm" variant="outline" onClick={onSwap} disabled={swapping || grayed} title="Trade this job for another one">
-                {swapping ? "..." : "🔄 Swap"}
-              </Button>
-            </div>
-          )}
+          ) : null}
+          <div className="flex flex-wrap gap-2 md:flex-col md:items-stretch">
+            <Button size="sm" variant={job.is_saved ? "outline" : "primary"} onClick={onToggleSave} disabled={saving || grayed}>
+              {saving ? "..." : job.is_saved ? "💾 Saved" : "💾 Save"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={onGeneratePitch} disabled={generating || grayed}>
+              {generating ? "Loading..." : job.pitch_id ? "🚀 View Pitch" : "🚀 Pitch"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={onSwap} disabled={swapping || grayed} title="Trade this job for another one">
+              {swapping ? "..." : "🔄 Swap"}
+            </Button>
+          </div>
           {job.is_saved && <span className="text-xs text-kawaii-purple dark:text-kawaii-lavender">💾 Saved</span>}
           {job.is_applied && <span className="text-xs text-green-600 dark:text-green-400">✅ Applied</span>}
         </div>
