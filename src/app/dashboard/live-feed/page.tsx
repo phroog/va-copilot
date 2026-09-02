@@ -84,6 +84,8 @@ export default function LiveFeedPage() {
   const supabase = createClient();
   const [jobs, setJobs] = useState<FeedJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloading, setReloading] = useState(false);
+  const hasLoadedRef = useRef(false);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [riskFilter, setRiskFilter] = useState("all");
@@ -152,7 +154,12 @@ export default function LiveFeedPage() {
 
   const loadPage = useCallback(async (mode: "replace" | "append" | "merge") => {
     try {
-      if (mode === "replace") setLoading(true);
+      if (mode === "replace") {
+        // First load shows the skeleton; later reloads (e.g. tab switch) keep
+        // the current list visible and only show a thin spinner.
+        if (!hasLoadedRef.current) setLoading(true);
+        else setReloading(true);
+      }
       if (mode === "append") setLoadingMore(true);
       const off = mode === "append" ? offsetRef.current : 0;
       const countViews = mode === "merge" ? 0 : 1;
@@ -178,6 +185,7 @@ export default function LiveFeedPage() {
           return [...mapped, ...extra];
         });
       } else {
+        hasLoadedRef.current = true;
         setJobs(mapped);
         offsetRef.current = mapped.length;
       }
@@ -185,6 +193,7 @@ export default function LiveFeedPage() {
       showToast(e?.message ?? "Failed to load feed", "error");
     } finally {
       setLoading(false);
+      setReloading(false);
       setLoadingMore(false);
     }
   }, [applyDefaults, buildQuery, showToast]);
@@ -432,6 +441,12 @@ const openSwap = async (job: FeedJob) => {
       </div>
 
       <UpsellAd />
+
+      {reloading && (
+        <div className="h-1 rounded-full bg-kawaii-lavender/20 dark:bg-dark-surface overflow-hidden">
+          <div className="h-full w-1/3 bg-gradient-to-r from-kawaii-purple to-kawaii-pink rounded-full animate-pulse" />
+        </div>
+      )}
 
       {/* Tier limit banner */}
       {limitInfo.limitReached ? (

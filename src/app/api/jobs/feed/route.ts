@@ -75,7 +75,13 @@ export async function GET(request: Request) {
     query = query.not("source_id", "in", `(${excludedIds.join(",")})`);
   }
   if (mode === "matches") {
-    if (openedOrder.length > 0) query = query.in("id", openedOrder);
+    if (openedOrder.length > 0) {
+      query = query.in("id", openedOrder);
+    } else {
+      // No opened jobs yet (or the table is empty) — force an empty result
+      // instead of accidentally returning the whole pool.
+      query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+    }
   } else {
     const w = mode === "best" ? new Date(Date.now() - 30 * 86400000).toISOString().replace(/\.\d{3}Z$/, "Z") : cutoff;
     if (savedIds.length > 0) {
