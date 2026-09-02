@@ -117,9 +117,9 @@ export default function FinancesPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-extrabold">💰 {t("finances")}</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
             {syncing ? "⏳ Syncing..." : "🔄 " + t("sync")}
           </Button>

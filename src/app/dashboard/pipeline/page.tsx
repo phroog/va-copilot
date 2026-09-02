@@ -93,20 +93,21 @@ export default function PipelinePage() {
     <div className="space-y-4 animate-fade-in">
       <h1 className="text-3xl font-extrabold">📊 {t("pipeline")}</h1>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 overflow-x-auto pb-4">
+      <div className="flex gap-3 md:grid md:grid-cols-3 lg:grid-cols-6 overflow-x-auto pb-4">
         {columns.map((col) => (
-          <div key={col.key} className={`bg-white/60 dark:bg-dark-card/60 rounded-2xl border-t-4 ${col.color} p-3 min-w-[160px]`}>
+          <div
+            key={col.key}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              const id = e.dataTransfer.getData("appId");
+              if (id) moveStatus(id, col.key);
+            }}
+            className={`bg-white/60 dark:bg-dark-card/60 rounded-2xl border-t-4 ${col.color} p-3 min-w-[240px] md:min-w-0`}
+          >
             <h3 className="font-bold text-sm mb-3 text-slate-700 dark:text-slate-200">
               {col.label} <span className="text-slate-400 font-normal">({getColumnApps(col.key).length})</span>
             </h3>
-                <div
-                  className="space-y-2 max-h-[70vh] overflow-y-auto min-h-[60px]"
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    const id = e.dataTransfer.getData("appId");
-                    if (id) moveStatus(id, col.key);
-                  }}
-                >
+                <div className="space-y-2 max-h-[70vh] overflow-y-auto min-h-[60px]">
               {getColumnApps(col.key).length === 0 ? (
                 <p className="text-xs text-slate-400 text-center py-4">—</p>
               ) : (

@@ -756,8 +756,8 @@ function FeedJobCard({
           )}
         </div>
 
-        <div className="flex md:flex-col items-center md:items-end gap-2 md:gap-3 shrink-0">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col items-stretch gap-2 md:gap-3 shrink-0 w-full md:w-auto md:items-end">
+          <div className="flex items-center gap-2 md:justify-end">
             {job.profile_match != null && (
               <span
                 className="text-xs font-extrabold px-2 py-0.5 rounded-lg bg-kawaii-purple/10 text-kawaii-purple dark:text-kawaii-lavender"
@@ -775,7 +775,7 @@ function FeedJobCard({
               <Button size="sm" variant="primary" className="whitespace-nowrap">🔒 Unlock with Money Club</Button>
             </Link>
           ) : (
-            <div className="flex items-center gap-2 md:flex-col md:items-stretch">
+            <div className="flex flex-wrap gap-2 md:flex-col md:items-stretch">
               <Button size="sm" variant={job.is_saved ? "outline" : "primary"} onClick={onToggleSave} disabled={saving || grayed}>
                 {saving ? "..." : job.is_saved ? "💾 Saved" : "💾 Save"}
               </Button>

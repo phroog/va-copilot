@@ -9,7 +9,7 @@ import { LanguageDropdown } from "@/components/language-dropdown";
 import { useLocale } from "@/lib/i18n/context";
 import { useProfileName } from "@/lib/use-profile-name";
 import { useState, useEffect } from "react";
-import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, RadioTower, Fish, Dices, Flame, ShieldAlert, Send, Mic } from "lucide-react";
+import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, RadioTower, Fish, Dices, Flame, ShieldAlert, Send, Mic, Inbox } from "lucide-react";
 import dynamic from "next/dynamic";
 const MochiHub = dynamic(() => import("@/components/mochi-hub"), { ssr: false });
 import { ToastProvider } from "@/components/toast";
@@ -66,6 +66,7 @@ const sidebarGroups = [
     defaultOpen: false,
     links: [
       { href: "/dashboard/clients", labelKey: "clients", icon: Users },
+      { href: "/dashboard/inbox", labelKey: "inbox", icon: Inbox },
       { href: "/dashboard/chat", labelKey: "chat", icon: MessageCircle },
       { href: "/dashboard/vault", labelKey: "vault", icon: Shield },
       { href: "/dashboard/aquarium", labelKey: "aquarium", icon: Fish },
