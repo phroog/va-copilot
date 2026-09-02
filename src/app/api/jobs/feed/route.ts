@@ -138,7 +138,7 @@ export async function GET(request: Request) {
 
       let cand = supabase
         .from("global_jobs")
-        .select("id, profile_vector")
+        .select("id, profile_vector, posted_at, collected_at")
         .gt("collected_at", monthAgo);
       if (excludedIds.length > 0) cand = cand.not("source_id", "in", `(${excludedIds.join(",")})`);
       const { data: candidates } = await cand.limit(400);
@@ -148,10 +148,11 @@ export async function GET(request: Request) {
         .map((j: any) => {
           const pv: Vector = Array.isArray(j.profile_vector) ? j.profile_vector : classifyJobVector(j).vector;
           const m = userVec ? matchVectors(userVec, pv).score : 0;
-          return { id: j.id, m };
+          const t = new Date(j.posted_at || j.collected_at || 0).getTime();
+          return { id: j.id, m, t };
         })
         .filter((j: any) => j.m >= MATCH_THRESHOLD)
-        .sort((a: any, b: any) => b.m - a.m)
+        .sort((a: any, b: any) => b.t - a.t) // newest matching jobs first
         .slice(0, remaining);
 
       if (best.length > 0) {
