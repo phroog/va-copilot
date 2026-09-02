@@ -22,6 +22,10 @@ export const VECTOR_AXES = [
 
 export type Vector = [number, number, number, number, number];
 
+/* Neutral fallback used when a user has not set up their profile vector yet —
+   keeps the feed/matching functional instead of showing everything as "no match". */
+export const NEUTRAL_JOB_VECTOR: Vector = [3, 3, 3, 3, 3];
+
 export function clamp1to5(v: number): number {
   if (!Number.isFinite(v)) return 3;
   return Math.max(1, Math.min(5, Math.round(v)));

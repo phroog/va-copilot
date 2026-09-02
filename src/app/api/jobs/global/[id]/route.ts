@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { classifyJobVector, matchVectors, validateUserVector, type Vector } from "@/lib/jobs/profile-vector";
+import { classifyJobVector, matchVectors, validateUserVector, NEUTRAL_JOB_VECTOR, type Vector } from "@/lib/jobs/profile-vector";
 import { scamScore } from "@/lib/jobs/scam-score";
 
 /**
@@ -25,7 +25,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     .select("job_vector")
     .eq("user_id", user.id)
     .maybeSingle();
-  const userVec = profile?.job_vector ? validateUserVector(profile.job_vector) : null;
+  const userVec = profile?.job_vector ? validateUserVector(profile.job_vector) : NEUTRAL_JOB_VECTOR;
   const scam = scamScore(job);
 
   return NextResponse.json({

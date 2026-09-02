@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { classifyJobVector, matchVectors, validateUserVector, type Vector } from "@/lib/jobs/profile-vector";
+import { classifyJobVector, matchVectors, validateUserVector, NEUTRAL_JOB_VECTOR, type Vector } from "@/lib/jobs/profile-vector";
 import { computeScore } from "@/lib/jobs/scoring";
 import { scamScore } from "@/lib/jobs/scam-score";
 import { PLANS, SWAP_LIMITS, MATCH_THRESHOLD, dailyBonus, effectivePlan } from "@/lib/payments";
@@ -86,7 +86,9 @@ export async function GET(request: Request) {
     ((Array.isArray(profile.skills) && profile.skills.length > 0) ||
       profile.desired_rate ||
       (Array.isArray(profile.job_categories) && profile.job_categories.length > 0));
-  if (profile?.job_vector) userVec = validateUserVector(profile.job_vector);
+  // Without a personal vector (new/unset profile) use a neutral one so every
+  // job still gets a match score and the feed is usable instead of empty.
+  userVec = profile?.job_vector ? validateUserVector(profile.job_vector) : NEUTRAL_JOB_VECTOR;
 
   let rows = (jobs ?? []).map((job: any) => {
     const it = interactionMap.get(job.id) ?? {};

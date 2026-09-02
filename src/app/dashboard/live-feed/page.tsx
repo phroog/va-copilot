@@ -99,6 +99,7 @@ export default function LiveFeedPage() {
   const [savingAll, setSavingAll] = useState(false);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [swappingIds, setSwappingIds] = useState<Set<string>>(new Set());
+  const [swapTarget, setSwapTarget] = useState<string | null>(null);
   const [pitchJob, setPitchJob] = useState<FeedJob | null>(null);
   const [pitchResult, setPitchResult] = useState<string | null>(null);
   const [pitchLoading, setPitchLoading] = useState(false);
@@ -322,13 +323,27 @@ export default function LiveFeedPage() {
     }
   };
 
-  const swapJob = async (job: FeedJob) => {
+const swapJob = async (job: FeedJob) => {
+    // Two-click swap: first click selects the job to trade away, second click
+    // picks which other job in the feed to swap it with.
+    if (!swapTarget) {
+      setSwapTarget(job.id);
+      showToast("Selected. Now click Swap on the job you want to trade it with.");
+      return;
+    }
+    if (swapTarget === job.id) {
+      setSwapTarget(null);
+      showToast("Swap cancelled");
+      return;
+    }
     setSwappingIds((prev) => new Set(prev).add(job.id));
     try {
+      await fetch(`/api/jobs/${swapTarget}/swap`, { method: "POST" });
       const res = await fetch(`/api/jobs/${job.id}/swap`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Swap failed");
-      showToast("Job swapped — searching for a better match 🔄");
+      setSwapTarget(null);
+      showToast("Jobs swapped 🔄");
       await loadPage("replace");
     } catch (e: any) {
       showToast(e?.message ?? "Swap failed", "error");
@@ -509,6 +524,8 @@ export default function LiveFeedPage() {
               isNew={newIds.has(job.id)}
               saving={savingIds.has(job.id)}
               swapping={swappingIds.has(job.id)}
+              swapSelected={swapTarget === job.id}
+              swapMode={swapTarget != null}
               generating={generatingId === job.id}
               onToggleSave={() => toggleSave(job)}
               onGeneratePitch={() => generatePitch(job)}
@@ -587,6 +604,8 @@ function FeedJobCard({
   isNew,
   saving,
   swapping,
+  swapSelected,
+  swapMode,
   generating,
   onToggleSave,
   onGeneratePitch,
@@ -596,6 +615,8 @@ function FeedJobCard({
   isNew: boolean;
   saving: boolean;
   swapping: boolean;
+  swapSelected: boolean;
+  swapMode: boolean;
   generating: boolean;
   onToggleSave: () => void;
   onGeneratePitch: () => void;
@@ -608,7 +629,7 @@ function FeedJobCard({
     <Card
       className={`flex border-kawaii-lavender/30 dark:border-dark-surface transition-all ${
         isNew ? "ring-2 ring-kawaii-purple/60 bg-kawaii-purple/5 dark:bg-kawaii-purple/10" : ""
-      } ${grayed ? "opacity-45 hover:opacity-60" : "hover:border-kawaii-purple/50"} ${locked ? "opacity-80" : ""}`}
+      } ${swapSelected ? "ring-2 ring-kawaii-coral/70 bg-kawaii-coral/10 dark:bg-kawaii-coral/10" : ""} ${grayed ? "opacity-45 hover:opacity-60" : "hover:border-kawaii-purple/50"} ${locked ? "opacity-80" : ""}`}
     >
       <CardContent className="p-4 flex flex-col md:flex-row md:items-start gap-3 w-full">
         <div className="flex-1 min-w-0">
@@ -714,8 +735,8 @@ function FeedJobCard({
               <Button size="sm" variant="outline" onClick={onGeneratePitch} disabled={generating || grayed}>
                 {generating ? "Loading..." : job.pitch_id ? "🚀 View Pitch" : "🚀 Pitch"}
               </Button>
-              <Button size="sm" variant="outline" onClick={onSwap} disabled={swapping || grayed} title="Swaps the job for a better match">
-                {swapping ? "..." : "🔄 Swap"}
+              <Button size="sm" variant="outline" onClick={onSwap} disabled={swapping || grayed || locked} title="Trade this job with another one in the feed">
+                {swapping ? "..." : swapSelected ? "Cancel" : swapMode ? "↔ Swap with this" : "🔄 Swap"}
               </Button>
             </div>
           )}

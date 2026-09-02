@@ -107,10 +107,6 @@ export default function SettingsPage() {
     fetch("/api/subscription-status").then((r) => r.ok && r.json()).then(setSub).catch(() => {});
   }, []);
 
-  // Google Calendar integration
-  const [hasGoogleCal, setHasGoogleCal] = useState(false);
-  const [checkingGoogle, setCheckingGoogle] = useState(true);
-
   // Backup
   const [backingUp, setBackingUp] = useState(false);
 
@@ -119,9 +115,8 @@ export default function SettingsPage() {
       fetch("/api/profile").then((r) => r.json()),
       fetch("/api/user-settings").then((r) => r.json()),
       fetch("/api/profile/public").then((r) => r.json()),
-      fetch("/api/user-integrations").then((r) => r.json()),
     ])
-      .then(([profileData, settingsData, pubData, integData]) => {
+      .then(([profileData, settingsData, pubData]) => {
         if (profileData.profile) {
           const p = profileData.profile;
           if (!Array.isArray(p.job_vector) || p.job_vector.length !== 5) p.job_vector = [3, 3, 3, 3, 3];
@@ -134,13 +129,10 @@ export default function SettingsPage() {
           setDefaultTaxRate(String(settingsData.settings.default_tax_rate ?? "0"));
         }
         if (pubData.profile) setPublicProfile(pubData.profile);
-        const gcal = (integData.integrations ?? []).find((i: any) => i.provider === "google_calendar");
-        setHasGoogleCal(!!gcal);
       })
       .catch(() => showToast("Failed to load settings", "error"))
       .finally(() => {
         setLoading(false);
-        setCheckingGoogle(false);
       });
   }, []);
 
@@ -237,32 +229,6 @@ export default function SettingsPage() {
     } finally {
       setBackingUp(false);
     }
-  };
-
-  const connectGoogleCalendar = () => {
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID;
-    if (!clientId) {
-      showToast("Google OAuth not configured. Set NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID env var.", "error");
-      return;
-    }
-    const redirectUri = `${window.location.origin}/auth/callback`;
-    const scope = "https://www.googleapis.com/auth/calendar.events";
-    const url =
-      `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${clientId}&` +
-      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-      `response_type=code&` +
-      `scope=${encodeURIComponent(scope)}&` +
-      `access_type=offline&` +
-      `prompt=consent&` +
-      `state=google_calendar`;
-    window.location.href = url;
-  };
-
-  const disconnectGoogleCalendar = async () => {
-    await fetch("/api/user-integrations?provider=google_calendar", { method: "DELETE" });
-    setHasGoogleCal(false);
-    showToast("Google Calendar disconnected");
   };
 
   if (loading) {
@@ -695,40 +661,6 @@ export default function SettingsPage() {
 
       {/* Telegram Integration */}
       <TelegramSettings />
-
-      {/* Google Calendar Integration */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">{t("googleCalendar")}</CardTitle>
-          <CardDescription>{t("googleCalendarDesc")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {checkingGoogle ? (
-            <p className="text-sm text-slate-400 animate-pulse">{t("checking")}</p>
-          ) : hasGoogleCal ? (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
-                {t("connected")}
-              </span>
-              <Button variant="outline" size="sm" onClick={disconnectGoogleCalendar}>
-                {t("disconnect")}
-              </Button>
-            </div>
-          ) : (
-            <div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
-                {t("googleCalendarText")}
-              </p>
-              <Button variant="primary" onClick={connectGoogleCalendar}>
-                {t("connectGoogle")}
-              </Button>
-              <p className="text-xs text-slate-400 mt-2">
-                {!process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID && t("googleNotConfigured")}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Backup & Export */}
       <Card>
