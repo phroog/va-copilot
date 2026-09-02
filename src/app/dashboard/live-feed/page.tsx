@@ -91,7 +91,7 @@ export default function LiveFeedPage() {
   const [riskFilter, setRiskFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [mode, setMode] = useState<"best" | "matches" | "newest">("best");
+  const [mode, setMode] = useState<"best" | "matches" | "newest">("newest");
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -495,11 +495,15 @@ const openSwap = async (job: FeedJob) => {
             <option value="red">🔴 High</option>
           </select>
           <div className="flex rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 p-0.5 gap-0.5 md:ml-auto">
-            {([
-              ["best", "🎯 Best Match"],
-              ["matches", "⭐ My Matches"],
-              ["newest", "🆕 Newest"],
-            ] as const).map(([m, label]) => (
+            {(
+              [
+                ["best", "🎯 Best Match"],
+                ["matches", "⭐ My Matches"],
+                ["newest", "🆕 Newest"],
+              ] as const
+            )
+              .filter(([m]) => !(m === "matches" && limitInfo.plan === "pro"))
+              .map(([m, label]) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}

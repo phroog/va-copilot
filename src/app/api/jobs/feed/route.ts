@@ -169,10 +169,9 @@ export async function GET(request: Request) {
   }
 
   const total = rows.length;
-  // My Matches: keep the order the user opened them.
-  if (mode === "matches" && openedOrder.length > 0) {
-    const idx = new Map(openedOrder.map((id, i) => [id, i]));
-    rows = [...rows].sort((a: any, b: any) => (idx.get(a.id) ?? 999) - (idx.get(b.id) ?? 999));
+  // My Matches: show the best picks first.
+  if (mode === "matches") {
+    rows = [...rows].sort((a: any, b: any) => (b.profile_match ?? -1) - (a.profile_match ?? -1));
   } else {
     const matchedRows = rows.filter((j: any) => (j.profile_match ?? 0) >= MATCH_THRESHOLD);
     const otherRows = rows.filter((j: any) => (j.profile_match ?? 0) < MATCH_THRESHOLD);
@@ -189,7 +188,9 @@ export async function GET(request: Request) {
   // quota applies there.
   const { data: sub } = await supabase.from("subscriptions").select("plan, status, access_until").eq("user_id", user.id).maybeSingle();
   const plan = effectivePlan(sub);
-  const planLimit = mode === "matches" ? null : PLANS[plan].dailyJobLimit; // null = unlimited (pro / matches)
+  const isPro = plan === "pro";
+  // My Matches is a Sprout/Bloom concept — Pro (unlimited) doesn't need it.
+  const planLimit = mode === "matches" || isPro ? null : PLANS[plan].dailyJobLimit; // null = unlimited (pro / matches)
   const today = new Date().toISOString().slice(0, 10);
 
   let bonus = 0;
@@ -250,8 +251,9 @@ export async function GET(request: Request) {
   const hasMore = offset + limit < total && (dailyLimit == null || usedToday + matchedCount(page) < dailyLimit);
 
   // Record the matched jobs the user just unlocked (My Matches view) so they
-  // persist across days. Skipped in matches mode (already recorded).
-  if (countViews && mode !== "matches" && jobsOut.length > 0) {
+  // persist across days. Skipped in matches mode (already recorded) and for Pro
+  // (unlimited users don't use My Matches).
+  if (countViews && !isPro && mode !== "matches" && jobsOut.length > 0) {
     const openedIds = jobsOut
       .filter((j: any) => (j.profile_match ?? 0) >= MATCH_THRESHOLD)
       .map((j: any) => j.id)
@@ -269,7 +271,6 @@ export async function GET(request: Request) {
   // well are clickable; low matches are grayed out. When the daily matched
   // quota is reached, good matches turn into "locked" cards instead. My Matches
   // are already unlocked — always clickable.
-  const isPro = plan === "pro";
   jobsOut = jobsOut.map((j: any) => {
     const canClick = mode === "matches" ? true : isPro || (j.profile_match ?? 0) >= MATCH_THRESHOLD;
     const locked = mode !== "matches" && !isPro && canClick && limitReached;
