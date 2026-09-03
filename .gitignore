@@ -5,3 +5,4 @@ collector/node_modules/
 collector/profile/
 collector/cdp-profile/
 tsconfig.tsbuildinfo
+.vercel

@@ -51,6 +51,9 @@ export async function POST(request: Request) {
     success_url: `${appUrl}/dashboard?upgrade=success`,
     cancel_url: `${appUrl}/pricing`,
     subscription_data: { metadata: { plan } },
+    // Our products don't define tax codes; disable Stripe Managed Payments so
+    // the plain subscription checkout doesn't require them.
+    managed_payments: { enabled: false },
     ...(discounts.length ? { discounts } : {}),
   });
 
