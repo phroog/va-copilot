@@ -104,7 +104,8 @@ export default function LiveFeedPage() {
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [swappingIds, setSwappingIds] = useState<Set<string>>(new Set());
   const [swapFrom, setSwapFrom] = useState<FeedJob | null>(null);
-  const [swapCandidates, setSwapCandidates] = useState<{ candidates: FeedJob[]; locked: FeedJob[] } | null>(null);
+  const [swapFromMatches, setSwapFromMatches] = useState(false); // true = initiated from My Matches tab
+  const [swapCandidates, setSwapCandidates] = useState<{ owned: FeedJob[]; newest: FeedJob[]; best: FeedJob[] } | null>(null);
   const [pitchJob, setPitchJob] = useState<FeedJob | null>(null);
   const [pitchResult, setPitchResult] = useState<string | null>(null);
   const [pitchLoading, setPitchLoading] = useState(false);
@@ -348,17 +349,33 @@ export default function LiveFeedPage() {
   };
 
 const openSwap = async (job: FeedJob) => {
-    // The swap pool is always the Best Match set (locked high matches + other
-    // available jobs), regardless of the tab you're currently viewing.
+    // Direction depends on where the swap was initiated:
+    //  - best/newest: give up one of your My Matches, get this feed job.
+    //  - matches:     give up this owned job, get a feed job (newest+best).
+    const fromMatches = mode === "matches";
     setSwappingIds((prev) => new Set(prev).add(job.id));
     try {
-      const res = await fetch("/api/jobs/feed?mode=best&count_views=0&limit=50");
-      const d = await res.json();
-      const pool: FeedJob[] = d.jobs ?? [];
-      const candidates = pool.filter((j) => j.id !== job.id && j.clickable !== false && !j.locked);
-      const locked = pool.filter((j) => j.id !== job.id && j.locked === true);
+      let owned: FeedJob[] = [];
+      let newest: FeedJob[] = [];
+      let best: FeedJob[] = [];
+      if (fromMatches) {
+        const [nr, br] = await Promise.all([
+          fetch("/api/jobs/feed?mode=newest&count_views=0&limit=50").then((d) => d.json()),
+          fetch("/api/jobs/feed?mode=best&count_views=0&limit=50").then((d) => d.json()),
+        ]);
+        newest = nr.jobs ?? [];
+        best = br.jobs ?? [];
+        // exclude the job being swapped away itself
+        newest = newest.filter((j: any) => j.id !== job.id);
+        best = best.filter((j: any) => j.id !== job.id);
+      } else {
+        // offer the user's own matched jobs to give up (library = everything owned)
+        const mr = await fetch("/api/jobs/feed?mode=matches&list=library&count_views=0&limit=200").then((d) => d.json());
+        owned = (mr.jobs ?? []).filter((j: any) => j.id !== job.id);
+      }
+      setSwapFromMatches(fromMatches);
       setSwapFrom(job);
-      setSwapCandidates({ candidates, locked });
+      setSwapCandidates({ owned, newest, best });
     } catch {
       showToast("Could not load swap options", "error");
     } finally {
@@ -370,12 +387,15 @@ const openSwap = async (job: FeedJob) => {
     }
   };
 
-  const doSwap = async (targetId: string) => {
+  const doSwap = async (giveId: string, takeId: string) => {
     if (!swapFrom) return;
     setSwappingIds((prev) => new Set(prev).add(swapFrom.id));
     try {
-      await fetch(`/api/jobs/${swapFrom.id}/swap`, { method: "POST" });
-      const res = await fetch(`/api/jobs/${targetId}/swap`, { method: "POST" });
+      const res = await fetch("/api/jobs/swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ give: giveId, take: takeId }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Swap failed");
       setSwapFrom(null);
@@ -681,32 +701,50 @@ const openSwap = async (job: FeedJob) => {
 
       {/* Swap picker */}
       <Dialog open={swapCandidates != null} onOpenChange={(open) => !open && setSwapCandidates(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">🔄 Swap — choose what to get</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">🔄 Swap</DialogTitle>
             <DialogDescription>
-              Trading away: <b>{swapFrom?.title}</b>. Pick a job to swap it with.
+              {swapFromMatches ? (
+                <>Trading away: <b>{swapFrom?.title}</b>. Pick what you want to get instead.</>
+              ) : (
+                <>You want: <b>{swapFrom?.title}</b>. Pick one of your My Matches to trade away.</>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
-            {swapCandidates?.locked && swapCandidates.locked.length > 0 && (
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            {swapFromMatches ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">🆕 Newest</p>
+                  <div className="space-y-2">
+                    {swapCandidates?.newest.length ? swapCandidates.newest.map((c) => (
+                      <SwapRow key={c.id} job={c} onClick={() => doSwap(swapFrom!.id, c.id)} />
+                    )) : <p className="text-xs text-slate-400">Nothing available.</p>}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">🎯 Best Match</p>
+                  <div className="space-y-2">
+                    {swapCandidates?.best.length ? swapCandidates.best.map((c) => (
+                      <SwapRow key={c.id} job={c} onClick={() => doSwap(swapFrom!.id, c.id)} />
+                    )) : <p className="text-xs text-slate-400">Nothing available.</p>}
+                  </div>
+                </div>
+              </div>
+            ) : (
               <>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">🔒 High matches (daily limit)</p>
-                {swapCandidates.locked.map((c) => (
-                  <SwapRow key={c.id} job={c} locked onClick={() => doSwap(c.id)} />
-                ))}
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">⭐ My Matches (trade one away)</p>
+                {swapCandidates?.owned.length ? (
+                  <div className="space-y-2">
+                    {swapCandidates.owned.map((c) => (
+                      <SwapRow key={c.id} job={c} onClick={() => doSwap(c.id, swapFrom!.id)} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">You don't have any matched jobs to trade yet.</p>
+                )}
               </>
-            )}
-            {swapCandidates?.candidates && swapCandidates.candidates.length > 0 && (
-              <>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">✓ Available jobs</p>
-                {swapCandidates.candidates.map((c) => (
-                  <SwapRow key={c.id} job={c} onClick={() => doSwap(c.id)} />
-                ))}
-              </>
-            )}
-            {swapCandidates && (swapCandidates.locked.length + swapCandidates.candidates.length) === 0 && (
-              <p className="text-sm text-slate-400">No other swappable jobs in the current feed.</p>
             )}
           </div>
         </DialogContent>
@@ -715,12 +753,12 @@ const openSwap = async (job: FeedJob) => {
   );
 }
 
-function SwapRow({ job, locked, onClick }: { job: FeedJob; locked?: boolean; onClick: () => void }) {
+function SwapRow({ job, onClick }: { job: FeedJob; onClick: () => void }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/60 dark:bg-dark-surface/40 p-2.5">
       <div className="min-w-0">
         <p className="text-sm font-semibold truncate text-slate-700 dark:text-slate-200">
-          {locked ? "🔒 " : ""}{job.title}
+          {job.title}
         </p>
         <p className="text-xs text-slate-400">
           {job.platform}
@@ -728,7 +766,7 @@ function SwapRow({ job, locked, onClick }: { job: FeedJob; locked?: boolean; onC
           {job.budget ? ` · ${job.budget}` : ""}
         </p>
       </div>
-      <Button size="sm" variant={locked ? "primary" : "outline"} onClick={onClick} className="shrink-0">Swap</Button>
+      <Button size="sm" variant="outline" onClick={onClick} className="shrink-0">Swap</Button>
     </div>
   );
 }
@@ -859,10 +897,10 @@ function FeedJobCard({
             </Link>
           ) : null}
           <div className="flex flex-wrap gap-2 md:flex-col md:items-stretch">
-            <Button size="sm" variant={job.is_saved ? "outline" : "primary"} onClick={onToggleSave} disabled={saving || grayed}>
+            <Button size="sm" variant={job.is_saved ? "outline" : "primary"} onClick={onToggleSave} disabled={saving || grayed || locked}>
               {saving ? "..." : job.is_saved ? "💾 Saved" : "💾 Save"}
             </Button>
-            <Button size="sm" variant="outline" onClick={onGeneratePitch} disabled={generating || grayed}>
+            <Button size="sm" variant="outline" onClick={onGeneratePitch} disabled={generating || grayed || locked}>
               {generating ? "Loading..." : job.pitch_id ? "🚀 View Pitch" : "🚀 Pitch"}
             </Button>
             <Button size="sm" variant="outline" onClick={onSwap} disabled={swapping || grayed} title="Trade this job for another one">

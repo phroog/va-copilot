@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { classifyJobVector, matchVectors, validateUserVector, NEUTRAL_JOB_VECTOR, type Vector } from "@/lib/jobs/profile-vector";
 import { computeScore } from "@/lib/jobs/scoring";
 import { scamScore } from "@/lib/jobs/scam-score";
-import { PLANS, SWAP_LIMITS, MATCH_THRESHOLD, dailyBonus, effectivePlan } from "@/lib/payments";
+import { PLANS, SWAP_LIMITS, MATCH_THRESHOLD, AUTO_GRANT_THRESHOLD, dailyBonus, effectivePlan } from "@/lib/payments";
 
 const WINDOW_CAP = 4000;
 
@@ -154,7 +154,7 @@ export async function GET(request: Request) {
           const t = new Date(j.posted_at || j.collected_at || 0).getTime();
           return { id: j.id, m, t };
         })
-        .filter((j: any) => j.m >= MATCH_THRESHOLD)
+        .filter((j: any) => j.m >= AUTO_GRANT_THRESHOLD)
         .sort((a: any, b: any) => b.t - a.t) // newest matching jobs first
         .slice(0, remaining);
 
@@ -256,12 +256,15 @@ export async function GET(request: Request) {
   else if (score === "low") rows = rows.filter((j: any) => (j.matching_score ?? 0) < 40);
   if (risk !== "all") rows = rows.filter((j: any) => j.scam_level === risk);
 
-  // ── Swap: never re-offer jobs the user traded away ──────────────────
-  const swappedIds = (interactions ?? [])
-    .filter((it: any) => it.swapped)
-    .map((it: any) => it.global_job_id);
-  if (swappedIds.length > 0) {
-    rows = rows.filter((j: any) => !swappedIds.includes(j.id));
+  // ── Swap: never re-offer jobs the user traded away. Skipped for My Matches,
+  // which is the user's own list (a job received via swap must stay visible). ──
+  if (mode !== "matches") {
+    const swappedIds = (interactions ?? [])
+      .filter((it: any) => it.swapped)
+      .map((it: any) => it.global_job_id);
+    if (swappedIds.length > 0) {
+      rows = rows.filter((j: any) => !swappedIds.includes(j.id));
+    }
   }
 
   const total = rows.length;

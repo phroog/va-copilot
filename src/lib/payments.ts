@@ -49,8 +49,13 @@ export const SWAP_LIMITS: Record<PlanKey, number> = { free: 3, basic: 10, pro: 3
    Change this single constant to adjust the gating. */
 export const SCAM_REGISTRY_FULL_PLANS: PlanKey[] = ["basic", "pro"];
 
-/* Minimum match score for a job to count against the matched daily quota. */
+/* Minimum match score for a job to be clickable in best/newest (browse gate). */
 export const MATCH_THRESHOLD = 50;
+
+/* Minimum match score for a job to be auto-granted into My Matches. Deliberately
+   higher than MATCH_THRESHOLD so only jobs we're really confident about end up
+   in the user's matched list. */
+export const AUTO_GRANT_THRESHOLD = 75;
 
 /* Daily random bonus of extra job views, per user (5-20). */
 export function dailyBonus(): number {
