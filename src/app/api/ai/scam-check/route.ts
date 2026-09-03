@@ -134,5 +134,20 @@ export async function POST(request: Request) {
     analysis,
   });
 
+  // Real-time scam alert: push when the score is clearly elevated (55+).
+  if (score >= 55) {
+    const { notifyTelegramEvent } = await import("@/lib/telegram");
+    const target = body.client_name || body.website_url || "a client";
+    const level = score >= 85 ? "High risk 🚨" : "Suspicious ⚠️";
+    await notifyTelegramEvent(
+      user.id,
+      "scam",
+      `🛡️ <b>Scam alert — ${level}</b>\n\n` +
+        `You checked <b>${target}</b> and it scored <b>${score}/100</b>.\n` +
+        `${analysis.slice(0, 200)}\n\n` +
+        `💡 Don't send money, documents or payment details. When in doubt, walk away.`
+    );
+  }
+
   return NextResponse.json({ score, analysis });
 }
