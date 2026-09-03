@@ -106,6 +106,7 @@ export default function LiveFeedPage() {
   const [swapFrom, setSwapFrom] = useState<FeedJob | null>(null);
   const [swapFromMatches, setSwapFromMatches] = useState(false); // true = initiated from My Matches tab
   const [swapCandidates, setSwapCandidates] = useState<{ owned: FeedJob[]; newest: FeedJob[]; best: FeedJob[] } | null>(null);
+  const [swapPane, setSwapPane] = useState<"newest" | "best">("newest");
   const [pitchJob, setPitchJob] = useState<FeedJob | null>(null);
   const [pitchResult, setPitchResult] = useState<string | null>(null);
   const [pitchLoading, setPitchLoading] = useState(false);
@@ -375,6 +376,7 @@ const openSwap = async (job: FeedJob) => {
       }
       setSwapFromMatches(fromMatches);
       setSwapFrom(job);
+      setSwapPane("newest");
       setSwapCandidates({ owned, newest, best });
     } catch {
       showToast("Could not load swap options", "error");
@@ -714,24 +716,53 @@ const openSwap = async (job: FeedJob) => {
           </DialogHeader>
           <div className="space-y-4 pr-1">
             {swapFromMatches ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">🆕 Newest</p>
-                  <div className="space-y-2">
-                    {swapCandidates?.newest.length ? swapCandidates.newest.map((c) => (
+              <>
+                {/* Mobile: segmented toggle between the two lists */}
+                <div className="sm:hidden inline-flex rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 p-0.5 gap-0.5 w-full">
+                  {(["newest", "best"] as const).map((k) => (
+                    <button
+                      key={k}
+                      onClick={() => setSwapPane(k)}
+                      className={`flex-1 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                        swapPane === k ? "bg-kawaii-purple text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:bg-kawaii-lavender/20"
+                      }`}
+                    >
+                      {k === "newest" ? "🆕 Newest" : "🎯 Best Match"}
+                    </button>
+                  ))}
+                </div>
+                {/* Mobile: only the active list */}
+                <div className="sm:hidden space-y-2">
+                  {swapPane === "newest" ? (
+                    swapCandidates?.newest.length ? swapCandidates.newest.map((c) => (
                       <SwapRow key={c.id} job={c} onClick={() => doSwap(swapFrom!.id, c.id)} />
-                    )) : <p className="text-xs text-slate-400">Nothing available.</p>}
+                    )) : <p className="text-xs text-slate-400">Nothing available.</p>
+                  ) : (
+                    swapCandidates?.best.length ? swapCandidates.best.map((c) => (
+                      <SwapRow key={c.id} job={c} onClick={() => doSwap(swapFrom!.id, c.id)} />
+                    )) : <p className="text-xs text-slate-400">Nothing available.</p>
+                  )}
+                </div>
+                {/* Desktop: two columns side by side */}
+                <div className="hidden sm:grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">🆕 Newest</p>
+                    <div className="space-y-2">
+                      {swapCandidates?.newest.length ? swapCandidates.newest.map((c) => (
+                        <SwapRow key={c.id} job={c} onClick={() => doSwap(swapFrom!.id, c.id)} />
+                      )) : <p className="text-xs text-slate-400">Nothing available.</p>}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">🎯 Best Match</p>
+                    <div className="space-y-2">
+                      {swapCandidates?.best.length ? swapCandidates.best.map((c) => (
+                        <SwapRow key={c.id} job={c} onClick={() => doSwap(swapFrom!.id, c.id)} />
+                      )) : <p className="text-xs text-slate-400">Nothing available.</p>}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">🎯 Best Match</p>
-                  <div className="space-y-2">
-                    {swapCandidates?.best.length ? swapCandidates.best.map((c) => (
-                      <SwapRow key={c.id} job={c} onClick={() => doSwap(swapFrom!.id, c.id)} />
-                    )) : <p className="text-xs text-slate-400">Nothing available.</p>}
-                  </div>
-                </div>
-              </div>
+              </>
             ) : (
               <>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400">⭐ My Matches (trade one away)</p>
