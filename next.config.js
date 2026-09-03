@@ -14,7 +14,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob: https: https://www.facebook.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://*.supabase.co https://api.openai.com https://turnip-rose-rain.glitch.me https://connect.facebook.net",
+              "connect-src 'self' https://*.supabase.co https://api.openai.com https://turnip-rose-rain.glitch.me https://connect.facebook.net https://www.facebook.com",
               "frame-src 'self' https://challenges.cloudflare.com",
               "base-uri 'self'",
               "form-action 'self'",
