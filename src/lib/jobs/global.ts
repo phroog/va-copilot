@@ -14,7 +14,7 @@ async function pushDueFollowups() {
     const now = new Date().toISOString().slice(0, 10);
     const { data: due } = await supabase
       .from("follow_ups")
-      .select("id, user_id, action, due_date")
+      .select("id, user_id, due_date, jobs(title)")
       .eq("status", "pending")
       .lte("due_date", now);
 
@@ -48,7 +48,8 @@ async function pushDueFollowups() {
 
       const lines = ["⏰ <b>Follow-ups due:</b>\n"];
       for (const f of fresh.slice(0, 5)) {
-        lines.push(`• ${f.action || "Follow-up"} (due ${f.due_date})`);
+        const jobTitle = f.jobs?.title || "Job";
+        lines.push(`• ${jobTitle} (due ${f.due_date})`);
       }
       const ok = await sendTelegram(link.chat_id, lines.join("\n"));
       if (ok) {
