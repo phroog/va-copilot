@@ -3,6 +3,7 @@ import { categorizeJob } from "@/lib/jobs/scoring";
 import { matchVectors, validateUserVector } from "@/lib/jobs/profile-vector";
 import { effectivePlan, AUTO_GRANT_THRESHOLD } from "@/lib/payments";
 import { sendTelegram } from "@/lib/telegram";
+import { sendEmail, layoutEmail } from "@/lib/email";
 
 /* Realtime reminder sweep: runs piggybacked on the job push (which fires on
    every collector insert, i.e. every few minutes — effectively realtime, no
@@ -131,6 +132,72 @@ export async function notifyTelegramMatches(job: Record<string, any>) {
   await pushDueFollowups();
 }
 
+/* Real-time email push for a freshly inserted job. Sends a matching job to the
+   user's notification_email (or account email) as soon as it clears the match
+   threshold — controlled by email_push_matches in Settings (Konfiguration step 1).
+   Works for any plan (email is not a pro-gated perk, unlike Telegram). */
+export async function notifyEmailMatches(job: Record<string, any>) {
+  if (!job?.id) return;
+  const jobVec: any = Array.isArray(job.profile_vector) ? job.profile_vector : null;
+  if (!jobVec) return;
+  const title = job.title || "";
+  const platform = job.platform || "";
+  const budget = job.budget || "";
+  const url = job.url || "";
+
+  try {
+    const supabase = createServiceRoleClient();
+    const { data: rows } = await supabase
+      .from("user_settings")
+      .select("user_id, notification_email, email_push_matches, telegram_pushed_jobs")
+      .eq("email_push_matches", true);
+
+    for (const s of rows ?? []) {
+      if (!s.user_id) continue;
+      const pushed = Array.isArray(s.telegram_pushed_jobs) ? s.telegram_pushed_jobs : [];
+      if (pushed.includes(`em:${job.id}`)) continue;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("job_vector")
+        .eq("user_id", s.user_id)
+        .maybeSingle();
+      const userVec = profile?.job_vector ? validateUserVector(profile.job_vector) : null;
+      if (!userVec) continue;
+      const match = matchVectors(userVec, jobVec).score;
+      if (match < AUTO_GRANT_THRESHOLD) continue;
+
+      // Resolve recipient: notification_email if set, otherwise account email.
+      let to = s.notification_email || null;
+      if (!to) {
+        const { data: auth } = await supabase.auth.admin.getUserById(s.user_id);
+        to = auth?.user?.email || null;
+      }
+      if (!to) continue;
+
+      const ok = await sendEmail({
+        to,
+        subject: `🎯 New match: ${title}`,
+        html: layoutEmail(
+          "New matching job 🎯",
+          `<p><b>${title}</b> (${match}% match)</p>
+           <p>${platform} · ${budget || "n/a"}</p>
+           ${url ? `<p><a href="${url}">Open job ↗</a></p>` : ""}
+           <p>Found a job that fits you — apply before it's gone.</p>`
+        ),
+      });
+      if (ok) {
+        await supabase
+          .from("user_settings")
+          .update({ telegram_pushed_jobs: [...pushed, `em:${job.id}`].slice(-50) })
+          .eq("user_id", s.user_id);
+      }
+    }
+  } catch {
+    // Never break the job insert because of a notification failure.
+  }
+}
+
 /**
  * Insert a job into the shared `global_jobs` feed.
  * Deduplicates on `url` (ON CONFLICT DO NOTHING semantics):
@@ -181,6 +248,7 @@ export async function upsertGlobalJob(job: Record<string, any>) {
   // Real-time Telegram push (pro only, confident matches) — no cron needed.
   if (data) {
     await notifyTelegramMatches(data);
+    await notifyEmailMatches(data);
   }
 
   return { job: data, inserted: true };

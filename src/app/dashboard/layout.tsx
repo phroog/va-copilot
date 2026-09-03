@@ -93,6 +93,7 @@ const sidebarGroups = [
     labelKey: "setup", emoji: "⚙️", descKey: "setupDesc",
     defaultOpen: false,
     links: [
+      { href: "/dashboard/setup", labelKey: "setupGuide", icon: Settings },
       { href: "/dashboard/settings", labelKey: "settings", icon: Settings },
       { href: "/dashboard/credits", labelKey: "credits", icon: Coins },
       { href: "/dashboard/streak", labelKey: "streak", icon: Flame },

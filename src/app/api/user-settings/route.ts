@@ -37,6 +37,9 @@ export async function PUT(request: Request) {
   if (body.default_hourly_rate !== undefined) update.default_hourly_rate = body.default_hourly_rate;
   if (body.agency_enabled !== undefined) update.agency_enabled = body.agency_enabled === true;
   if (body.default_tax_rate !== undefined) update.default_tax_rate = body.default_tax_rate;
+  if (body.notification_email !== undefined) update.notification_email = String(body.notification_email).trim() || null;
+  if (body.email_push_matches !== undefined) update.email_push_matches = body.email_push_matches === true;
+  if (body.email_marketing_opt_in !== undefined) update.email_marketing_opt_in = body.email_marketing_opt_in === true;
   for (const key of [
     "telegram_enabled",
     "telegram_push_matches",
