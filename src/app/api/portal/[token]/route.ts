@@ -35,9 +35,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     .select("*, invoice_items(*)")
     .eq("job_id", jobId);
 
+  // Proof of work: screenshots attached to this job's time entries.
+  const { data: screenshots } = await supabase
+    .from("screenshots")
+    .select("id, time_entry_id, image_url, taken_at")
+    .in("time_entry_id", (timeEntries ?? []).map((t: any) => t.id).filter(Boolean));
+
   return NextResponse.json({
     job: tokenData.jobs,
     timeEntries: timeEntries ?? [],
     invoices: invoices ?? [],
+    screenshots: screenshots ?? [],
   });
 }

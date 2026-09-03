@@ -9,6 +9,7 @@ interface PortalData {
   job: { id: string; title: string; platform: string; budget: string; description: string };
   timeEntries: { id: string; description: string; start_time: string; end_time: string | null; hourly_rate: number }[];
   invoices: { id: string; invoice_number: string; status: string; issue_date: string; due_date: string; invoice_items: { description: string; quantity: number; unit_price: number; total: number }[]; tax_rate: number }[];
+  screenshots: { id: string; time_entry_id: string; image_url: string; taken_at: string }[];
 }
 
 export default function PortalPage({ params }: { params: Promise<{ token: string }> }) {
@@ -97,6 +98,38 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
             )}
           </CardContent>
         </Card>
+
+        {/* Proof of Work */}
+        {data.screenshots.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">📸 Proof of Work</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                Transparent, tracked work sessions — see what was done in real time.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {data.screenshots.slice(0, 12).map((s) => (
+                  <a
+                    key={s.id}
+                    href={s.image_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative aspect-video rounded-2xl overflow-hidden border border-sari-lavender/30 dark:border-dark-surface bg-slate-100 dark:bg-dark-surface"
+                  >
+                    <img src={s.image_url} alt="Work session" className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
+                    {s.taken_at && (
+                      <span className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white">
+                        {new Date(s.taken_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </a>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Invoices */}
         <Card>
