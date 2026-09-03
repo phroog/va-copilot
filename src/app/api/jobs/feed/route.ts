@@ -41,6 +41,7 @@ export async function GET(request: Request) {
   const hours = Math.max(1, Math.min(168, num(url.searchParams.get("hours"), 24)));
   const countViews = url.searchParams.get("count_views") === "1";
   const mode = url.searchParams.get("mode") || "best"; // best | matches | newest
+  const list = url.searchParams.get("list") || "daily"; // matches sub-view: daily | library
   const cutoff = new Date(Date.now() - hours * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
   const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().replace(/\.\d{3}Z$/, "Z");
 
@@ -139,9 +140,11 @@ export async function GET(request: Request) {
       let cand = supabase
         .from("global_jobs")
         .select("id, profile_vector, posted_at, collected_at")
-        .gt("collected_at", monthAgo);
+        .gt("collected_at", monthAgo)
+        .order("collected_at", { ascending: false })
+        .limit(1500);
       if (excludedIds.length > 0) cand = cand.not("source_id", "in", `(${excludedIds.join(",")})`);
-      const { data: candidates } = await cand.limit(400);
+      const { data: candidates } = await cand;
 
       const best = (candidates ?? [])
         .filter((j: any) => !openedSet.has(j.id))
@@ -169,15 +172,23 @@ export async function GET(request: Request) {
     }
   }
 
-  // My Matches: the auto-granted jobs, persisted across days.
+  // My Matches: the auto-granted jobs, persisted across days. Split into
+  // "daily" (today's quota) and "library" (every job ever granted).
   let openedOrder: string[] = [];
+  let libraryCount = 0;
   if (mode === "matches") {
-    const { data: opened } = await supabase
+    const { count: libCount } = await supabase
+      .from("user_opened_jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    libraryCount = libCount ?? 0;
+
+    let oq = supabase
       .from("user_opened_jobs")
       .select("global_job_id")
-      .eq("user_id", user.id)
-      .order("opened_at", { ascending: false })
-      .limit(200);
+      .eq("user_id", user.id);
+    if (list === "daily") oq = oq.gte("opened_at", today);
+    const { data: opened } = await oq.order("opened_at", { ascending: false }).limit(500);
     openedOrder = (opened ?? []).map((o: any) => o.global_job_id);
   }
 
@@ -290,5 +301,7 @@ export async function GET(request: Request) {
     swapsLeft: dailyLimit != null ? SWAP_LIMITS[plan] - swapUsed : null,
     limitReached,
     mode,
+    list,
+    libraryCount,
   });
 }

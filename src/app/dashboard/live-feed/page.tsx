@@ -92,6 +92,8 @@ export default function LiveFeedPage() {
   const [platformFilter, setPlatformFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [mode, setMode] = useState<"best" | "matches" | "newest">("newest");
+  const [list, setList] = useState<"daily" | "library">("daily");
+  const [libraryCount, setLibraryCount] = useState(0);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -112,6 +114,10 @@ export default function LiveFeedPage() {
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const offsetRef = useRef(0);
+  const modeRef = useRef(mode);
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
 
   const PAGE_SIZE = 50;
 
@@ -145,12 +151,13 @@ export default function LiveFeedPage() {
     const p = new URLSearchParams();
     p.set("limit", String(PAGE_SIZE));
     p.set("mode", mode);
+    if (mode === "matches") p.set("list", list);
     if (search.trim()) p.set("q", search.trim());
     if (platformFilter !== "all") p.set("platform", platformFilter);
     if (categoryFilter !== "all") p.set("category", categoryFilter);
     if (riskFilter !== "all") p.set("risk", riskFilter);
     return p.toString();
-  }, [search, riskFilter, platformFilter, categoryFilter, mode]);
+  }, [search, riskFilter, platformFilter, categoryFilter, mode, list]);
 
   const loadPage = useCallback(async (mode: "replace" | "append" | "merge") => {
     try {
@@ -172,6 +179,7 @@ export default function LiveFeedPage() {
       setPlatforms(Array.isArray(data.platforms) ? data.platforms : []);
       setCategories(Array.isArray(data.categories) ? data.categories : []);
       setLimitInfo({ plan: data.plan, used: data.used, limit: data.limit, limitReached: data.limitReached, bonus: data.bonus, swapsLeft: data.swapsLeft });
+      setLibraryCount(data.libraryCount ?? 0);
       if (mode === "append") {
         setJobs((prev: FeedJob[]) => {
           const seen = new Set(prev.map((j) => j.id));
@@ -221,22 +229,28 @@ export default function LiveFeedPage() {
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "global_jobs" },
-          (payload: any) => {
-            const job = payload.new;
-            if (!job?.id) return;
-            const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-            const collected = new Date(job.collected_at).getTime();
-            if (isNaN(collected) || collected < cutoff) return;
-            setJobs((prev) => [applyDefaults(job), ...prev.filter((j) => j.id !== job.id)]);
-            setNewIds((prev) => new Set(prev).add(job.id));
-            setTimeout(() => {
-              setNewIds((prev) => {
-                const next = new Set(prev);
-                next.delete(job.id);
-                return next;
-              });
-            }, 4000);
-          }
+              (payload: any) => {
+                const job = payload.new;
+                if (!job?.id) return;
+                const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+                const collected = new Date(job.collected_at).getTime();
+                if (isNaN(collected) || collected < cutoff) return;
+                // Only the raw "newest" feed should get live inserts immediately.
+                // best/matches need match scores + locked state computed server-side,
+                // so they are refreshed via the polling fallback instead.
+                if (modeRef.current !== "newest") {
+                  return;
+                }
+                setJobs((prev) => [applyDefaults(job), ...prev.filter((j) => j.id !== job.id)]);
+                setNewIds((prev) => new Set(prev).add(job.id));
+                setTimeout(() => {
+                  setNewIds((prev) => {
+                    const next = new Set(prev);
+                    next.delete(job.id);
+                    return next;
+                  });
+                }, 4000);
+              }
         );
       channel.subscribe((status: string) => {
         setLive(status === "SUBSCRIBED");
@@ -537,6 +551,33 @@ const openSwap = async (job: FeedJob) => {
           </select>
         </CardContent>
       </Card>
+
+      {/* My Matches sub-view: Daily List vs Library */}
+      {mode === "matches" && limitInfo.plan !== "pro" && (
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-2xl border-2 border-kawaii-lavender/30 bg-white/80 p-0.5 gap-0.5">
+            <button
+              onClick={() => setList("daily")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                list === "daily" ? "bg-kawaii-purple text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:bg-kawaii-lavender/20"
+              }`}
+            >
+              🗓️ Daily List ({limitInfo.used ?? 0}/{limitInfo.limit ?? 0})
+            </button>
+            <button
+              onClick={() => setList("library")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                list === "library" ? "bg-kawaii-purple text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:bg-kawaii-lavender/20"
+              }`}
+            >
+              📚 Library ({libraryCount})
+            </button>
+          </div>
+          <span className="text-xs text-slate-400">
+            {list === "daily" ? "Today's matched jobs" : "All matched jobs you've ever received"}
+          </span>
+        </div>
+      )}
 
       {/* Feed */}
       {loading ? (
