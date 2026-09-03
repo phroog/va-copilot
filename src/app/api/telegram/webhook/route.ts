@@ -81,15 +81,35 @@ async function handleMessage(chatId: number, text: string, username: string) {
     return;
   }
 
+  // Plan gating: live job matches work on Bloom + Money Club; everything else
+  // (stats, invoices, timer controls) is a Money Club perk.
+  const { data: sub } = await supabase.from("subscriptions").select("plan, status, access_until").eq("user_id", userId).maybeSingle();
+  const { effectivePlan } = await import("@/lib/payments");
+  const plan = effectivePlan(sub);
+  const hasJobs = plan === "basic" || plan === "pro";
+  const isPro = plan === "pro";
+
   if (/^\/match/i.test(text)) {
+    if (!hasJobs) {
+      await sendTelegram(chatId, "🎯 Live job matches are a <b>Bloom</b> or <b>Money Club</b> perk. Upgrade at getsari.com/pricing to see matches right here.");
+      return;
+    }
     await cmdMatch(userId, chatId);
     return;
   }
   if (/^\/stats/i.test(text)) {
+    if (!isPro) {
+      await sendTelegram(chatId, "📊 Weekly stats are a <b>Money Club</b> feature. Upgrade at getsari.com/pricing to unlock stats, invoices & timer controls.");
+      return;
+    }
     await cmdStats(userId, chatId);
     return;
   }
   if (/^\/invoices/i.test(text)) {
+    if (!isPro) {
+      await sendTelegram(chatId, "📄 Invoices are a <b>Money Club</b> feature. Upgrade at getsari.com/pricing to manage them from Telegram.");
+      return;
+    }
     await cmdInvoices(userId, chatId);
     return;
   }

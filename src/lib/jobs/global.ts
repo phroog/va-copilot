@@ -104,13 +104,15 @@ export async function notifyTelegramMatches(job: Record<string, any>) {
       const match = matchVectors(userVec, jobVec).score;
       if (match < AUTO_GRANT_THRESHOLD) continue;
 
-      // Pro-only: this realtime match push is a Money Club perk.
+      // Live job push is available on Bloom (basic) + Money Club (pro).
+      // Follow-ups/invoices/scam stay a Money Club perk (handled in the bot).
       const { data: sub } = await supabase
         .from("subscriptions")
         .select("plan, status, access_until")
         .eq("user_id", link.user_id)
         .maybeSingle();
-      if (effectivePlan(sub) !== "pro") continue;
+      const plan = effectivePlan(sub);
+      if (plan !== "basic" && plan !== "pro") continue;
 
       const text =
         `🎯 <b>New match for you!</b>\n\n` +
@@ -245,10 +247,9 @@ export async function upsertGlobalJob(job: Record<string, any>) {
     return { job: existing ?? null, inserted: false };
   }
 
-  // Real-time Telegram push (pro only, confident matches) — no cron needed.
+  // Real-time Telegram push (Bloom + Money Club, confident matches) — no cron needed.
   if (data) {
     await notifyTelegramMatches(data);
-    await notifyEmailMatches(data);
   }
 
   return { job: data, inserted: true };

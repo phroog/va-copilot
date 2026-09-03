@@ -110,9 +110,10 @@ export default function SetupPage() {
       {step === 1 && (
         <Card className="border-kawaii-lavender/40 dark:border-dark-surface">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">📬 Where should your job alerts go?</CardTitle>
+            <CardTitle className="flex items-center gap-2">📬 Your daily overview email</CardTitle>
             <CardDescription>
-              We'll send you an email whenever a matching job appears — plus occasional tips &amp; offers.
+              We send <b>one short email each evening</b> with your best matching jobs. That's it —
+              no spam, no per-job mailstorms. It's the calm fallback when you're away from the app.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -128,12 +129,15 @@ export default function SetupPage() {
             </div>
             <label className="flex items-center gap-3 py-2 cursor-pointer">
               <input type="checkbox" checked={pushMatches} onChange={(e) => setPushMatches(e.target.checked)} className="w-5 h-5" />
-              <span className="text-sm text-slate-600 dark:text-slate-300">🎯 Email me new matching jobs</span>
+              <span className="text-sm text-slate-600 dark:text-slate-300">🌙 Send my daily evening overview (top matches)</span>
             </label>
             <label className="flex items-center gap-3 py-2 cursor-pointer">
               <input type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} className="w-5 h-5" />
-              <span className="text-sm text-slate-600 dark:text-slate-300">💌 Occasional tips &amp; offers</span>
+              <span className="text-sm text-slate-600 dark:text-slate-300">💌 Rarely — only important updates &amp; offers</span>
             </label>
+            <div className="rounded-2xl bg-kawaii-lavender/15 dark:bg-dark-surface/50 p-3 text-xs text-slate-500 dark:text-slate-400">
+              🔔 Want it live instead? <b>Step 3 (Telegram)</b> pushes each matching job to your phone the moment it appears.
+            </div>
             <div className="flex items-center gap-3 pt-2">
               <Button variant="primary" onClick={saveEmail} disabled={savingEmail}>
                 {savingEmail ? "Saving…" : "Save & continue →"}
@@ -179,32 +183,85 @@ export default function SetupPage() {
         </Card>
       )}
 
-      {/* ── Step 3: Telegram (pro-gated) ────────────────────────────── */}
+      {/* ── Step 3: Telegram ────────────────────────────────────────── */}
       {step === 3 && (
         plan === "pro" ? (
           <TelegramSettings />
+        ) : plan === "basic" ? (
+          <div className="space-y-4">
+            <Card className="border-kawaii-lavender/40 dark:border-dark-surface">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">📨 Telegram — live jobs included with Bloom</CardTitle>
+                <CardDescription>
+                  With Sari Bloom you already get the essentials: every high-confidence job is pushed
+                  to your phone the second it appears. No checking, no refreshing.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="rounded-2xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 p-3 text-sm">
+                  ✅ <b>Included with Bloom:</b> 🎯 Live job matches (75%+ match) straight to Telegram.
+                </div>
+                <div className="rounded-2xl bg-white/60 dark:bg-dark-surface/40 p-3 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+                  <p>🔒 <b>Money Club adds:</b> follow-up reminders, invoice alerts, scam alerts — plus /stats, /invoices and timer controls inside the bot.</p>
+                </div>
+                <TelegramSettings />
+              </CardContent>
+            </Card>
+            <Card className="border-kawaii-purple/40 dark:border-kawaii-lavender/30 bg-gradient-to-br from-kawaii-purple/10 to-kawaii-pink/10 dark:from-kawaii-purple/15 dark:to-kawaii-pink/10">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Why freelancers love instant alerts</h3>
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">⚡</span>
+                    <div>
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Top jobs get taken in minutes</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">A Telegram push beats refreshing a tab. You apply first — that's how the best clients are won.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">😎</span>
+                    <div>
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Look reliable to your clients</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Answer within minutes, never miss a follow-up. Clients notice freelancers who respond fast — that's how you win the repeat work.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">📈</span>
+                    <div>
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">"I stopped refreshing job boards — the jobs find me now"</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">— Marco, VA, Manila. First $6,900/mo month with Sari alerts + AI pitches.</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-5">
+                  <Link href="/pricing">
+                    <Button variant="outline" className="w-full">👑 Upgrade to Money Club for the full bot →</Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         ) : (
           <Card className="border-kawaii-coral/40 dark:border-kawaii-pink/30 bg-gradient-to-br from-kawaii-coral/10 to-kawaii-pink/10 dark:from-kawaii-pink/15 dark:to-kawaii-purple/15">
             <CardContent className="p-8 text-center">
               <p className="text-5xl mb-3">🔒</p>
               <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100">
-                Telegram alerts are a <span className="text-kawaii-coral dark:text-kawaii-pink">Money Club</span> perk
+                Telegram alerts start with <span className="text-kawaii-purple dark:text-kawaii-lavender">Sari Bloom</span>
               </h2>
               <p className="mt-3 text-sm text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
                 Get new matching jobs pushed straight to your phone the second they appear —{" "}
                 <b>before other freelancers even see them</b>. No checking the app, no missed
-                opportunities. Money Club members never miss a high-paying job.
+                opportunities.
               </p>
               <ul className="mt-4 inline-block text-left text-sm text-slate-600 dark:text-slate-300 space-y-1">
-                <li>⚡ Instant match alerts on Telegram</li>
+                <li>⚡ <b>Bloom ($5):</b> live job matches on Telegram</li>
+                <li>👑 <b>Money Club ($10):</b> + follow-ups, invoices, scam alerts &amp; full bot control</li>
                 <li>🎯 Only high-confidence jobs (75%+ match)</li>
-                <li>⏰ Follow-up &amp; invoice reminders</li>
-                <li>🛡️ Scam alerts in real time</li>
               </ul>
               <div className="mt-6">
                 <Link href="/pricing">
                   <Button className="px-8 py-3 text-base rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold animate-glow-pulse">
-                    👑 Unlock with Money Club
+                    🚀 Start with Bloom
                   </Button>
                 </Link>
               </div>

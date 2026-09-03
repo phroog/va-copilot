@@ -10,6 +10,7 @@ const BOT_URL = (username: string) => `https://t.me/${username}`;
 export default function TelegramSettings() {
   const { showToast } = useToast();
   const [status, setStatus] = useState<{ configured: boolean; botUsername: string; linked: boolean; chatId: number | null; username: string | null; linkedAt: string | null } | null>(null);
+  const [plan, setPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
@@ -23,11 +24,13 @@ export default function TelegramSettings() {
 
   const load = async () => {
     try {
-      const [s, p] = await Promise.all([
+      const [s, p, sub] = await Promise.all([
         fetch("/api/telegram/connect").then((r) => r.json()),
         fetch("/api/user-settings").then((r) => r.json()),
+        fetch("/api/subscription-status").then((r) => r.json()),
       ]);
       setStatus(s);
+      setPlan(sub.plan ?? "free");
       const set = p.settings;
       if (set) {
         setPrefs({
@@ -110,22 +113,41 @@ export default function TelegramSettings() {
 
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Notifications</p>
-              {([
-                ["telegram_push_matches", "🎯 New job matches"],
-                ["telegram_push_followups", "⏰ Due follow-ups"],
-                ["telegram_push_invoices", "📄 Open invoices"],
-                ["telegram_push_scam", "🛡️ Scam alerts"],
-              ] as [keyof typeof prefs, string][]).map(([key, label]) => (
-                <label key={key} className="flex items-center gap-3 py-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={prefs[key]}
-                    onChange={(e) => updatePrefs({ [key]: e.target.checked })}
-                    className="w-5 h-5"
-                  />
-                  <span className="text-sm text-slate-600 dark:text-slate-300">{label}</span>
-                </label>
-              ))}
+              {plan === "pro" ? (
+                <>
+                  {([
+                    ["telegram_push_matches", "🎯 New job matches"],
+                    ["telegram_push_followups", "⏰ Due follow-ups"],
+                    ["telegram_push_invoices", "📄 Open invoices"],
+                    ["telegram_push_scam", "🛡️ Scam alerts"],
+                  ] as [keyof typeof prefs, string][]).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-3 py-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={prefs[key]}
+                        onChange={(e) => updatePrefs({ [key]: e.target.checked })}
+                        className="w-5 h-5"
+                      />
+                      <span className="text-sm text-slate-600 dark:text-slate-300">{label}</span>
+                    </label>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <label className="flex items-center gap-3 py-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={prefs.telegram_push_matches}
+                      onChange={(e) => updatePrefs({ telegram_push_matches: e.target.checked })}
+                      className="w-5 h-5"
+                    />
+                    <span className="text-sm text-slate-600 dark:text-slate-300">🎯 Live job matches</span>
+                  </label>
+                  <p className="text-xs text-slate-400">
+                    ⭐ Upgrade to <b>Money Club</b> for follow-up, invoice &amp; scam alerts — and /stats, /invoices &amp; timer controls in the bot.
+                  </p>
+                </>
+              )}
             </div>
 
             <Button variant="outline" size="sm" onClick={disconnect}>Disconnect</Button>
