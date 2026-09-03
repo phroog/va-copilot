@@ -1,0 +1,14 @@
+-- ═══════════════════════════════════════════════════════════════
+-- Point the realtime Telegram push at the Vercel endpoint (no Edge
+-- Function / no cron). Runs AFTER 032_telegram_realtime.sql (which
+-- creates the trigger). In the Supabase dashboard SQL editor run:
+--
+--   select set_config('app.telegram_push_url',
+--     'https://va-copilot-theta.vercel.app/api/telegram/realtime', false);
+--   select set_config('app.telegram_push_secret',
+--     '<same-secret-as-TELEGRAM_PUSH_SECRET-on-Vercel>', false);
+--
+-- ═══════════════════════════════════════════════════════════════
+-- These app.* settings are read by the trigger (current_setting) and used as
+-- the pg_net HTTP target. The secret must match TELEGRAM_PUSH_SECRET in the
+-- Vercel environment so the endpoint accepts the request.

@@ -31,16 +31,25 @@ export async function PUT(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { default_hourly_rate, agency_enabled, default_tax_rate } = await request.json();
+  const body = await request.json();
 
   const update: Record<string, any> = {};
-  if (default_hourly_rate !== undefined) update.default_hourly_rate = default_hourly_rate;
-  if (agency_enabled !== undefined) update.agency_enabled = agency_enabled === true;
-  if (default_tax_rate !== undefined) update.default_tax_rate = default_tax_rate;
+  if (body.default_hourly_rate !== undefined) update.default_hourly_rate = body.default_hourly_rate;
+  if (body.agency_enabled !== undefined) update.agency_enabled = body.agency_enabled === true;
+  if (body.default_tax_rate !== undefined) update.default_tax_rate = body.default_tax_rate;
+  for (const key of [
+    "telegram_enabled",
+    "telegram_push_matches",
+    "telegram_push_followups",
+    "telegram_push_invoices",
+    "telegram_push_scam",
+  ]) {
+    if (body[key] !== undefined) update[key] = body[key] === true;
+  }
 
   const { data, error } = await supabase
     .from("user_settings")
-    .upsert({ user_id: user.id, ...update })
+    .upsert({ user_id: user.id, ...update }, { onConflict: "user_id" })
     .select()
     .single();
 
