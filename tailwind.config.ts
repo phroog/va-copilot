@@ -54,6 +54,10 @@ const config: Config = {
         "fade-in": "fadeIn 0.3s ease-in-out",
         "slide-up": "slideUp 0.3s ease-out",
         "pulse-soft": "pulseSoft 2s ease-in-out infinite",
+        float: "float 6s ease-in-out infinite",
+        vibrate: "vibrate 2.5s ease-in-out infinite",
+        "glow-pulse": "glowPulse 2s ease-in-out infinite",
+        "pop-in": "popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both",
       },
       keyframes: {
         blob: {
@@ -72,6 +76,29 @@ const config: Config = {
         pulseSoft: {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.7" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        vibrate: {
+          "0%, 100%": { transform: "translateX(0)" },
+          "20%": { transform: "translateX(-2px) rotate(-0.5deg)" },
+          "40%": { transform: "translateX(2px) rotate(0.5deg)" },
+          "60%": { transform: "translateX(-1px)" },
+          "80%": { transform: "translateX(1px)" },
+        },
+        glowPulse: {
+          "0%, 100%": {
+            boxShadow: "0 0 0 0 rgba(108,78,143,0.45), 0 0 30px 4px rgba(232,165,152,0.5)",
+          },
+          "50%": {
+            boxShadow: "0 0 0 14px rgba(108,78,143,0), 0 0 50px 12px rgba(232,165,152,0.7)",
+          },
+        },
+        popIn: {
+          "0%": { opacity: "0", transform: "scale(0.9)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
         },
       },
     },

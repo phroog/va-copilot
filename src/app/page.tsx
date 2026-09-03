@@ -1,9 +1,9 @@
 "use client";
 
 import Header from "@/components/header";
-import HeroSection from "@/components/hero-section";
+import ImpactHero from "@/components/impact-hero";
 import TrustBar from "@/components/trust-bar";
-import ProblemSection from "@/components/problem-section";
+import CaseStudy from "@/components/case-study";
 import FeatureSection from "@/components/feature-section";
 import HowItWorks from "@/components/how-it-works";
 import PricingSection from "@/components/pricing-section";
@@ -23,9 +23,9 @@ export default function Home() {
 
       <div className="relative z-10">
         <Header />
-        <HeroSection />
+        <ImpactHero />
         <TrustBar />
-        <ProblemSection />
+        <CaseStudy />
         <FeatureSection />
         <HowItWorks />
         <PricingSection />
