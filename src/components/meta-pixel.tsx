@@ -41,39 +41,38 @@ function hasConsent(): boolean {
 }
 
 /* Meta Pixel loader. Injects the base snippet only after the visitor accepted
-   cookies (GDPR/ePrivacy), initialises fbq and fires PageView on every route
-   change (SPA navigation doesn't reload the page). */
+   cookies (GDPR/ePrivacy), initialises fbq, fires the first PageView, and fires
+   a fresh PageView on every subsequent route change (SPA navigation). */
 export default function MetaPixel() {
   const pathname = usePathname();
   const [consented, setConsented] = useState(false);
-  const initedRef = useRef(false);
+  const prevPathRef = useRef<string | null>(null);
 
   useEffect(() => {
     setConsented(hasConsent());
   }, []);
 
-  // Fire PageView whenever the route changes, but only after init has run.
+  // Fire PageView on route changes after the initial load (the inline script
+  // handles the very first PageView).
   useEffect(() => {
-    if (!consented || !initedRef.current) return;
-    const url = typeof window !== "undefined" ? window.location.href : pathname;
-    try {
-      window.fbq?.("track", "PageView", { url });
-    } catch {}
+    if (!consented) return;
+    if (prevPathRef.current === null) {
+      prevPathRef.current = pathname; // initial render — inline script already fired
+      return;
+    }
+    if (prevPathRef.current !== pathname) {
+      prevPathRef.current = pathname;
+      try {
+        window.fbq?.("track", "PageView", { url: typeof window !== "undefined" ? window.location.href : pathname });
+      } catch {}
+    }
   }, [pathname, consented]);
-
-  const onLoad = () => {
-    try {
-      window.fbq?.("init", PIXEL_ID);
-      window.fbq?.("track", "PageView");
-      initedRef.current = true;
-    } catch {}
-  };
 
   if (!consented) return null;
 
   return (
     <>
-      <Script id="meta-pixel" strategy="afterInteractive" onLoad={onLoad}>
+      <Script id="meta-pixel" strategy="afterInteractive">
         {`
           !function(f,b,e,v,n,t,s)
           {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -84,6 +83,7 @@ export default function MetaPixel() {
           s.parentNode.insertBefore(t,s)}(window, document,'script',
           'https://connect.facebook.net/en_US/fbevents.js');
           fbq('init', '${PIXEL_ID}');
+          fbq('track', 'PageView');
         `}
       </Script>
       <noscript>
