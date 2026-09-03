@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/components/toast";
 
 interface PublicProfile {
   user_id: string;
@@ -33,7 +32,6 @@ interface Stats {
 }
 
 export default function VAPublicProfile({ params }: { params: Promise<{ username: string }> }) {
-  const { showToast } = useToast();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -61,9 +59,8 @@ export default function VAPublicProfile({ params }: { params: Promise<{ username
     try {
       await navigator.clipboard.writeText(window.location.href);
       setCopied(true);
-      showToast("Profile link copied — share it with pride 🎉");
       setTimeout(() => setCopied(false), 2000);
-    } catch { showToast("Could not copy link", "error"); }
+    } catch {}
   };
 
   if (loading) {
