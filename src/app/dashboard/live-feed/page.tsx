@@ -361,8 +361,8 @@ const openSwap = async (job: FeedJob) => {
       let best: FeedJob[] = [];
       if (fromMatches) {
         const [nr, br] = await Promise.all([
-          fetch("/api/jobs/feed?mode=newest&count_views=0&limit=50").then((d) => d.json()),
-          fetch("/api/jobs/feed?mode=best&count_views=0&limit=50").then((d) => d.json()),
+          fetch("/api/jobs/feed?mode=newest&count_views=0&limit=20").then((d) => d.json()),
+          fetch("/api/jobs/feed?mode=best&count_views=0&limit=20").then((d) => d.json()),
         ]);
         newest = nr.jobs ?? [];
         best = br.jobs ?? [];
@@ -371,7 +371,7 @@ const openSwap = async (job: FeedJob) => {
         best = best.filter((j: any) => j.id !== job.id);
       } else {
         // offer the user's own matched jobs to give up (library = everything owned)
-        const mr = await fetch("/api/jobs/feed?mode=matches&list=library&count_views=0&limit=200").then((d) => d.json());
+        const mr = await fetch("/api/jobs/feed?mode=matches&list=library&count_views=0&limit=100").then((d) => d.json());
         owned = (mr.jobs ?? []).filter((j: any) => j.id !== job.id);
       }
       setSwapFromMatches(fromMatches);
@@ -703,7 +703,7 @@ const openSwap = async (job: FeedJob) => {
 
       {/* Swap picker */}
       <Dialog open={swapCandidates != null} onOpenChange={(open) => !open && setSwapCandidates(null)}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">🔄 Swap</DialogTitle>
             <DialogDescription>
@@ -714,7 +714,7 @@ const openSwap = async (job: FeedJob) => {
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 pr-1">
+          <div className="space-y-3 pr-1 max-h-[55vh] overflow-y-auto"> 
             {swapFromMatches ? (
               <>
                 {/* Mobile: segmented toggle between the two lists */}
@@ -786,18 +786,18 @@ const openSwap = async (job: FeedJob) => {
 
 function SwapRow({ job, onClick }: { job: FeedJob; onClick: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/60 dark:bg-dark-surface/40 p-2.5">
-      <div className="min-w-0">
-        <p className="text-sm font-semibold truncate text-slate-700 dark:text-slate-200">
+    <div className="flex items-center justify-between gap-2 rounded-xl bg-white/60 dark:bg-dark-surface/40 px-2.5 py-2">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold leading-snug line-clamp-2 text-slate-700 dark:text-slate-200">
           {job.title}
         </p>
-        <p className="text-xs text-slate-400">
+        <p className="text-[11px] text-slate-400 mt-0.5 truncate">
           {job.platform}
           {job.profile_match != null ? ` · 🎯 ${job.profile_match}%` : ""}
           {job.budget ? ` · ${job.budget}` : ""}
         </p>
       </div>
-      <Button size="sm" variant="outline" onClick={onClick} className="shrink-0">Swap</Button>
+      <Button size="sm" variant="outline" onClick={onClick} className="shrink-0 px-2.5 h-7 text-xs">Swap</Button>
     </div>
   );
 }
