@@ -56,6 +56,20 @@ export async function PUT(request: Request) {
 
   const update: Record<string, any> = { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id, skills, experience_level, job_categories, base_currency };
 
+  // Ensure required NOT NULL fields exist for a fresh profile (upsert would
+  // INSERT for a brand-new user, and public_id/inbox_email_alias are NOT NULL).
+  const { data: existingProfile } = await supabase
+    .from("profiles")
+    .select("public_id, inbox_email_alias")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!existingProfile || !existingProfile.public_id) {
+    update.public_id = "user_" + randomUUID().split("-")[0].slice(0, 8);
+  }
+  if (!existingProfile || !existingProfile.inbox_email_alias) {
+    update.inbox_email_alias = randomUUID().split("-")[0];
+  }
+
   if (job_vector !== undefined && job_vector !== null) {
     if (!Array.isArray(job_vector) || job_vector.length !== 5 || job_vector.some((n: any) => !Number.isInteger(n) || n < 1 || n > 5)) {
       return NextResponse.json({ error: "job_vector must be 5 integers between 1 and 5" }, { status: 400 });
