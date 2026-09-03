@@ -98,12 +98,26 @@ Keep it under 300 words. Do not use placeholders like [Your Name]. Write natural
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 3);
 
-  await supabase.from("follow_ups").insert({
-    job_id: job.id,
-    user_id: userId,
-    due_date: dueDate.toISOString().split("T")[0],
-    status: "pending",
-  });
+  const { data: followUp } = await supabase
+    .from("follow_ups")
+    .insert({
+      job_id: job.id,
+      user_id: userId,
+      due_date: dueDate.toISOString().split("T")[0],
+      status: "pending",
+    })
+    .select()
+    .single();
+
+  // Real-time follow-up reminder (only if the user enabled it in Settings).
+  if (followUp?.id) {
+    const { notifyTelegramEvent } = await import("@/lib/telegram");
+    await notifyTelegramEvent(
+      userId,
+      "followups",
+      `⏰ <b>Follow-up scheduled</b>\n\nYou're pitching <b>${job.title}</b>. We'll remind you on <b>${followUp.due_date}</b> to follow up and close the deal.`
+    );
+  }
 
   return pitch.content;
 }

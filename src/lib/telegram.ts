@@ -58,3 +58,39 @@ export async function notifyUser(
   }
   return sendTelegram(link.chat_id, text);
 }
+
+/* Generic realtime dispatcher for the notification categories in Settings.
+   Respects each user's per-category toggle (telegram_push_followups / invoices
+   / scam). No cron — call this from the exact place the event happens. */
+export async function notifyTelegramEvent(
+  userId: string,
+  category: "followups" | "invoices" | "scam",
+  text: string
+): Promise<boolean> {
+  try {
+    const supabase = createClient();
+    const { data: link } = await supabase
+      .from("telegram_links")
+      .select("chat_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!link) return false;
+
+    const { data: settings } = await supabase
+      .from("user_settings")
+      .select("telegram_enabled, telegram_push_followups, telegram_push_invoices, telegram_push_scam")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!settings?.telegram_enabled) return false;
+
+    const toggle =
+      category === "followups" ? settings.telegram_push_followups
+      : category === "invoices" ? settings.telegram_push_invoices
+      : settings.telegram_push_scam;
+    if (toggle !== true) return false;
+
+    return sendTelegram(link.chat_id, text);
+  } catch {
+    return false;
+  }
+}

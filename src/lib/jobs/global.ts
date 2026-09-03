@@ -4,6 +4,65 @@ import { matchVectors, validateUserVector } from "@/lib/jobs/profile-vector";
 import { effectivePlan, AUTO_GRANT_THRESHOLD } from "@/lib/payments";
 import { sendTelegram } from "@/lib/telegram";
 
+/* Realtime reminder sweep: runs piggybacked on the job push (which fires on
+   every collector insert, i.e. every few minutes — effectively realtime, no
+   cron). For every Telegram-enabled user it pushes due/overdue follow-ups once
+   (tracked via telegram_pushed_jobs, prefix "fu:<id>"). */
+async function pushDueFollowups() {
+  try {
+    const supabase = createServiceRoleClient();
+    const now = new Date().toISOString().slice(0, 10);
+    const { data: due } = await supabase
+      .from("follow_ups")
+      .select("id, user_id, action, due_date")
+      .eq("status", "pending")
+      .lte("due_date", now);
+
+    const byUser = new Map<string, any[]>();
+    for (const f of (due ?? [])) {
+      const list = byUser.get(f.user_id) ?? [];
+      list.push(f);
+      byUser.set(f.user_id, list);
+    }
+
+    const userIds = Array.from(byUser.keys());
+    for (const userId of userIds) {
+      const items = byUser.get(userId) ?? [];
+      const { data: settings } = await supabase
+        .from("user_settings")
+        .select("telegram_enabled, telegram_push_followups, telegram_pushed_jobs")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!settings?.telegram_enabled || settings.telegram_push_followups !== true) continue;
+
+      const pushed = Array.isArray(settings.telegram_pushed_jobs) ? settings.telegram_pushed_jobs : [];
+      const fresh = items.filter((f: any) => !pushed.includes(`fu:${f.id}`));
+      if (fresh.length === 0) continue;
+
+      const { data: link } = await supabase
+        .from("telegram_links")
+        .select("chat_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!link) continue;
+
+      const lines = ["⏰ <b>Follow-ups due:</b>\n"];
+      for (const f of fresh.slice(0, 5)) {
+        lines.push(`• ${f.action || "Follow-up"} (due ${f.due_date})`);
+      }
+      const ok = await sendTelegram(link.chat_id, lines.join("\n"));
+      if (ok) {
+        await supabase
+          .from("user_settings")
+          .update({ telegram_pushed_jobs: [...pushed, ...fresh.map((f: any) => `fu:${f.id}`)].slice(-100) })
+          .eq("user_id", userId);
+      }
+    }
+  } catch {
+    // Never let a reminder sweep break the job insert.
+  }
+}
+
 /**
  * Real-time Telegram push for a freshly inserted job (no cron / no DB trigger —
  * fires right here when the collector inserts a new row). For every Money Club
@@ -66,6 +125,9 @@ export async function notifyTelegramMatches(job: Record<string, any>) {
   } catch {
     // Never break the job insert because of a notification failure.
   }
+
+  // Due/overdue follow-up reminders (piggybacked, so no cron needed).
+  await pushDueFollowups();
 }
 
 /**

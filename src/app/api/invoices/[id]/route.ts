@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sellerSnapshot } from "@/lib/invoices/pdf";
-import { normalizeCurrency } from "@/lib/currency";
+import { normalizeCurrency, formatMoney } from "@/lib/currency";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = createClient();
@@ -64,6 +64,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .eq("id", id)
       .eq("user_id", user.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Real-time Telegram push when an invoice is marked sent/overdue.
+  if (status === "sent" || status === "overdue") {
+    const { data: inv } = await supabase
+      .from("invoices")
+      .select("invoice_number, client_name, total, currency")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (inv) {
+      const { notifyTelegramEvent } = await import("@/lib/telegram");
+      await notifyTelegramEvent(
+        user.id,
+        "invoices",
+        `📄 <b>Invoice ${inv.invoice_number} is ${status}</b>\n\n${inv.client_name ?? "Client"} · ${formatMoney(Number(inv.total) || 0, inv.currency || "USD")}`
+      );
+    }
   }
 
   // When an invoice is marked paid, its total automatically lands in finances
