@@ -1,5 +1,5 @@
 ﻿/* â”€â”€ Credit Balance Poller â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-const SARI_API = "https://va-copilot-theta.vercel.app";async function pollCredits() {
+const SARI_API = "https://getsari.com";async function pollCredits() {
   try {
     const { sariToken } = await chrome.storage.local.get("sariToken");
     if (!sariToken) return;
