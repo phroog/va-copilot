@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { sendEmail, layoutEmail } from "@/lib/email";
 import { matchVectors, validateUserVector } from "@/lib/jobs/profile-vector";
-import { effectivePlan, AUTO_GRANT_THRESHOLD } from "@/lib/payments";
+import { effectivePlan, AUTO_GRANT_THRESHOLD, PLANS } from "@/lib/payments";
 
 export const runtime = "nodejs";
 
@@ -66,9 +66,13 @@ export async function GET(request: Request) {
       .sort((a: any, b: any) => b.score - a.score)
       .slice(0, 5);
 
+    // Respect the daily quota: Bloom lists at most dailyJobLimit jobs.
+    const quotaLimit = PLANS[plan].dailyJobLimit; // basic=100, pro=null
+    const cappedMatches = quotaLimit != null ? matches.slice(0, quotaLimit) : matches;
+
     const name = profile?.full_name?.split(" ")[0] || "there";
-    const rows = matches.length
-      ? matches.map((j: any) => (
+    const rows = cappedMatches.length
+      ? cappedMatches.map((j: any) => (
           `<tr>
              <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;">
                <a href="${j.url}" style="color:#6C4E8F;font-weight:700;text-decoration:none;">${j.title}</a>
@@ -88,7 +92,7 @@ export async function GET(request: Request) {
        </p>`
     );
 
-    const ok = await sendEmail({ to, subject: `📋 Your daily Sari overview — ${matches.length} new match${matches.length === 1 ? "" : "es"}`, html });
+    const ok = await sendEmail({ to, subject: `📋 Your daily Sari overview — ${cappedMatches.length} new match${cappedMatches.length === 1 ? "" : "es"}`, html });
     if (ok) sent++;
   }
 
