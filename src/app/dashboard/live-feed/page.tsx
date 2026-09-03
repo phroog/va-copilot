@@ -712,9 +712,9 @@ const openSwap = async (job: FeedJob) => {
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="space-y-4 pr-1">
             {swapFromMatches ? (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">🆕 Newest</p>
                   <div className="space-y-2">
