@@ -5,7 +5,7 @@ const COMPANY = {
   vat: null as string | null,
   address: "Tornimäe tn 5, 10145 Tallinn, Harju maakond, Kesklinna linnaosa, Estonia",
   rep: "Julian Busarello",
-  email: "hello.vascora@gmail.com",
+  email: "hello@getsari.com",
 };
 
 export default function ImprintPage() {

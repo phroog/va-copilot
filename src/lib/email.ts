@@ -48,7 +48,7 @@ export function layoutEmail(title: string, bodyHtml: string, footer?: string): s
       <div style="color:#475569;font-size:14px;line-height:1.6;">${bodyHtml}</div>
       ${footer ? `<div style="margin-top:20px;color:#94a3b8;font-size:12px;">${footer}</div>` : ""}
       <div style="margin-top:20px;color:#94a3b8;font-size:11px;border-top:1px solid #eee;padding-top:12px;">
-        Vascora OÜ · Tornimäe tn 5, 10145 Tallinn, Estonia · hello.vascora@gmail.com
+        Vascora OÜ · Tornimäe tn 5, 10145 Tallinn, Estonia · hello@getsari.com
       </div>
     </div>
   </div>`;

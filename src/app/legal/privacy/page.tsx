@@ -15,7 +15,7 @@ export default function PrivacyPage() {
           The controller of your personal data under the EU General Data Protection Regulation (GDPR)
           is <b>Vascora OÜ</b>, Tornimäe tn 5, 10145 Tallinn, Estonia, represented by Julian Busarello.
           Contact:{" "}
-          <a href="mailto:hello.vascora@gmail.com" className="text-kawaii-purple underline">hello.vascora@gmail.com</a>.
+          <a href="mailto:hello@getsari.com" className="text-kawaii-purple underline">hello@getsari.com</a>.
         </p>
         <p className="mt-2">
           This policy also reflects applicable data protection laws in the countries we serve,
@@ -92,7 +92,7 @@ export default function PrivacyPage() {
           <li>Right to lodge a complaint with a supervisory authority (in Estonia: the Andmekaitse Inspektsioon, <a href="https://www.aki.ee" target="_blank" rel="noopener noreferrer" className="text-kawaii-purple underline">aki.ee</a>).</li>
         </ul>
         <p className="mt-2">
-          To exercise any right, email <a href="mailto:hello.vascora@gmail.com" className="text-kawaii-purple underline">hello.vascora@gmail.com</a>.
+          To exercise any right, email <a href="mailto:hello@getsari.com" className="text-kawaii-purple underline">hello@getsari.com</a>.
           We respond within the timeframe required by law (usually 30 days). We may ask you to verify
           your identity first.
         </p>
@@ -123,7 +123,7 @@ export default function PrivacyPage() {
       <Section title="11. Contact">
         <p>
           Data protection enquiries:{" "}
-          <a href="mailto:hello.vascora@gmail.com" className="text-kawaii-purple underline">hello.vascora@gmail.com</a>
+          <a href="mailto:hello@getsari.com" className="text-kawaii-purple underline">hello@getsari.com</a>
           {" "}or Vascora OÜ, Tornimäe tn 5, 10145 Tallinn, Estonia.
         </p>
       </Section>

@@ -151,7 +151,7 @@ export default function TermsPage() {
       <Section n={14} title="14. Contact">
         <p>
           Questions about these Terms:{" "}
-          <a href="mailto:hello.vascora@gmail.com" className="text-kawaii-purple underline">hello.vascora@gmail.com</a>
+          <a href="mailto:hello@getsari.com" className="text-kawaii-purple underline">hello@getsari.com</a>
           {" "}or the address in the{" "}
           <Link href="/legal/imprint" className="text-kawaii-purple underline">Imprint</Link>.
         </p>

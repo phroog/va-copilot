@@ -23,7 +23,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
         <div className="max-w-3xl mx-auto px-4 py-6 flex flex-wrap gap-4 text-xs text-slate-400">
           <Link href="/" className="hover:text-sari-ube">← Back to Sari</Link>
           <span>Vascora OÜ · Tornimäe tn 5, 10145 Tallinn, Estonia</span>
-          <a href="mailto:hello.vascora@gmail.com" className="hover:text-sari-ube">hello.vascora@gmail.com</a>
+          <a href="mailto:hello@getsari.com" className="hover:text-sari-ube">hello@getsari.com</a>
         </div>
       </footer>
     </div>
