@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 
 const PIXEL_ID = "1068796469204800";
@@ -45,7 +45,6 @@ function hasConsent(): boolean {
    change (SPA navigation doesn't reload the page). */
 export default function MetaPixel() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [consented, setConsented] = useState(false);
   const initedRef = useRef(false);
 
@@ -56,11 +55,11 @@ export default function MetaPixel() {
   // Fire PageView whenever the route changes, but only after init has run.
   useEffect(() => {
     if (!consented || !initedRef.current) return;
-    const url = `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`;
+    const url = typeof window !== "undefined" ? window.location.href : pathname;
     try {
       window.fbq?.("track", "PageView", { url });
     } catch {}
-  }, [pathname, searchParams, consented]);
+  }, [pathname, consented]);
 
   const onLoad = () => {
     try {
