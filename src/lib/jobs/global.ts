@@ -1,5 +1,72 @@
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { categorizeJob } from "@/lib/jobs/scoring";
+import { matchVectors, validateUserVector } from "@/lib/jobs/profile-vector";
+import { effectivePlan, AUTO_GRANT_THRESHOLD } from "@/lib/payments";
+import { sendTelegram } from "@/lib/telegram";
+
+/**
+ * Real-time Telegram push for a freshly inserted job (no cron / no DB trigger —
+ * fires right here when the collector inserts a new row). For every Money Club
+ * (pro) user with Telegram linked + match notifications enabled, it sends the
+ * job as soon as the match score clears the confident threshold.
+ */
+export async function notifyTelegramMatches(job: Record<string, any>) {
+  if (!job?.id) return;
+  const jobVec: any = Array.isArray(job.profile_vector) ? job.profile_vector : null;
+  if (!jobVec) return;
+  const title = job.title || "";
+  const platform = job.platform || "";
+  const budget = job.budget || "";
+  const url = job.url || "";
+
+  try {
+    const supabase = createServiceRoleClient();
+    const { data: links } = await supabase.from("telegram_links").select("user_id, chat_id");
+    for (const link of links ?? []) {
+      const { data: settings } = await supabase
+        .from("user_settings")
+        .select("telegram_enabled, telegram_push_matches, telegram_pushed_jobs")
+        .eq("user_id", link.user_id)
+        .maybeSingle();
+      if (!settings?.telegram_enabled || settings.telegram_push_matches !== true) continue;
+
+      const pushed = Array.isArray(settings.telegram_pushed_jobs) ? settings.telegram_pushed_jobs : [];
+      if (pushed.includes(job.id)) continue;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("job_vector")
+        .eq("user_id", link.user_id)
+        .maybeSingle();
+      const userVec = profile?.job_vector ? validateUserVector(profile.job_vector) : null;
+      if (!userVec) continue;
+      const match = matchVectors(userVec, jobVec).score;
+      if (match < AUTO_GRANT_THRESHOLD) continue;
+
+      // Pro-only: this realtime match push is a Money Club perk.
+      const { data: sub } = await supabase
+        .from("subscriptions")
+        .select("plan, status, access_until")
+        .eq("user_id", link.user_id)
+        .maybeSingle();
+      if (effectivePlan(sub) !== "pro") continue;
+
+      const text =
+        `🎯 <b>New match for you!</b>\n\n` +
+        `<b>${title}</b> (${match}%)\n${platform} · ${budget || "n/a"}` +
+        (url ? `\n<a href="${url}">Open job ↗</a>` : "");
+      const ok = await sendTelegram(link.chat_id, text);
+      if (ok) {
+        await supabase
+          .from("user_settings")
+          .update({ telegram_pushed_jobs: [...pushed, job.id].slice(-50) })
+          .eq("user_id", link.user_id);
+      }
+    }
+  } catch {
+    // Never break the job insert because of a notification failure.
+  }
+}
 
 /**
  * Insert a job into the shared `global_jobs` feed.
@@ -46,6 +113,11 @@ export async function upsertGlobalJob(job: Record<string, any>) {
       .eq("url", payload.url)
       .maybeSingle();
     return { job: existing ?? null, inserted: false };
+  }
+
+  // Real-time Telegram push (pro only, confident matches) — no cron needed.
+  if (data) {
+    await notifyTelegramMatches(data);
   }
 
   return { job: data, inserted: true };
