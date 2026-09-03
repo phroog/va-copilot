@@ -119,7 +119,7 @@ export async function GET(request: Request) {
   if (planLimit != null) {
     const { count } = await supabase
       .from("user_opened_jobs")
-      .select("id", { count: "exact", head: true })
+      .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
       .gte("opened_at", today);
     usedToday = count ?? 0;
@@ -179,7 +179,7 @@ export async function GET(request: Request) {
   if (mode === "matches") {
     const { count: libCount } = await supabase
       .from("user_opened_jobs")
-      .select("id", { count: "exact", head: true })
+      .select("*", { count: "exact", head: true })
       .eq("user_id", user.id);
     libraryCount = libCount ?? 0;
 
