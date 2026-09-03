@@ -13,6 +13,7 @@ import { formatMoney, convert, normalizeCurrency } from "@/lib/currency";
 import TelegramCta from "@/components/telegram-cta";
 import UpsellAd from "@/components/upsell-ad";
 import StreakCard from "@/components/streak-card";
+import { trackEvent } from "@/components/meta-pixel";
 
 interface FeedJob {
   id: string;
@@ -69,6 +70,15 @@ export default function DashboardHome() {
   const [elapsed, setElapsed] = useState(0);
   const [todayHours, setTodayHours] = useState(0);
   const [todayEarnings, setTodayEarnings] = useState(0);
+
+  // Meta Pixel: fire Purchase once when returning from the Stripe checkout.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("upgrade") === "success") {
+      trackEvent("Purchase", { currency: "USD", value: 1 });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     const hour = new Date().getHours();

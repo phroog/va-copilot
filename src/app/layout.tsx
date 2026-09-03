@@ -3,6 +3,7 @@ import "./globals.css";
 import { LocaleProvider } from "@/lib/i18n/context";
 import { ThemeProvider } from "@/lib/theme/theme-provider";
 import CookieConsent from "@/components/cookie-consent";
+import MetaPixel from "@/components/meta-pixel";
 
 export const metadata: Metadata = {
   title: "Sari",
@@ -17,6 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-[#FFF0F5] dark:bg-dark-bg text-slate-800 dark:text-slate-100 antialiased">
+        <MetaPixel />
         <ThemeProvider>
           <LocaleProvider>
             {children}

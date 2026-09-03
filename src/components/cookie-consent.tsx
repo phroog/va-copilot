@@ -32,8 +32,9 @@ export default function CookieConsent() {
       <p className="text-sm font-bold text-slate-700 dark:text-slate-200">🍪 Cookies</p>
       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
         We use essential cookies to run the service (login, language &amp; theme
-        preferences) and to make payments and third-party logins work. We do not use
-        tracking or advertising cookies. See our{" "}
+        preferences) and to make payments and third-party logins work. If you accept,
+        we also load analytics (Meta Pixel) to measure how people use Sari and improve
+        our marketing — never to sell your data. See our{" "}
         <a href="/legal/privacy#cookies" className="text-kawaii-purple dark:text-kawaii-lavender underline">Cookie Policy</a>.
       </p>
       <div className="flex items-center gap-2 mt-4">
