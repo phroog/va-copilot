@@ -43,7 +43,7 @@ export async function POST() {
     today,
     currentMilestone: currentMilestone(streak),
     next: nextMilestone(streak),
-    claimed: claimedSet(profile?.streak_claimed),
+    claimed: Array.from(claimedSet(profile?.streak_claimed)),
     freeMonthAvailable: !!profile?.free_month_available,
     milestones: STREAK_MILESTONES,
   });

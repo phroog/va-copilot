@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import UpsellAd from "@/components/upsell-ad";
+import { randomSlogan } from "@/lib/upgrade-slogans";
 
 interface FeedJob {
   id: string;
@@ -100,6 +101,7 @@ export default function LiveFeedPage() {
   const [platforms, setPlatforms] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [limitInfo, setLimitInfo] = useState<{ plan?: string; used?: number | null; limit?: number | null; limitReached?: boolean; bonus?: number; swapsLeft?: number | null }>({});
+  const [limitSlogan] = useState(() => randomSlogan());
   const [savingAll, setSavingAll] = useState(false);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [swappingIds, setSwappingIds] = useState<Set<string>>(new Set());
@@ -492,6 +494,7 @@ const openSwap = async (job: FeedJob) => {
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Tap <b>Swap</b> on any available job to trade it for one of the locked high matches, or upgrade for unlimited.
             </p>
+            <p className="text-xs italic text-slate-400 dark:text-slate-500 mt-1">“{limitSlogan}”</p>
           </div>
           <Link href="/pricing"><Button size="sm" variant="primary" className="whitespace-nowrap">Upgrade</Button></Link>
         </div>

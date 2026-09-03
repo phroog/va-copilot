@@ -12,6 +12,7 @@ import { useState, useEffect } from "react";
 import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, LogOut, Timer, DollarSign, Calendar, MessageCircle, Receipt, Shield, BookOpen, ChevronDown, ChevronRight, Coins, Users, Search, BarChart3, RadioTower, Fish, Dices, Flame, ShieldAlert, Send, Mic, Inbox } from "lucide-react";
 import dynamic from "next/dynamic";
 const MochiHub = dynamic(() => import("@/components/mochi-hub"), { ssr: false });
+import UpgradeNudge from "@/components/upgrade-nudge";
 import { ToastProvider } from "@/components/toast";
 import { FocusTimerProvider } from "@/components/focus-timer-provider";
 import ClientErrorReporter from "@/components/client-error-reporter";
@@ -244,6 +245,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       <MochiHub />
+      <UpgradeNudge />
       <ClientErrorReporter />
     </div>
     </ToastProvider>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LanguageDropdown } from "@/components/language-dropdown";
 import { useLocale } from "@/lib/i18n/context";
+import { UPGRADE_SLOGANS } from "@/lib/upgrade-slogans";
 
 export default function PricingPage() {
   const { t } = useLocale();
@@ -18,6 +19,12 @@ export default function PricingPage() {
   const [inGrace, setInGrace] = useState(false);
   const [accessUntil, setAccessUntil] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [sloganIdx, setSloganIdx] = useState(() => Math.floor(Math.random() * UPGRADE_SLOGANS.length));
+
+  useEffect(() => {
+    const iv = setInterval(() => setSloganIdx((i) => (i + 1) % UPGRADE_SLOGANS.length), 7000);
+    return () => clearInterval(iv);
+  }, []);
 
   useEffect(() => {
     fetch("/api/subscription-status")
@@ -142,6 +149,13 @@ export default function PricingPage() {
         </div>
 
         {msg && <p className="text-center text-sm mt-4 text-slate-600 dark:text-slate-300">{msg}</p>}
+
+        {/* Rotating nudge for users on the free plan */}
+        {!checking && (!currentPlan || currentPlan === "free") && (
+          <p className="text-center text-sm font-semibold text-kawaii-purple dark:text-kawaii-lavender mt-6 italic transition-all">
+            “{UPGRADE_SLOGANS[sloganIdx]}”
+          </p>
+        )}
 
         {/* Current plan + cancel */}
         {!checking && currentPlan && currentPlan !== "free" && (

@@ -55,9 +55,6 @@ export default function CalendarPage() {
   const [formMeetingLink, setFormMeetingLink] = useState("");
   const [formCalendly, setFormCalendly] = useState("");
 
-  // Google Calendar sync
-  const [syncing, setSyncing] = useState(false);
-
   const fetchEvents = useCallback(async (month: number, year: number) => {
     setLoading(true);
     try {
@@ -186,28 +183,6 @@ export default function CalendarPage() {
     }
   };
 
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      const res = await fetch("/api/calendar/sync", { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        showToast(data.message || "Synced!");
-        fetchEvents(currentMonth, currentYear);
-      } else {
-        if (data.needsConnect) {
-          showToast("Connect Google Calendar first in Settings", "error");
-        } else {
-          showToast(data.error || "Sync failed", "error");
-        }
-      }
-    } catch {
-      showToast("Sync failed", "error");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   const isToday = (day: number) => {
     return day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
   };
@@ -229,9 +204,6 @@ export default function CalendarPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-extrabold">📅 {t("calendar")}</h1>
-        <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
-          {syncing ? t("syncing") : t("syncWithGoogle")}
-        </Button>
       </div>
 
       <Card>
