@@ -33,6 +33,9 @@ export async function POST(request: Request) {
   const text: string = (msg.text || "").trim();
   const username: string = (msg.chat?.username || "").toString();
 
+  // Debug: surface the incoming chat + message in Vercel logs.
+  console.log("[tg-webhook] chat:", chatId, "| user:", username, "| text:", JSON.stringify(text.slice(0, 40)));
+
   if (!chatId) return NextResponse.json({ ok: true });
 
   try {
