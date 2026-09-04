@@ -301,7 +301,7 @@ export async function GET(request: Request) {
     used,
     limit: dailyLimit,
     bonus,
-    swapsLeft: dailyLimit != null ? SWAP_LIMITS[plan] - swapUsed : null,
+    swapsLeft: dailyLimit != null && SWAP_LIMITS[plan] != null ? (SWAP_LIMITS[plan] as number) - swapUsed : null,
     limitReached,
     mode,
     list,

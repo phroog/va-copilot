@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   const swapUsed = view?.swaps ?? 0;
-  if (swapUsed >= limit) {
+  if (limit != null && swapUsed >= limit) {
     return NextResponse.json({ error: "Swap limit for today reached" }, { status: 429 });
   }
 
@@ -84,5 +84,5 @@ export async function POST(request: Request) {
     { onConflict: "user_id,view_date" }
   );
 
-  return NextResponse.json({ ok: true, gave: give, took: take, remainingSwaps: limit - swapUsed - 1, limit });
+  return NextResponse.json({ ok: true, gave: give, took: take, remainingSwaps: limit != null ? limit - swapUsed - 1 : null, limit });
 }

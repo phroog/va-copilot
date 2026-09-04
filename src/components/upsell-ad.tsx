@@ -13,11 +13,11 @@ import { Button } from "@/components/ui/button";
 const ADS: Record<string, { emoji: string; title: string; text: string; cta: string; plan: string }[]> = {
   free: [
     { emoji: "🌱", title: "Sari Sprout → Sari Bloom", text: "3× more matching jobs a day, 10× the AI credits and 10 daily swaps.", cta: "Upgrade to Bloom ($4.99)", plan: "basic" },
-    { emoji: "🌱", title: "Sari Sprout → Sari Money Club", text: "Unlimited matching jobs, 200 AI credits and 30 swaps a day.", cta: "Join Money Club ($9.99)", plan: "pro" },
+    { emoji: "🌱", title: "Sari Sprout → Sari Money Club", text: "Unlimited matching jobs, 200 AI credits and unlimited swaps.", cta: "Join Money Club ($9.99)", plan: "pro" },
     { emoji: "📈", title: "Ready to grow?", text: "Bloom gives you 100 matching jobs a day and a weekly AI budget that lasts.", cta: "See plans", plan: "basic" },
   ],
   basic: [
-    { emoji: "👑", title: "Sari Bloom → Sari Money Club", text: "Unlimited matching jobs, 200 AI credits a month and 30 daily swaps.", cta: "Join Money Club ($9.99)", plan: "pro" },
+    { emoji: "👑", title: "Sari Bloom → Sari Money Club", text: "Unlimited matching jobs, 200 AI credits a month and unlimited swaps.", cta: "Join Money Club ($9.99)", plan: "pro" },
     { emoji: "💎", title: "Go unlimited", text: "Money Club members never hit a job-view cap and get the biggest AI budget.", cta: "Upgrade now", plan: "pro" },
   ],
 };

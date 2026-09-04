@@ -40,7 +40,7 @@ const PLANS = [
   },
   {
     emoji: "👑", name: "Sari Money Club", price: "$9.99", per: "/mo", planKey: "pro", desc: "For pro freelancers",
-    features: ["Unlimited matching jobs", "200 AI credits / month", "Full Telegram bot", "30 swaps / day"],
+    features: ["Unlimited matching jobs", "200 AI credits / month", "Full Telegram bot", "Unlimited swaps"],
     accent: "from-kawaii-purple to-kawaii-pink", highlight: true,
   },
 ];

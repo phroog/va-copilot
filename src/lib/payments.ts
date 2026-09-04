@@ -42,8 +42,9 @@ export function planFromPriceId(priceId: string | null | undefined): PlanKey {
   return "basic";
 }
 
-/* Swap allowance per plan — generous, but capped so it can't be farmed. */
-export const SWAP_LIMITS: Record<PlanKey, number> = { free: 3, basic: 10, pro: 30 };
+/* Swap allowance per plan — generous, but capped so it can't be farmed.
+   Money Club (pro) has unlimited job access, so no swap cap there. */
+export const SWAP_LIMITS: Record<PlanKey, number | null> = { free: 3, basic: 10, pro: null };
 
 /* Plans that get FULL access to the scam registry (Sprout = free gets a teaser).
    Change this single constant to adjust the gating. */
