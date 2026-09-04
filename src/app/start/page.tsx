@@ -106,9 +106,9 @@ export default function StartPage() {
         body: JSON.stringify({ skills, job_vector: jobVector }),
       }).catch(() => {});
     }
-    // Fire-and-forget welcome email + Meta Lead conversion.
+    // Fire-and-forget welcome email + Meta CompleteRegistration conversion.
     fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
-    trackEvent("Lead", { content_name: "signup", content_category: "account" });
+    trackEvent("CompleteRegistration", { content_name: "signup", status: "true" });
     setAuthLoading(false);
     setStep(4);
   };

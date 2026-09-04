@@ -37,7 +37,7 @@ export default function SignupPage() {
       setLoading(false);
     } else {
       fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
-      trackEvent("Lead", { content_name: "signup", content_category: "account" });
+      trackEvent("CompleteRegistration", { content_name: "signup", status: "true" });
       router.push("/welcome");
     }
   };
