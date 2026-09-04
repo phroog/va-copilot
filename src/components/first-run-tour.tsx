@@ -1,96 +1,59 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
-/* First-run workspace tour — the "wow" tour.
-   Shows the real features (live feed, AI pitches, scam check, tracking, profile,
-   notifications) with visuals, then a closing CTA (upgrade vs. continue free).
+/* First-run guided tour — walks the user through the REAL workspace pages.
+   Each step opens an actual feature page and shows a coachmark bubble that
+   explains it. The final step reveals the 3 plan cards (Sprout / Bloom /
+   Money Club) with a cool staggered entrance.
    Appears EXACTLY ONCE per user (server-side flag on user_settings). */
 
 const TOUR_KEY = "sari_first_run_tour_done";
 
 interface TourStep {
   emoji: string;
-  accent: string;
+  href: string;
   title: string;
   desc: string;
-  href: string;
-  pill?: string;
-  mock?: { tag: string; lines: string[] };
 }
 
 const STEPS: TourStep[] = [
-  {
-    emoji: "📡",
-    accent: "from-kawaii-purple to-kawaii-pink",
-    title: "Your jobs find you",
-    desc: "Matching jobs from 10+ platforms stream into one live feed — no tab-hopping, no refresh marathons.",
-    href: "/dashboard/live-feed",
-    pill: "1000+ jobs/day",
-    mock: { tag: "LIVE FEED", lines: ["✉️ E-Commerce VA · 🎯 97%", "📧 Email Manager · 🎯 92%", "📅 Calendar Support · 🎯 88%"] },
-  },
-  {
-    emoji: "🤖",
-    accent: "from-kawaii-pink to-kawaii-coral",
-    title: "AI pitches that win",
-    desc: "One click → a tailored pitch written for that exact client. You sound brilliant — it's our little secret.",
-    href: "/dashboard/live-feed",
-    pill: "~30% higher acceptance",
-    mock: { tag: "AI PITCH", lines: ["Hi [Client], I handle inboxes so you can focus on growth…", "✨ Polished · tailored · ready to send"] },
-  },
-  {
-    emoji: "🛡️",
-    accent: "from-kawaii-coral to-kawaii-peach",
-    title: "Scam check before you waste a week",
-    desc: "Paste a client, URL or payment info — Sari scores the risk in seconds and flags the scammers.",
-    href: "/dashboard/scam-check",
-    pill: "Fake clients flagged",
-    mock: { tag: "SCAM CHECK", lines: ["🔴 95% — wire transfer + upfront fee", "🟢 8% — normal job posting"] },
-  },
-  {
-    emoji: "⏱️",
-    accent: "from-kawaii-purple to-kawaii-lavender",
-    title: "Track & prove your work",
-    desc: "Start a timer while you work. Clients see tracked hours + screenshots — trust on autopilot.",
-    href: "/dashboard/time-tracker",
-    pill: "Trust on autopilot",
-    mock: { tag: "TIME TRACKER", lines: ["⏱ 02:14:37 · Project: Client X", "📸 3 screenshots attached"] },
-  },
-  {
-    emoji: "⚙️",
-    accent: "from-kawaii-lavender to-kawaii-pink",
-    title: "Alerts that never sleep",
-    desc: "Connect Telegram or email to get high-match jobs pushed the second they appear.",
-    href: "/dashboard/setup",
-    pill: "Instant alerts",
-    mock: { tag: "NOTIFICATIONS", lines: ["Telegram: on · Email: evening digest"] },
-  },
-  {
-    emoji: "👑",
-    accent: "from-kawaii-pink to-kawaii-purple",
-    title: "A profile you brag about",
-    desc: "Ratings, hours and verified work — a link you send clients with pride.",
-    href: "/dashboard/settings",
-    pill: "Shareable link",
-    mock: { tag: "PUBLIC PROFILE", lines: ["⭐ 4.9 · ✅ 12 jobs · 🛡️ Verified"] },
-  },
+  { emoji: "📡", href: "/dashboard/live-feed", title: "Your live job feed", desc: "Matching jobs from 10+ platforms stream in here. The best ones land automatically — no tab-hopping." },
+  { emoji: "🚀", href: "/dashboard/live-feed", title: "AI pitches & swaps", desc: "Open any job: get a tailored AI pitch or trade it for a better match. One click, done." },
+  { emoji: "🛡️", href: "/dashboard/scam-check", title: "Scam check", desc: "Paste a client, URL or payment info — Sari scores the risk in seconds and flags the scammers." },
+  { emoji: "⏱️", href: "/dashboard/time-tracker", title: "Track & prove your work", desc: "Start a timer while you work. Clients see tracked hours + screenshots — trust on autopilot." },
+  { emoji: "⚙️", href: "/dashboard/setup", title: "Alerts that never sleep", desc: "Connect Telegram or email to get high-match jobs pushed the second they appear." },
 ];
 
-const MOCKS = [
-  { emoji: "🤖", title: "AI Pitch", desc: "A tailored pitch for every client — written for you, ready to send.", href: "/dashboard/live-feed", accent: "from-kawaii-pink to-kawaii-coral" },
-  { emoji: "🛡️", title: "Scam Check", desc: "Score any client or payment info for risk before you commit a week.", href: "/dashboard/scam-check", accent: "from-kawaii-coral to-kawaii-peach" },
-  { emoji: "⏱️", title: "Time Tracking", desc: "Track hours with screenshot proof — clients trust you on sight.", href: "/dashboard/time-tracker", accent: "from-kawaii-purple to-kawaii-lavender" },
+const PLANS = [
+  {
+    emoji: "🌱", name: "Sari Sprout", price: "$0", per: "", desc: "For trying things out",
+    features: ["20 matching jobs / day", "5 AI credits / month", "Match & scam score", "CV & PDF"],
+    accent: "from-kawaii-mint to-kawaii-lavender", href: "/pricing", highlight: false,
+  },
+  {
+    emoji: "🌸", name: "Sari Bloom", price: "$5", per: "/mo", desc: "For active job hunting",
+    features: ["100 matching jobs / day", "50 AI credits / month", "Telegram live jobs", "10 swaps / day"],
+    accent: "from-kawaii-lavender to-kawaii-pink", href: "/pricing", highlight: false,
+  },
+  {
+    emoji: "👑", name: "Sari Money Club", price: "$10", per: "/mo", desc: "For pro freelancers",
+    features: ["Unlimited matching jobs", "200 AI credits / month", "Full Telegram bot", "30 swaps / day"],
+    accent: "from-kawaii-purple to-kawaii-pink", href: "/pricing", highlight: true,
+  },
 ];
 
 export default function FirstRunTour() {
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [phase, setPhase] = useState<"idle" | "intro" | "walk" | "plans" | "done">("idle");
   const [idx, setIdx] = useState(0);
-  const [showCTA, setShowCTA] = useState(false);
+  const [showBubble, setShowBubble] = useState(false);
 
-  // Server-side once check: only show if the user hasn't seen it.
+  // Server-side once check.
   useEffect(() => {
     let active = true;
     (async () => {
@@ -98,15 +61,13 @@ export default function FirstRunTour() {
         let local = false;
         try { local = localStorage.getItem(TOUR_KEY) === "1"; } catch {}
         if (local) return;
-
         const res = await fetch("/api/user-settings");
         if (!res.ok) return;
         const data = await res.json();
         if (data.settings?.onboarding_tour_done === true) return;
-
-        if (active) setTimeout(() => setOpen(true), 900);
+        if (active) setTimeout(() => { setOpen(true); setPhase("intro"); }, 900);
       } catch {
-        if (active) setTimeout(() => setOpen(true), 1500);
+        if (active) setTimeout(() => { setOpen(true); setPhase("intro"); }, 1500);
       }
     })();
     return () => { active = false; };
@@ -121,111 +82,146 @@ export default function FirstRunTour() {
     }).catch(() => {});
   };
 
-  const finish = () => { setOpen(false); markDone(); };
+  const finish = () => { setOpen(false); setPhase("done"); markDone(); };
 
-  // Final CTA screen (after last feature step).
-  const showClosing = showCTA || idx >= STEPS.length;
-  const step = STEPS[idx];
+  // When in walk phase and we land on the current step's page, show its bubble.
+  useEffect(() => {
+    if (!open || phase !== "walk") return;
+    if (pathname === STEPS[idx].href) {
+      const t = setTimeout(() => setShowBubble(true), 500);
+      return () => clearTimeout(t);
+    }
+    setShowBubble(false);
+  }, [pathname, phase, idx, open]);
+
+  const next = () => {
+    setShowBubble(false);
+    if (idx < STEPS.length - 1) {
+      const nxt = STEPS[idx + 1];
+      setIdx(idx + 1);
+      router.push(nxt.href);
+    } else {
+      setPhase("plans");
+    }
+  };
+
+  const startWalk = () => {
+    setPhase("walk");
+    router.push(STEPS[0].href);
+  };
 
   if (!open) return null;
 
+  const step = STEPS[idx];
+
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-6">
-      <button aria-label="Skip tour" onClick={finish} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-
-      <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-dark-card border border-kawaii-lavender/40 dark:border-dark-surface shadow-2xl overflow-hidden animate-slide-up">
-        {/* Progress header */}
-        <div className="flex items-center justify-between px-5 pt-4">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            {showClosing ? "One last thing" : `${idx + 1} / ${STEPS.length}`}
-          </span>
-          <button onClick={finish} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none p-1 -m-1" aria-label="Close">✕</button>
+    <>
+      {/* ── Intro bubble ────────────────────────────────────────── */}
+      {phase === "intro" && (
+        <div className="fixed inset-0 z-[90] flex items-end sm:items-center sm:justify-end p-3 sm:p-8">
+          <button aria-label="Skip" onClick={finish} className="absolute inset-0 bg-black/25 backdrop-blur-[1px]" />
+          <div className="relative w-full sm:w-80 rounded-3xl bg-white dark:bg-dark-card border border-kawaii-lavender/40 dark:border-dark-surface shadow-2xl p-5 animate-slide-up">
+            <p className="text-3xl mb-2">🗺️</p>
+            <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Quick tour of your workspace</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              I'll open the real pages and show you what each one does. Takes ~30 seconds.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button onClick={finish} className="h-11 px-4 rounded-xl text-slate-400 hover:bg-kawaii-lavender/10 font-bold">Skip</button>
+              <button onClick={startWalk} className="flex-1 h-11 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">Let's go 🚀</button>
+            </div>
+          </div>
         </div>
+      )}
 
-        {!showClosing ? (
-          <>
-            {/* Feature step */}
-            <div key={idx} className="p-5 animate-fade-in">
-              <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${step.accent} flex items-center justify-center text-2xl mb-3 shadow-sari-sm`}>
+      {/* ── Walk-through coachmark on each real page ────────────── */}
+      {phase === "walk" && showBubble && (
+        <div className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:bottom-8 sm:w-80 z-[90]">
+          <div className="rounded-3xl bg-white dark:bg-dark-card border border-kawaii-lavender/40 dark:border-dark-surface shadow-2xl p-5 animate-slide-up">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{idx + 1} / {STEPS.length}</span>
+              <button onClick={finish} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none p-1 -m-1" aria-label="Close">✕</button>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br from-kawaii-purple to-kawaii-pink flex items-center justify-center text-xl shrink-0`}>
                 {step.emoji}
               </div>
-              <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">{step.title}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{step.desc}</p>
-
-              {/* Mini visual mock */}
-              {step.mock && (
-                <div className="mt-4 rounded-2xl bg-slate-50 dark:bg-dark-surface/40 border border-kawaii-lavender/20 dark:border-dark-surface p-3">
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">{step.mock.tag}</p>
-                  <div className="space-y-1.5">
-                    {step.mock.lines.map((l, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
-                        <span className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${step.accent}`} />
-                        {l}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {step.pill && (
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-kawaii-lavender/15 dark:bg-dark-surface/60 text-xs font-bold text-kawaii-purple dark:text-kawaii-lavender">
-                  ⚡ {step.pill}
-                </div>
-              )}
+              <div>
+                <h3 className="font-extrabold text-slate-800 dark:text-slate-100 leading-tight">{step.title}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{step.desc}</p>
+              </div>
             </div>
-
-            {/* Nav */}
-            <div className="px-5 pb-5 flex items-center justify-between gap-3">
+            <div className="mt-4 flex items-center justify-between gap-2">
               <div className="flex gap-1.5">
                 {STEPS.map((_, i) => (
-                  <button key={i} onClick={() => { setIdx(i); setShowCTA(false); }} aria-label={`Step ${i + 1}`} className={`w-2.5 h-2.5 rounded-full transition-all ${i === idx ? "bg-kawaii-purple scale-125" : "bg-kawaii-lavender/30"}`} />
+                  <span key={i} className={`w-2 h-2 rounded-full transition-all ${i === idx ? "bg-kawaii-purple scale-125" : "bg-kawaii-lavender/30"}`} />
                 ))}
               </div>
-              <div className="flex gap-2">
-                {idx > 0 && (
-                  <button onClick={() => setIdx(idx - 1)} className="h-11 px-4 rounded-xl text-slate-500 hover:bg-kawaii-lavender/10 font-bold">←</button>
-                )}
-                {idx < STEPS.length - 1 ? (
-                  <button onClick={() => setIdx(idx + 1)} className="h-11 px-5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">Next →</button>
-                ) : (
-                  <button onClick={() => setShowCTA(true)} className="h-11 px-5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold animate-glow-pulse squishy">See more ✨</button>
-                )}
-              </div>
-            </div>
-          </>
-        ) : (
-          /* Closing CTA */
-          <div className="p-6 animate-slide-up">
-            <div className="text-center">
-              <p className="text-4xl mb-2 inline-block animate-vibrate">👑</p>
-              <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">Ready to take this seriously?</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                The free plan gets you started. <b>Bloom</b> or <b>Money Club</b> make you unmissable.
-              </p>
-            </div>
-
-            {/* Quick feature highlights */}
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {MOCKS.map((m) => (
-                <Link key={m.title} href={m.href} onClick={finish} className="rounded-2xl bg-slate-50 dark:bg-dark-surface/40 border border-kawaii-lavender/20 dark:border-dark-surface p-3 text-center hover:border-kawaii-purple/50 transition-colors">
-                  <div className={`w-8 h-8 mx-auto rounded-lg bg-gradient-to-br ${m.accent} flex items-center justify-center text-base mb-1.5`}>{m.emoji}</div>
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{m.title}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{m.desc}</p>
-                </Link>
-              ))}
-            </div>
-
-            <div className="mt-5 space-y-2.5">
-              <Link href="/pricing" onClick={finish} className="block w-full h-12 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold flex items-center justify-center hover:opacity-90 transition-opacity squishy">
-                👑 Go unlimited — Money Club
-              </Link>
-              <button onClick={finish} className="block w-full h-11 rounded-2xl border-2 border-kawaii-lavender/30 dark:border-dark-surface text-slate-500 dark:text-slate-400 font-bold hover:border-kawaii-purple/50 transition-colors">
-                Continue with free (for now)
+              <button onClick={next} className="h-11 px-5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">
+                {idx < STEPS.length - 1 ? "Next →" : "See plans ✨"}
               </button>
             </div>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+
+      {/* ── Final: the 3 plan cards ─────────────────────────────── */}
+      {phase === "plans" && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <button aria-label="Close" onClick={finish} className="fixed inset-0 bg-black/50 backdrop-blur-md" />
+          <div className="relative w-full max-w-3xl animate-pop-in">
+            <div className="text-center mb-6">
+              <p className="text-4xl mb-1 inline-block animate-vibrate">👑</p>
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow">Choose how seriously you want to play</h3>
+              <p className="text-white/80 text-sm mt-1">Every plan includes the workspace. More power = more jobs, more AI, more edge.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              {PLANS.map((p, i) => (
+                <div
+                  key={p.name}
+                  className={`relative rounded-3xl bg-white dark:bg-dark-card p-5 text-center shadow-2xl animate-slide-up ${p.highlight ? "border-2 border-kawaii-purple dark:border-kawaii-lavender scale-[1.02] sm:-mt-2 sm:mb-2" : "border border-kawaii-lavender/30 dark:border-dark-surface"}`}
+                  style={{ animationDelay: `${i * 0.12}s` }}
+                >
+                  {p.highlight && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-extrabold px-3 py-1 rounded-full bg-kawaii-purple text-white whitespace-nowrap">
+                      ⭐ MOST POPULAR
+                    </span>
+                  )}
+                  <div className={`w-10 h-10 mx-auto rounded-xl bg-gradient-to-br ${p.accent} flex items-center justify-center text-xl mb-2`}>{p.emoji}</div>
+                  <p className="font-bold text-sm text-slate-500 dark:text-slate-400">{p.name}</p>
+                  <p className="mt-1 text-3xl font-extrabold text-slate-800 dark:text-slate-100">
+                    {p.price}<span className="text-sm font-medium text-slate-400">{p.per}</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{p.desc}</p>
+                  <ul className="mt-3 space-y-1 text-left text-xs text-slate-600 dark:text-slate-300">
+                    {p.features.map((f) => (
+                      <li key={f} className="flex items-start gap-1.5"><span className="text-kawaii-purple dark:text-kawaii-lavender">✓</span>{f}</li>
+                    ))}
+                  </ul>
+                  <Link
+                    href={p.href}
+                    onClick={finish}
+                    className={`mt-4 block w-full h-11 rounded-2xl flex items-center justify-center font-extrabold text-sm squishy ${
+                      p.highlight
+                        ? "bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white animate-glow-pulse"
+                        : "bg-white text-kawaii-purple border border-kawaii-purple/40 hover:bg-kawaii-lavender/20 dark:bg-dark-surface"
+                    }`}
+                  >
+                    {p.highlight ? "Go unlimited" : p.price === "$0" ? "Start free" : "Choose"}
+                  </Link>
+                </div>
+              ))}
+            </div>
+
+            <div className="text-center mt-5">
+              <button onClick={finish} className="text-white/70 hover:text-white text-sm font-semibold underline underline-offset-2">
+                Not now — let me look around first
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
