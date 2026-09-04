@@ -21,6 +21,7 @@ interface MetaEvent {
   eventSourceUrl?: string | null;
   fbp?: string | null;
   fbc?: string | null;
+  eventId?: string | null;
   customData?: Record<string, any>;
 }
 
@@ -41,7 +42,7 @@ export async function sendMetaEvents(events: MetaEvent[]): Promise<boolean> {
     const payload: Record<string, any> = {
       event_name: e.eventName,
       event_time: now,
-      event_id: `${e.eventName}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      event_id: e.eventId || `${e.eventName}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
       action_source: "website",
     };
     if (Object.keys(userData).length > 0) payload.user_data = userData;
@@ -63,8 +64,27 @@ export async function sendMetaEvents(events: MetaEvent[]): Promise<boolean> {
   }
 }
 
-/* Convenience: fire a CompleteRegistration event (signup). */
-export function metaCompleteRegistration(opts: {
+/* Convenience: fire a PageView event (server-side landing-page tracking). */
+export function metaPageView(opts: {
+  ip?: string | null;
+  userAgent?: string | null;
+  sourceUrl?: string | null;
+  fbp?: string | null;
+  eventId?: string | null;
+}) {
+  return sendMetaEvents([
+    {
+      eventName: "PageView",
+      ip: opts.ip,
+      userAgent: opts.userAgent,
+      eventSourceUrl: opts.sourceUrl,
+      fbp: opts.fbp,
+      eventId: opts.eventId,
+    },
+  ]);
+}
+
+/* Convenience: fire a CompleteRegistration event (signup). */export function metaCompleteRegistration(opts: {
   email?: string | null;
   ip?: string | null;
   userAgent?: string | null;

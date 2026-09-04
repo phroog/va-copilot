@@ -48,18 +48,22 @@ export default function MetaPixel() {
   const pathname = usePathname();
   const prevPathRef = useRef<string | null>(null);
 
-  // Fire PageView on every route change (SPA navigation).
+  // Server-side CAPI PageView + browser PageView share one event_id so Meta
+  // dedupes them (no double counting). Covers ad-blockers/ITP and bounces.
   useEffect(() => {
-    if (prevPathRef.current === null) {
-      prevPathRef.current = pathname;
-      return;
-    }
-    if (prevPathRef.current !== pathname) {
-      prevPathRef.current = pathname;
-      try {
-        window.fbq?.("track", "PageView", { url: typeof window !== "undefined" ? window.location.href : pathname });
-      } catch {}
-    }
+    const eventId = `pv-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const url = typeof window !== "undefined" ? window.location.href : pathname;
+    try {
+      window.fbq?.("track", "PageView", { url }, { eventID: eventId });
+    } catch {}
+    try {
+      fetch("/api/meta/pageview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, eventId }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {}
   }, [pathname]);
 
   // When the user accepts cookies (late), send the EU consent-grant signal.
@@ -84,7 +88,6 @@ export default function MetaPixel() {
           s.parentNode.insertBefore(t,s)}(window, document,'script',
           'https://connect.facebook.net/en_US/fbevents.js');
           fbq('init', '${PIXEL_ID}');
-          fbq('track', 'PageView');
           if (localStorage.getItem('${CONSENT_KEY}') === 'accepted') { fbq('consent', 'grant'); }
         `}
       </Script>
