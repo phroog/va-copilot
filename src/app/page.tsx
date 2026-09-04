@@ -7,7 +7,6 @@ import CaseStudy from "@/components/case-study";
 import FeatureSection from "@/components/feature-section";
 import HowItWorks from "@/components/how-it-works";
 import PricingSection from "@/components/pricing-section";
-import CTABanner from "@/components/cta-banner";
 import Footer from "@/components/footer";
 
 export default function Home() {
@@ -29,7 +28,6 @@ export default function Home() {
         <FeatureSection />
         <HowItWorks />
         <PricingSection />
-        <CTABanner />
         <Footer />
       </div>
     </main>

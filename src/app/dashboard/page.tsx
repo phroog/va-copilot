@@ -14,6 +14,7 @@ import TelegramCta from "@/components/telegram-cta";
 import UpsellAd from "@/components/upsell-ad";
 import StreakCard from "@/components/streak-card";
 import { trackEvent } from "@/components/meta-pixel";
+import ProfileReminder from "@/components/profile-reminder";
 
 interface FeedJob {
   id: string;
@@ -243,6 +244,7 @@ export default function DashboardHome() {
       </div>
 
       {/* Quota + Timer */}
+      <ProfileReminder />
       <StreakCard />
       <UpsellAd />
       <TelegramCta />

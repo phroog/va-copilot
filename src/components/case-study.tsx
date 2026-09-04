@@ -9,17 +9,17 @@ import { Button } from "@/components/ui/button";
 
 const TIMELINE = [
   { label: "Day 1", value: "$0", detail: "Stuck, like most freelancers" },
-  { label: "Week 2", value: "$420", detail: "First matched jobs + AI pitches" },
-  { label: "Month 1", value: "$1,860", detail: "3 clients · first follow-ups automated" },
-  { label: "Month 3", value: "$4,150", detail: "5 steady clients · invoices on autopilot" },
-  { label: "Month 6", value: "$6,900/mo", detail: "Full pipeline · zero missed follow-ups" },
+  { label: "Week 2", value: "$180", detail: "First matched gig + AI pitch" },
+  { label: "Month 1", value: "$650", detail: "2 clients · first follow-ups automated" },
+  { label: "Month 3", value: "$1,400", detail: "3 steady clients · invoices on autopilot" },
+  { label: "Month 6", value: "$2,800/mo", detail: "4–5 part-time clients · zero missed follow-ups" },
 ];
 
 const STATS = [
   { emoji: "🕳️", value: "0", label: "scams that ever got him" },
-  { emoji: "⏰", value: "300+ hrs", label: "of manual hunting saved" },
-  { emoji: "🤝", value: "5", label: "paying clients, retained" },
-  { emoji: "💵", value: "$6,900/mo", label: "earned safely, tracked & invoiced" },
+  { emoji: "⏰", value: "150+ hrs", label: "of manual hunting saved" },
+  { emoji: "🤝", value: "4", label: "paying clients, retained" },
+  { emoji: "💵", value: "$2,800/mo", label: "earned safely, tracked & invoiced" },
 ];
 
 export default function CaseStudy() {
@@ -49,7 +49,7 @@ export default function CaseStudy() {
               Marco's earnings curve 📈
             </p>
             <span className="text-xs font-bold px-3 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-              ▲ +6,900% growth
+              ▲ first $2,800 month
             </span>
           </div>
 
@@ -102,11 +102,6 @@ export default function CaseStudy() {
             <Link href="/start">
               <Button className="text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink hover:from-kawaii-purple hover:to-kawaii-coral text-white font-extrabold animate-glow-pulse">
                 🚀 Become the next Marco
-              </Button>
-            </Link>
-            <Link href="#features">
-              <Button variant="outline" className="text-base px-6 py-3.5 rounded-2xl">
-                See how it works ↓
               </Button>
             </Link>
           </div>

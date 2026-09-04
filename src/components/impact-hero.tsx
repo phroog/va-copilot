@@ -83,50 +83,40 @@ function StatBox({ box, delay }: { box: (typeof BOXES)[number]; delay: number })
 
 export default function ImpactHero() {
   return (
-    <section className="relative px-4 pt-16 pb-20 sm:pt-24 sm:pb-28">
+    <section className="relative px-4 pt-6 sm:pt-24 pb-20 sm:pb-28">
       <div className="max-w-6xl mx-auto">
         {/* Badge */}
-        <div className="flex justify-center mb-6">
-          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-kawaii-lavender/30 dark:bg-dark-surface text-sm font-bold text-kawaii-purple dark:text-kawaii-lavender">
+        <div className="flex justify-center mb-4">
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-kawaii-lavender/30 dark:bg-dark-surface text-xs sm:text-sm font-bold text-kawaii-purple dark:text-kawaii-lavender">
             🚨 Real talk: scrolling alone won't pay your bills
           </span>
         </div>
 
-        {/* Headline */}
-        <h1 className="text-center text-4xl sm:text-6xl lg:text-7xl font-extrabold leading-tight text-slate-800 dark:text-slate-100">
+        {/* Headline — compact on mobile so the CTA stays above the fold */}
+        <h1 className="text-center text-3xl sm:text-6xl lg:text-7xl font-extrabold leading-tight text-slate-800 dark:text-slate-100">
           Without Sari,{" "}
           <span className="bg-gradient-to-r from-kawaii-purple to-kawaii-pink bg-clip-text text-transparent">
             you're scrolling
           </span>{" "}
           into oblivion.
         </h1>
-        <p className="text-center mt-5 text-lg sm:text-xl text-slate-500 dark:text-slate-400 max-w-3xl mx-auto">
-          Every day you waste on manual job hunting is a day your competitors
-          already took the client. Sari hands you <b>matching jobs</b>,{" "}
-          <b>AI pitches</b> and <b>scam protection</b> — so you can actually get paid.
+        <p className="text-center mt-3 text-base sm:text-xl text-slate-500 dark:text-slate-400 max-w-3xl mx-auto">
+          Sari hands you <b>matching jobs</b>, <b>AI pitches</b> and <b>scam protection</b> —
+          so you can actually get paid.
         </p>
 
-        {/* Mobile: CTA first, then boxes (2-col) */}
-        <div className="lg:hidden mt-12">
-          <div className="rounded-3xl border-2 border-kawaii-purple/50 dark:border-kawaii-lavender/40 bg-gradient-to-br from-kawaii-purple/15 to-kawaii-pink/10 dark:from-kawaii-purple/20 dark:to-kawaii-pink/10 p-8 text-center animate-pop-in">
-            <span className="text-4xl mb-2 inline-block animate-vibrate">⚡</span>
-            <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mb-1">
-              Stop scrolling. Start earning.
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
-              Free trial. No credit card. 2-minute setup.
-            </p>
-            <Link href="/start">
-              <Button className="w-full text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink hover:from-kawaii-purple hover:to-kawaii-coral text-white font-extrabold animate-glow-pulse">
-                🚀 Start earning now
-              </Button>
-            </Link>
-            <div className="mt-4 flex items-center justify-center gap-4 text-xs text-slate-400 dark:text-slate-500">
-              <span>✨ No credit card</span>
-              <span>🛡️ Cancel anytime</span>
-            </div>
+        {/* Mobile: compact CTA right away, then boxes */}
+        <div className="lg:hidden mt-6 text-center">
+          <Link href="/start">
+            <Button className="w-full max-w-sm text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink hover:from-kawaii-purple hover:to-kawaii-coral text-white font-extrabold animate-glow-pulse">
+              🚀 Start earning now
+            </Button>
+          </Link>
+          <div className="mt-2 flex items-center justify-center gap-4 text-xs text-slate-400 dark:text-slate-500">
+            <span>✨ No credit card</span>
+            <span>🛡️ Cancel anytime</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
             {BOXES.map((box, i) => (
               <StatBox key={box.tag} box={box} delay={i * 0.15} />
             ))}

@@ -46,6 +46,15 @@ export default function StartPage() {
   const [customSkill, setCustomSkill] = useState("");
   const [goal, setGoal] = useState<string>("");
   const [tourIdx, setTourIdx] = useState(0);
+  const [jobVector, setJobVector] = useState<number[]>([3, 3, 3, 3, 3]);
+
+  const VECTOR_AXES = [
+    { label: "Experience", opts: ["Beginner", "Basic", "Experienced", "Advanced", "Expert"] },
+    { label: "Technical", opts: ["Pure Admin/VA", "Office/Support", "Social/Content", "Tools (Excel/WP/Video)", "Dev/Data"] },
+    { label: "Client contact", opts: ["Backoffice", "Email/Inbox", "Admin/Chat", "Support", "Phone/Sales"] },
+    { label: "Workload", opts: ["One-off gig", "Few hours", "Part-time", "~30 hrs", "Full-time"] },
+    { label: "Rate tier", opts: ["Low", "Budget", "Mid", "Upper-mid", "Premium"] },
+  ];
 
   // Account (created at the end, before entering the workspace)
   const [email, setEmail] = useState("");
@@ -93,7 +102,7 @@ export default function StartPage() {
       await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ skills, job_vector: [3, 1, 3, 3, 3] }),
+        body: JSON.stringify({ skills, job_vector: jobVector }),
       }).catch(() => {});
     }
     // Fire-and-forget welcome email.
@@ -165,6 +174,26 @@ export default function StartPage() {
                   className="flex-1 h-10 px-4 rounded-xl border-2 border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:border-kawaii-purple"
                 />
                 <button onClick={() => { if (customSkill.trim()) { toggleSkill(customSkill.trim()); setCustomSkill(""); } }} className="h-10 px-4 rounded-xl bg-kawaii-purple text-white text-sm font-bold squishy">Add</button>
+              </div>
+
+              {/* Job profile (feeds matching) — compact 5-axis */}
+              <div className="mt-5 rounded-2xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white/60 dark:bg-dark-surface/30 p-4">
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">📊 Your job profile</p>
+                <p className="text-[11px] text-slate-400 -mt-1 mb-3">Tells Sari exactly which jobs fit you.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {VECTOR_AXES.map((ax, i) => (
+                    <div key={ax.label} className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">{ax.label}</span>
+                      <select
+                        value={jobVector[i] ?? 3}
+                        onChange={(e) => { const arr = [...jobVector]; arr[i] = parseInt(e.target.value, 10); setJobVector(arr); }}
+                        className="flex-1 min-w-0 h-9 px-2 rounded-lg border border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-xs text-slate-700 dark:text-slate-200 focus:outline-none"
+                      >
+                        {ax.opts.map((o, n) => <option key={n} value={n + 1}>{n + 1} · {o}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="mt-8">
