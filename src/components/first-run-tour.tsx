@@ -34,12 +34,12 @@ const PLANS = [
     accent: "from-kawaii-mint to-kawaii-lavender", highlight: false,
   },
   {
-    emoji: "🌸", name: "Sari Bloom", price: "$5", per: "/mo", planKey: "basic", desc: "For active job hunting",
+    emoji: "🌸", name: "Sari Bloom", price: "$4.99", per: "/mo", planKey: "basic", desc: "For active job hunting",
     features: ["100 matching jobs / day", "50 AI credits / month", "Telegram live jobs", "10 swaps / day"],
     accent: "from-kawaii-lavender to-kawaii-pink", highlight: false,
   },
   {
-    emoji: "👑", name: "Sari Money Club", price: "$10", per: "/mo", planKey: "pro", desc: "For pro freelancers",
+    emoji: "👑", name: "Sari Money Club", price: "$9.99", per: "/mo", planKey: "pro", desc: "For pro freelancers",
     features: ["Unlimited matching jobs", "200 AI credits / month", "Full Telegram bot", "30 swaps / day"],
     accent: "from-kawaii-purple to-kawaii-pink", highlight: true,
   },

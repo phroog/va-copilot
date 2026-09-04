@@ -254,8 +254,8 @@ export default function SetupPage() {
                 opportunities.
               </p>
               <ul className="mt-4 inline-block text-left text-sm text-slate-600 dark:text-slate-300 space-y-1">
-                <li>⚡ <b>Bloom ($5):</b> live job matches on Telegram</li>
-                <li>👑 <b>Money Club ($10):</b> + follow-ups, invoices, scam alerts &amp; full bot control</li>
+                <li>⚡ <b>Bloom ($4.99):</b> live job matches on Telegram</li>
+                <li>👑 <b>Money Club ($9.99):</b> + follow-ups, invoices, scam alerts &amp; full bot control</li>
                 <li>🎯 Only high-confidence jobs (75%+ match)</li>
               </ul>
               <div className="mt-6">
