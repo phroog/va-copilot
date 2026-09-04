@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getStripe, PLANS, GRACE_DAYS, planFromPriceId, type PlanKey } from "@/lib/payments";
 import { sendEmail, layoutEmail } from "@/lib/email";
+import { metaPurchase } from "@/lib/meta-capi";
 
 export const runtime = "nodejs";
 
@@ -107,6 +108,12 @@ export async function POST(request: Request) {
           if (s.metadata?.freeMonth === "1") {
             await supabase().from("profiles").update({ free_month_available: false }).eq("user_id", userId);
           }
+          // Server-side Meta CAPI Purchase conversion.
+          const { data: authUser } = await supabase().auth.admin.getUserById(userId);
+          const email = authUser?.user?.email || null;
+          const amount = s.amount_total ? s.amount_total / 100 : undefined;
+          const currency = s.currency ? s.currency.toUpperCase() : undefined;
+          await metaPurchase({ email, value: amount, currency }).catch(() => {});
         }
         break;
       }
