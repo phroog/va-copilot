@@ -14,8 +14,7 @@ declare global {
   }
 }
 
-/* Tiny typed wrapper around Meta's `fbq`. Safe no-op if the pixel hasn't loaded
-   (e.g. consent not given or script still loading). */
+/* Tiny typed wrapper around Meta's `fbq`. Safe no-op if the pixel hasn't loaded. */
 export function trackEvent(event: string, params?: Record<string, unknown>) {
   try {
     if (typeof window !== "undefined" && typeof window.fbq === "function") {
@@ -40,29 +39,19 @@ function hasConsent(): boolean {
   }
 }
 
-/* Meta Pixel loader. Injects the base snippet only after the visitor accepted
-   cookies (GDPR/ePrivacy), initialises fbq, fires the first PageView, and fires
-   a fresh PageView on every subsequent route change (SPA navigation). */
+/* Meta Pixel. The pixel loads and fires PageView IMMEDIATELY (before consent),
+   so every landing-page visit is tracked. Consent only gates the EU consent
+   signal (fbq consent grant) and the richer conversion events — those are
+   additionally sent server-side via CAPI, so registrations & purchases are
+   always captured regardless. */
 export default function MetaPixel() {
   const pathname = usePathname();
-  const [consented, setConsented] = useState(false);
   const prevPathRef = useRef<string | null>(null);
 
+  // Fire PageView on every route change (SPA navigation).
   useEffect(() => {
-    setConsented(hasConsent());
-    // If the user accepts cookies after mount (the banner appears late), the
-    // pixel must load right away — listen for the consent-granted event.
-    const onGranted = () => setConsented(true);
-    try { window.addEventListener("sari-consent-granted", onGranted); } catch {}
-    return () => { try { window.removeEventListener("sari-consent-granted", onGranted); } catch {} };
-  }, []);
-
-  // Fire PageView on route changes after the initial load (the inline script
-  // handles the very first PageView).
-  useEffect(() => {
-    if (!consented) return;
     if (prevPathRef.current === null) {
-      prevPathRef.current = pathname; // initial render — inline script already fired
+      prevPathRef.current = pathname;
       return;
     }
     if (prevPathRef.current !== pathname) {
@@ -71,9 +60,16 @@ export default function MetaPixel() {
         window.fbq?.("track", "PageView", { url: typeof window !== "undefined" ? window.location.href : pathname });
       } catch {}
     }
-  }, [pathname, consented]);
+  }, [pathname]);
 
-  if (!consented) return null;
+  // When the user accepts cookies (late), send the EU consent-grant signal.
+  useEffect(() => {
+    const onGranted = () => {
+      try { window.fbq?.("consent", "grant"); } catch {}
+    };
+    try { window.addEventListener("sari-consent-granted", onGranted); } catch {}
+    return () => { try { window.removeEventListener("sari-consent-granted", onGranted); } catch {} };
+  }, []);
 
   return (
     <>
@@ -87,9 +83,9 @@ export default function MetaPixel() {
           t.src=v;s=b.getElementsByTagName(e)[0];
           s.parentNode.insertBefore(t,s)}(window, document,'script',
           'https://connect.facebook.net/en_US/fbevents.js');
-          fbq('consent', 'grant');
           fbq('init', '${PIXEL_ID}');
           fbq('track', 'PageView');
+          if (localStorage.getItem('${CONSENT_KEY}') === 'accepted') { fbq('consent', 'grant'); }
         `}
       </Script>
       <noscript>
