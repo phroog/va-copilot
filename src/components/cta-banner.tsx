@@ -16,7 +16,7 @@ export default function CTABanner() {
           {t("ctaSub")}
         </p>
         <div className="mt-8">
-          <Link href="/auth/signup">
+          <Link href="/start">
             <Button variant="primary" size="lg">
               {t("ctaButton")} ✨
             </Button>

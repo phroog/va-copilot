@@ -23,7 +23,7 @@ export default function HeroSection() {
           {t("heroSub")}
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-4">
-          <Link href="/auth/signup">
+          <Link href="/start">
             <Button variant="primary" size="lg">{t("startFree")} 🚀</Button>
           </Link>
           <a href="#features">

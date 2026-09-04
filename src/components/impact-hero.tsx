@@ -116,7 +116,7 @@ export default function ImpactHero() {
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
               Free trial. No credit card. 2-minute setup.
             </p>
-            <Link href="/auth/signup">
+            <Link href="/start">
               <Button className="w-full text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink hover:from-kawaii-purple hover:to-kawaii-coral text-white font-extrabold animate-glow-pulse">
                 🚀 Start earning now
               </Button>
@@ -148,7 +148,7 @@ export default function ImpactHero() {
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
               Free trial. No credit card. 2-minute setup.
             </p>
-            <Link href="/auth/signup" className="w-full">
+            <Link href="/start" className="w-full">
               <Button className="w-full text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink hover:from-kawaii-purple hover:to-kawaii-coral text-white font-extrabold animate-glow-pulse">
                 🚀 Start earning now
               </Button>

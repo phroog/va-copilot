@@ -99,7 +99,7 @@ export default function CaseStudy() {
             The only difference between Marco and everyone else? He didn't wait.
           </p>
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/auth/signup">
+            <Link href="/start">
               <Button className="text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink hover:from-kawaii-purple hover:to-kawaii-coral text-white font-extrabold animate-glow-pulse">
                 🚀 Become the next Marco
               </Button>

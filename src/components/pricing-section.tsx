@@ -71,7 +71,7 @@ export default function PricingSection() {
                 </ul>
               </CardContent>
               <CardFooter className="flex flex-col gap-2">
-                <Link href="/auth/signup" className="w-full">
+                <Link href="/start" className="w-full">
                   <Button variant={plan.popular ? "primary" : "outline"} className="w-full">
                     {t("choosePlan")} {plan.name} →
                   </Button>
