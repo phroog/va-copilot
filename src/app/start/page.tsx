@@ -58,17 +58,27 @@ export default function StartPage() {
 
   // Account (created at the end, before entering the workspace)
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [magicSent, setMagicSent] = useState(false);
 
   const factIdx = useRef(Math.floor(Math.random() * SIDE_FACTS.length));
   const titleIdx = useRef(Math.floor(Math.random() * FUNNY_TITLES.length));
 
-  // Already logged in? Skip account creation (go to skills).
+  // On return from the magic link (now authenticated), fire onboarding events
+  // once and skip straight to the questions.
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setStep(1);
+      if (data.user) {
+        try {
+          if (localStorage.getItem("sari_welcome_fired") !== "1") {
+            localStorage.setItem("sari_welcome_fired", "1");
+            fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
+            trackEvent("CompleteRegistration", { content_name: "signup", status: "true" });
+          }
+        } catch {}
+        setStep(1);
+      }
       setLoading(false);
     });
   }, [supabase]);
@@ -85,23 +95,23 @@ export default function StartPage() {
 
   const createAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || password.length < 6) {
-      setAuthError("Email + at least 6-character password, please.");
+    const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+    if (!valid) {
+      setAuthError("Please enter a valid email.");
       return;
     }
     setAuthLoading(true);
     setAuthError("");
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: "https://getsari.com/start" },
+    });
+    setAuthLoading(false);
     if (error) {
       setAuthError(error.message);
-      setAuthLoading(false);
       return;
     }
-    // Fire-and-forget welcome email + Meta CompleteRegistration conversion.
-    fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
-    trackEvent("CompleteRegistration", { content_name: "signup", status: "true" });
-    setAuthLoading(false);
-    setStep(1); // account created → now the questions
+    setMagicSent(true); // show "check your email"
   };
 
   const finish = async () => {
@@ -305,40 +315,41 @@ export default function StartPage() {
                 No credit card. Then we'll ask you a couple of quick questions.
               </p>
 
-              <form onSubmit={createAccount} className="mt-8 space-y-4 text-left">
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="mt-1 w-full h-12 px-4 rounded-2xl border-2 border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200 focus:border-kawaii-purple focus:outline-none"
-                  />
+              {magicSent ? (
+                <div className="mt-8 rounded-2xl bg-kawaii-purple/10 border border-kawaii-purple/30 p-6 text-center">
+                  <p className="text-4xl mb-3">📬</p>
+                  <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Check your email!</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    We sent a magic link to <b>{email}</b>. Click it and you're in — no password needed.
+                  </p>
+                  <p className="text-xs text-slate-400 mt-3">Didn't get it? Check spam, or</p>
+                  <button onClick={() => setMagicSent(false)} className="text-xs text-kawaii-purple underline mt-1">try a different email</button>
                 </div>
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Password</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 6 characters"
-                    className="mt-1 w-full h-12 px-4 rounded-2xl border-2 border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200 focus:border-kawaii-purple focus:outline-none"
-                  />
-                </div>
-                {authError && <p className="text-sm text-red-500">{authError}</p>}
-                <button
-                  type="submit"
-                  disabled={authLoading}
-                  className="w-full h-12 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base hover:opacity-90 transition-opacity disabled:opacity-60 squishy"
-                >
-                  {authLoading ? "Creating…" : "🚀 Create account & continue"}
-                </button>
-                <p className="text-center text-xs text-slate-400">
-                  Already have an account?{" "}
-                  <a href="/auth/login?returnUrl=/dashboard" className="text-kawaii-purple underline">Log in</a>
-                </p>
-              </form>
+              ) : (
+                <form onSubmit={createAccount} className="mt-8 space-y-4 text-left">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="mt-1 w-full h-12 px-4 rounded-2xl border-2 border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200 focus:border-kawaii-purple focus:outline-none"
+                    />
+                  </div>
+                  {authError && <p className="text-sm text-red-500">{authError}</p>}
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full h-12 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base hover:opacity-90 transition-opacity disabled:opacity-60 squishy"
+                  >
+                    {authLoading ? "Sending…" : "🚀 Continue with email"}
+                  </button>
+                  <p className="text-center text-xs text-slate-400">
+                    No password needed — we'll email you a magic link.
+                  </p>
+                </form>
+              )}
 
               <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-kawaii-lavender/15 dark:bg-dark-surface/50 text-xs font-semibold text-kawaii-purple dark:text-kawaii-lavender">
                 {fact(3)}

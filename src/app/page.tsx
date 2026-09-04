@@ -3,9 +3,8 @@
 import Header from "@/components/header";
 import ImpactHero from "@/components/impact-hero";
 import TrustBar from "@/components/trust-bar";
+import SocialProof from "@/components/social-proof";
 import CaseStudy from "@/components/case-study";
-import FeatureSection from "@/components/feature-section";
-import HowItWorks from "@/components/how-it-works";
 import PricingSection from "@/components/pricing-section";
 import Footer from "@/components/footer";
 
@@ -24,9 +23,8 @@ export default function Home() {
         <Header />
         <ImpactHero />
         <TrustBar />
+        <SocialProof />
         <CaseStudy />
-        <FeatureSection />
-        <HowItWorks />
         <PricingSection />
         <Footer />
       </div>
