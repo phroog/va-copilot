@@ -6,8 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/components/meta-pixel";
 
 /* ⚡ Sari Start — the cinematic, funny onboarding.
-   Skills → Goal → Feature-tour (slider) → then create your account, right
-   before the workspace. The real feature tour continues inside the dashboard. */
+   Account first (email+password), then the questions: skills → goal → tour. */
 
 const SIDE_FACTS = [
   "⚡ You're up to 60% faster with Sari — that's 60% more time for naps.",
@@ -40,7 +39,7 @@ const FEATURES = [
 export default function StartPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [step, setStep] = useState(0); // 0 skills, 1 goal, 2 tour slider, 3 account, 4 done
+  const [step, setStep] = useState(0); // 0 account, 1 skills, 2 goal, 3 tour, 4 done
   const [loading, setLoading] = useState(true);
 
   const [skills, setSkills] = useState<string[]>([]);
@@ -66,10 +65,10 @@ export default function StartPage() {
   const factIdx = useRef(Math.floor(Math.random() * SIDE_FACTS.length));
   const titleIdx = useRef(Math.floor(Math.random() * FUNNY_TITLES.length));
 
-  // Already logged in? Jump past account creation (to done).
+  // Already logged in? Skip account creation (go to skills).
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setStep(4);
+      if (data.user) setStep(1);
       setLoading(false);
     });
   }, [supabase]);
@@ -98,7 +97,15 @@ export default function StartPage() {
       setAuthLoading(false);
       return;
     }
-    // Save profile data collected during the tour.
+    // Fire-and-forget welcome email + Meta CompleteRegistration conversion.
+    fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
+    trackEvent("CompleteRegistration", { content_name: "signup", status: "true" });
+    setAuthLoading(false);
+    setStep(1); // account created → now the questions
+  };
+
+  const finish = async () => {
+    // Save everything collected during the questions.
     if (skills.length > 0) {
       await fetch("/api/profile", {
         method: "PUT",
@@ -106,14 +113,6 @@ export default function StartPage() {
         body: JSON.stringify({ skills, job_vector: jobVector }),
       }).catch(() => {});
     }
-    // Fire-and-forget welcome email + Meta CompleteRegistration conversion.
-    fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
-    trackEvent("CompleteRegistration", { content_name: "signup", status: "true" });
-    setAuthLoading(false);
-    setStep(4);
-  };
-
-  const finish = async () => {
     router.push("/dashboard");
   };
 
@@ -140,8 +139,8 @@ export default function StartPage() {
         </div>
 
         <div key={step} className="animate-slide-up">
-          {/* ── STEP 0: Skills ───────────────────────────────────── */}
-          {step === 0 && (
+          {/* ── STEP 1: Skills ───────────────────────────────────── */}
+          {step === 1 && (
             <div className="text-center">
               <p className="text-4xl mb-3">💪</p>
               <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
@@ -200,7 +199,7 @@ export default function StartPage() {
 
               <div className="mt-8">
                 <button
-                  onClick={() => setStep(1)}
+                  onClick={() => setStep(2)}
                   disabled={skills.length === 0}
                   className="px-6 py-3 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold disabled:opacity-50 squishy"
                 >
@@ -214,8 +213,8 @@ export default function StartPage() {
             </div>
           )}
 
-          {/* ── STEP 1: Goal ────────────────────────────────────── */}
-          {step === 1 && (
+          {/* ── STEP 2: Goal ────────────────────────────────────── */}
+          {step === 2 && (
             <div className="text-center">
               <p className="text-4xl mb-3">🎯</p>
               <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
@@ -246,8 +245,8 @@ export default function StartPage() {
               </div>
 
               <div className="mt-8 flex gap-2 justify-center">
-                <button onClick={() => setStep(0)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
-                <button onClick={() => setStep(2)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">
+                <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
+                <button onClick={() => setStep(3)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">
                   Continue →
                 </button>
               </div>
@@ -258,8 +257,8 @@ export default function StartPage() {
             </div>
           )}
 
-          {/* ── STEP 2: Feature tour (slider) ────────────────────── */}
-          {step === 2 && (
+          {/* ── STEP 3: Feature tour (slider) ────────────────────── */}
+          {step === 3 && (
             <div className="text-center">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Quick look — what you're getting</p>
               <div className="mb-4 flex items-center justify-between">
@@ -281,11 +280,11 @@ export default function StartPage() {
               </div>
 
               <div className="mt-8 flex gap-2 justify-center">
-                <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
+                <button onClick={() => setStep(2)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
                 {tourIdx < FEATURES.length - 1 ? (
                   <button onClick={() => setTourIdx((i) => i + 1)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">Next →</button>
                 ) : (
-                  <button onClick={() => setStep(3)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold animate-glow-pulse squishy">Ready — let's set you up 🚀</button>
+                  <button onClick={() => setStep(4)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">Ready — let's set you up 🚀</button>
                 )}
               </div>
 
@@ -295,15 +294,15 @@ export default function StartPage() {
             </div>
           )}
 
-          {/* ── STEP 3: Create account (before entering workspace) ── */}
-          {step === 3 && (
+          {/* ── STEP 0: Create account (first) ───────────────────── */}
+          {step === 0 && (
             <div className="text-center">
-              <p className="text-4xl mb-3">🔑</p>
+              <p className="text-4xl mb-3">🍠</p>
               <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
-                Almost there — create your account.
+                Create your account — 30 seconds.
               </h1>
               <p className="text-slate-500 dark:text-slate-400 mt-2">
-                Your workspace is ready. 30 seconds and you're in — no credit card.
+                No credit card. Then we'll ask you a couple of quick questions.
               </p>
 
               <form onSubmit={createAccount} className="mt-8 space-y-4 text-left">
@@ -333,7 +332,7 @@ export default function StartPage() {
                   disabled={authLoading}
                   className="w-full h-12 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base hover:opacity-90 transition-opacity disabled:opacity-60 squishy"
                 >
-                  {authLoading ? "Creating…" : "🍠 Create account & enter"}
+                  {authLoading ? "Creating…" : "🚀 Create account & continue"}
                 </button>
                 <p className="text-center text-xs text-slate-400">
                   Already have an account?{" "}

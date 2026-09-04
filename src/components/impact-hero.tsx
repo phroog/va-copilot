@@ -12,8 +12,8 @@ const BOXES = [
   {
     emoji: "🌪️",
     problem: "14 tabs open. 3 job boards. 0 replies.",
-    fix: "1000 fresh jobs a day, one feed — faster than everyone.",
-    tag: "⚡ 1000 jobs / day",
+    fix: "Over 1,000 real-time jobs a day, one feed — faster than everyone.",
+    tag: "⚡ 1,000+ jobs / day",
   },
   {
     emoji: "📉",
@@ -43,7 +43,7 @@ const BOXES = [
     emoji: "⏰",
     problem: "Top jobs get taken in minutes.",
     fix: "Real-time alerts mean you apply first, not last.",
-    tag: "⚡ Apply first",
+    tag: "⚡ Real-time alerts",
   },
   {
     emoji: "🙈",
@@ -71,7 +71,7 @@ function StatBox({ box, delay }: { box: (typeof BOXES)[number]; delay: number })
           {box.tag}
         </span>
       </div>
-      <p className="text-xs sm:text-sm font-semibold text-kawaii-coral dark:text-kawaii-pink leading-snug">
+      <p className="text-xs sm:text-sm font-semibold text-slate-400 dark:text-slate-500 leading-snug line-through decoration-kawaii-coral/70">
         {box.problem}
       </p>
       <p className="text-sm font-bold text-slate-800 dark:text-slate-100 mt-1.5 leading-snug">
@@ -108,7 +108,7 @@ export default function ImpactHero() {
         {/* Mobile: compact CTA right away, then boxes */}
         <div className="lg:hidden mt-6 text-center">
           <Link href="/start">
-            <Button className="w-full max-w-sm text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink hover:from-kawaii-purple hover:to-kawaii-coral text-white font-extrabold animate-glow-pulse">
+            <Button className="w-full max-w-sm text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink hover:from-kawaii-purple hover:to-kawaii-coral text-white font-extrabold">
               🚀 Start earning now
             </Button>
           </Link>
@@ -139,7 +139,7 @@ export default function ImpactHero() {
               Free trial. No credit card. 2-minute setup.
             </p>
             <Link href="/start" className="w-full">
-              <Button className="w-full text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink hover:from-kawaii-purple hover:to-kawaii-coral text-white font-extrabold animate-glow-pulse">
+              <Button className="w-full text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink hover:from-kawaii-purple hover:to-kawaii-coral text-white font-extrabold">
                 🚀 Start earning now
               </Button>
             </Link>
