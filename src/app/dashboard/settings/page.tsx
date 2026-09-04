@@ -11,6 +11,7 @@ import { useToast } from "@/components/toast";
 import { Textarea } from "@/components/ui/textarea";
 import { CURRENCIES, CURRENCY_SYMBOLS } from "@/lib/currency";
 import TelegramSettings from "@/components/telegram-settings";
+import SetPasswordCard from "@/components/set-password-card";
 
 interface Profile {
   full_name: string;
@@ -618,6 +619,9 @@ export default function SettingsPage() {
 
       {/* Telegram Integration */}
       <TelegramSettings />
+
+      {/* Set password (for magic-link users) */}
+      <SetPasswordCard />
 
       {/* Backup & Export */}
       <Card>
