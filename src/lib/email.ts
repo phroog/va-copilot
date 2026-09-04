@@ -59,3 +59,27 @@ export function unsubscribeToken(email: string): string {
   const secret = process.env.ADMIN_SECRET || process.env.ADMIN_DASHBOARD_PASSWORD || "sari";
   return createHmac("sha256", secret).update(email.toLowerCase()).digest("base64url").slice(0, 32);
 }
+
+/* Welcome email sent right after account creation. Light, friendly, points to
+   the workspace. Returns true on success (safe to fire-and-forget). */
+export async function sendWelcomeEmail(to: string, firstName?: string): Promise<boolean> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://getsari.com";
+  const name = firstName || "friend";
+  return sendEmail({
+    to,
+    subject: "Welcome to Sari 🍠 — your workspace is ready",
+    html: layoutEmail(
+      "Welcome aboard 🍠",
+      `<p>Hey ${name},</p>
+       <p>Your workspace is ready. Here's what's waiting for you:</p>
+       <ul style="line-height:1.7;padding-left:18px;">
+         <li>📡 A live feed of matching jobs from 10+ platforms</li>
+         <li>🤖 AI pitches written for each client</li>
+         <li>🛡️ Scam checks before you waste a week</li>
+         <li>⏱️ Time tracking your clients can actually trust</li>
+       </ul>
+       <p style="margin-top:16px;"><a href="${appUrl}/dashboard" style="display:inline-block;background:#6C4E8F;color:#fff;padding:12px 22px;border-radius:12px;text-decoration:none;font-weight:700;">Open my workspace →</a></p>
+       <p style="margin-top:16px;color:#64748b;font-size:13px;">Quick tip: connect Telegram in Settings → Configuration to get job alerts the second they appear.</p>`
+    ),
+  });
+}

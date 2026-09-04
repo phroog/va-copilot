@@ -36,6 +36,7 @@ export default function SignupPage() {
       setError(err.message);
       setLoading(false);
     } else {
+      fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
       trackCustom("Signup", { email });
       router.push("/welcome");
     }

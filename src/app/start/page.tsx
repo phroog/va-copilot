@@ -96,6 +96,8 @@ export default function StartPage() {
         body: JSON.stringify({ skills, job_vector: [3, 1, 3, 3, 3] }),
       }).catch(() => {});
     }
+    // Fire-and-forget welcome email.
+    fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
     setAuthLoading(false);
     setStep(4);
   };
