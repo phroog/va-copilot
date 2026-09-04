@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/components/toast";
 import TelegramSettings from "@/components/telegram-settings";
 
-/* Konfiguration — 3-step setup:
+/* Configuration — 3-step setup:
    1. Notification email (job pushes + marketing)
    2. Browser extension (install guide + ZIP download)
    3. Telegram (pro-gated: locked with CTA for non-pro, config steps for pro) */
@@ -76,7 +76,7 @@ export default function SetupPage() {
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
       <div>
-        <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">⚙️ Konfiguration</h1>
+        <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">⚙️ Configuration</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           Three quick steps to get your job alerts flowing.
         </p>

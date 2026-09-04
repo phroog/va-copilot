@@ -21,7 +21,7 @@ interface TourStep {
 
 const STEPS: TourStep[] = [
   { emoji: "📡", href: "/dashboard/live-feed", title: "Your live job feed", desc: "Matching jobs from 10+ platforms stream in here. The best ones land automatically — no tab-hopping." },
-  { emoji: "🚀", href: "/dashboard/live-feed", title: "AI pitches & swaps", desc: "Open any job: get a tailored AI pitch or trade it for a better match. One click, done." },
+  { emoji: "🚀", href: "/dashboard/demo-pitch", title: "AI pitches & swaps", desc: "Here's a real generated pitch for a real-looking job. This is what you get on every match — one click." },
   { emoji: "🛡️", href: "/dashboard/scam-check", title: "Scam check", desc: "Paste a client, URL or payment info — Sari scores the risk in seconds and flags the scammers." },
   { emoji: "⏱️", href: "/dashboard/time-tracker", title: "Track & prove your work", desc: "Start a timer while you work. Clients see tracked hours + screenshots — trust on autopilot." },
   { emoji: "⚙️", href: "/dashboard/setup", title: "Alerts that never sleep", desc: "Connect Telegram or email to get high-match jobs pushed the second they appear." },
@@ -29,19 +29,19 @@ const STEPS: TourStep[] = [
 
 const PLANS = [
   {
-    emoji: "🌱", name: "Sari Sprout", price: "$0", per: "", desc: "For trying things out",
+    emoji: "🌱", name: "Sari Sprout", price: "$0", per: "", planKey: "free", desc: "For trying things out",
     features: ["20 matching jobs / day", "5 AI credits / month", "Match & scam score", "CV & PDF"],
-    accent: "from-kawaii-mint to-kawaii-lavender", href: "/pricing", highlight: false,
+    accent: "from-kawaii-mint to-kawaii-lavender", highlight: false,
   },
   {
-    emoji: "🌸", name: "Sari Bloom", price: "$5", per: "/mo", desc: "For active job hunting",
+    emoji: "🌸", name: "Sari Bloom", price: "$5", per: "/mo", planKey: "basic", desc: "For active job hunting",
     features: ["100 matching jobs / day", "50 AI credits / month", "Telegram live jobs", "10 swaps / day"],
-    accent: "from-kawaii-lavender to-kawaii-pink", href: "/pricing", highlight: false,
+    accent: "from-kawaii-lavender to-kawaii-pink", highlight: false,
   },
   {
-    emoji: "👑", name: "Sari Money Club", price: "$10", per: "/mo", desc: "For pro freelancers",
+    emoji: "👑", name: "Sari Money Club", price: "$10", per: "/mo", planKey: "pro", desc: "For pro freelancers",
     features: ["Unlimited matching jobs", "200 AI credits / month", "Full Telegram bot", "30 swaps / day"],
-    accent: "from-kawaii-purple to-kawaii-pink", href: "/pricing", highlight: true,
+    accent: "from-kawaii-purple to-kawaii-pink", highlight: true,
   },
 ];
 
@@ -108,6 +108,33 @@ export default function FirstRunTour() {
   const startWalk = () => {
     setPhase("walk");
     router.push(STEPS[0].href);
+  };
+
+  // Direct checkout: Sprout → dashboard, Bloom/Money Club → Stripe session.
+  const choosePlan = async (planKey: string) => {
+    if (planKey === "free") {
+      finish();
+      router.push("/dashboard");
+      return;
+    }
+    try {
+      const res = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: planKey }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        finish();
+        window.location.href = data.url;
+      } else {
+        finish();
+        router.push("/pricing");
+      }
+    } catch {
+      finish();
+      router.push("/pricing");
+    }
   };
 
   if (!open) return null;
@@ -199,9 +226,8 @@ export default function FirstRunTour() {
                       <li key={f} className="flex items-start gap-1.5"><span className="text-kawaii-purple dark:text-kawaii-lavender">✓</span>{f}</li>
                     ))}
                   </ul>
-                  <Link
-                    href={p.href}
-                    onClick={finish}
+                  <button
+                    onClick={() => choosePlan(p.planKey)}
                     className={`mt-4 block w-full h-11 rounded-2xl flex items-center justify-center font-extrabold text-sm squishy ${
                       p.highlight
                         ? "bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white animate-glow-pulse"
@@ -209,7 +235,7 @@ export default function FirstRunTour() {
                     }`}
                   >
                     {p.highlight ? "Go unlimited" : p.price === "$0" ? "Start free" : "Choose"}
-                  </Link>
+                  </button>
                 </div>
               ))}
             </div>
