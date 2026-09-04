@@ -105,11 +105,24 @@ export default function ImpactHero() {
           so you can actually get paid.
         </p>
 
+        {/* Desktop: CTA above the fold (no scroll needed) */}
+        <div className="hidden lg:flex justify-center mt-6">
+          <Link href="/start">
+            <Button className="text-base px-10 py-4 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink hover:from-kawaii-purple hover:to-kawaii-coral text-white font-extrabold">
+              🚀 Start journey for free
+            </Button>
+          </Link>
+        </div>
+        <div className="hidden lg:flex justify-center gap-4 mt-3 text-sm text-slate-400 dark:text-slate-500">
+          <span>✨ No credit card</span>
+          <span>🛡️ Cancel anytime</span>
+        </div>
+
         {/* Mobile: compact CTA right away, then boxes */}
         <div className="lg:hidden mt-6 text-center">
           <Link href="/start">
             <Button className="w-full max-w-sm text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink hover:from-kawaii-purple hover:to-kawaii-coral text-white font-extrabold">
-              🚀 Start earning now
+              🚀 Start journey for free
             </Button>
           </Link>
           <div className="mt-2 flex items-center justify-center gap-4 text-xs text-slate-400 dark:text-slate-500">
@@ -129,24 +142,15 @@ export default function ImpactHero() {
             <StatBox key={box.tag} box={box} delay={i * 0.3} />
           ))}
 
-          {/* CTA center cell */}
+          {/* Center cell — headline, CTA lives above the ring */}
           <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-kawaii-purple/50 dark:border-kawaii-lavender/40 bg-gradient-to-br from-kawaii-purple/15 to-kawaii-pink/10 dark:from-kawaii-purple/20 dark:to-kawaii-pink/10 p-8 text-center animate-pop-in">
             <span className="text-4xl mb-3 inline-block animate-vibrate">⚡</span>
             <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mb-1">
               Stop scrolling. Start earning.
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Free trial. No credit card. 2-minute setup.
             </p>
-            <Link href="/start" className="w-full">
-              <Button className="w-full text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink hover:from-kawaii-purple hover:to-kawaii-coral text-white font-extrabold">
-                🚀 Start earning now
-              </Button>
-            </Link>
-            <div className="mt-4 flex items-center justify-center gap-4 text-xs text-slate-400 dark:text-slate-500">
-              <span>✨ No credit card</span>
-              <span>🛡️ Cancel anytime</span>
-            </div>
           </div>
 
           {BOXES.slice(4).map((box, i) => (
