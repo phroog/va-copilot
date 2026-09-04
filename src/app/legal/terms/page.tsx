@@ -59,6 +59,12 @@ export default function TermsPage() {
           refunded for partial periods unless required by applicable law.
         </p>
         <p className="mt-2">
+          <b>Cancel anytime — the subscription simply expires.</b> When you cancel, we stop automatic
+          renewal. Your subscription then simply runs out at the end of the billing period you've already
+          paid for; there is no renewal, no rollover, no hidden charges and no obligation to give notice
+          beyond the cancellation itself. You keep full access to your paid plan until that period ends.
+        </p>
+        <p className="mt-2">
           <b>Right of withdrawal (EU consumers):</b> Under EU law you have a 14-day right of withdrawal
           for digital services. However, once you begin using the service (e.g. consuming credits,
           using AI features) during that period, you expressly agree to the immediate start of the

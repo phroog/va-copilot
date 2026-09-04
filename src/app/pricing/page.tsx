@@ -150,6 +150,20 @@ export default function PricingPage() {
 
         {msg && <p className="text-center text-sm mt-4 text-slate-600 dark:text-slate-300">{msg}</p>}
 
+        {/* Cancel-anytime guarantee */}
+        <div className="mt-6 rounded-2xl border-2 border-kawaii-mint/50 dark:border-green-700/50 bg-green-50/70 dark:bg-green-900/10 px-5 py-4 flex items-center gap-3">
+          <span className="text-2xl shrink-0">🛡️</span>
+          <div>
+            <p className="font-extrabold text-slate-800 dark:text-slate-100 text-sm">
+              Cancel anytime — no strings attached.
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Your subscription simply expires at the end of the billing period. No renewal, no
+              surprise charges, no cancellation calls. You keep full access until it runs out.
+            </p>
+          </div>
+        </div>
+
         {/* Rotating nudge for users on the free plan */}
         {!checking && (!currentPlan || currentPlan === "free") && (
           <p className="text-center text-sm font-semibold text-kawaii-purple dark:text-kawaii-lavender mt-6 italic transition-all">

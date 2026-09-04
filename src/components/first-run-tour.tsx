@@ -240,7 +240,15 @@ export default function FirstRunTour() {
               ))}
             </div>
 
-            <div className="text-center mt-5">
+            <div className="mt-4 rounded-2xl border-2 border-kawaii-mint/50 dark:border-green-700/50 bg-green-50/70 dark:bg-green-900/10 px-4 py-3 flex items-center gap-2">
+              <span className="text-lg shrink-0">🛡️</span>
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                <b>Cancel anytime.</b> Your plan simply runs out at the end of the period — no renewal,
+                no hidden charges.
+              </p>
+            </div>
+
+            <div className="text-center mt-4">
               <button onClick={finish} className="text-white/70 hover:text-white text-sm font-semibold underline underline-offset-2">
                 Not now — let me look around first
               </button>
