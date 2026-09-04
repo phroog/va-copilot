@@ -243,8 +243,8 @@ export default function FirstRunTour() {
             <div className="mt-4 rounded-2xl border-2 border-kawaii-mint/50 dark:border-green-700/50 bg-green-50/70 dark:bg-green-900/10 px-4 py-3 flex items-center gap-2">
               <span className="text-lg shrink-0">🛡️</span>
               <p className="text-xs text-slate-600 dark:text-slate-300">
-                <b>Cancel anytime.</b> Your plan simply runs out at the end of the period — no renewal,
-                no hidden charges.
+                <b>Billed monthly until you cancel.</b> Cancel anytime with one click — then your plan
+                simply runs out at the end of the paid period. No hidden charges.
               </p>
             </div>
 

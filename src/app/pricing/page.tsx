@@ -155,11 +155,12 @@ export default function PricingPage() {
           <span className="text-2xl shrink-0">🛡️</span>
           <div>
             <p className="font-extrabold text-slate-800 dark:text-slate-100 text-sm">
-              Cancel anytime — no strings attached.
+              Billed monthly until you cancel — cancel anytime, then it simply runs out.
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Your subscription simply expires at the end of the billing period. No renewal, no
-              surprise charges, no cancellation calls. You keep full access until it runs out.
+              Subscriptions renew automatically each month. You can cancel at any time with one click:
+              no renewal after your paid period, no hidden charges, no cancellation calls. You keep
+              full access until the period ends.
             </p>
           </div>
         </div>

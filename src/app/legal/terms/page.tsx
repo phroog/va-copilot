@@ -59,10 +59,12 @@ export default function TermsPage() {
           refunded for partial periods unless required by applicable law.
         </p>
         <p className="mt-2">
-          <b>Cancel anytime — the subscription simply expires.</b> When you cancel, we stop automatic
-          renewal. Your subscription then simply runs out at the end of the billing period you've already
-          paid for; there is no renewal, no rollover, no hidden charges and no obligation to give notice
-          beyond the cancellation itself. You keep full access to your paid plan until that period ends.
+          <b>Automatic renewal & cancellation.</b> Paid plans renew automatically each billing period
+          (monthly) until you cancel. To stop future charges you must actively cancel — after
+          cancellation we stop automatic renewal, and your subscription simply runs out at the end of
+          the period you've already paid for. There is no rollover, no hidden charges and no obligation
+          to give notice beyond the cancellation itself. You keep full access to your paid plan until
+          that period ends.
         </p>
         <p className="mt-2">
           <b>Right of withdrawal (EU consumers):</b> Under EU law you have a 14-day right of withdrawal
