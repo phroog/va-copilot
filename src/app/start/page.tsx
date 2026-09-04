@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 /* ⚡ Sari Start — the cinematic, funny onboarding.
-   No separate login window: email+password, your profile, and a feature tour
-   all happen here, step by step, with a few laughs and side facts along the way. */
+   Skills → Goal → Feature-tour (slider) → then create your account, right
+   before the workspace. The real feature tour continues inside the dashboard. */
 
 const SIDE_FACTS = [
   "⚡ You're up to 60% faster with Sari — that's 60% more time for naps.",
@@ -39,32 +39,27 @@ const FEATURES = [
 export default function StartPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [step, setStep] = useState(0); // 0 email, 1 profile, 2 goals, 3 tour, 4 done
+  const [step, setStep] = useState(0); // 0 skills, 1 goal, 2 tour slider, 3 account, 4 done
   const [loading, setLoading] = useState(true);
 
-  // Step 0 — account
+  const [skills, setSkills] = useState<string[]>([]);
+  const [customSkill, setCustomSkill] = useState("");
+  const [goal, setGoal] = useState<string>("");
+  const [tourIdx, setTourIdx] = useState(0);
+
+  // Account (created at the end, before entering the workspace)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
 
-  // Step 1 — skills
-  const [skills, setSkills] = useState<string[]>([]);
-  const [customSkill, setCustomSkill] = useState("");
-
-  // Step 2 — goal
-  const [goal, setGoal] = useState<string>("");
-
-  // Step 3 — tour
-  const [tourIdx, setTourIdx] = useState(0);
-
   const factIdx = useRef(Math.floor(Math.random() * SIDE_FACTS.length));
   const titleIdx = useRef(Math.floor(Math.random() * FUNNY_TITLES.length));
 
-  // Already logged in? Skip the email step.
+  // Already logged in? Jump past account creation (to done).
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setStep(1);
+      if (data.user) setStep(4);
       setLoading(false);
     });
   }, [supabase]);
@@ -87,44 +82,29 @@ export default function StartPage() {
     }
     setAuthLoading(true);
     setAuthError("");
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
       setAuthError(error.message);
       setAuthLoading(false);
       return;
     }
-    // Account created (email may still need verification in prod) — move on.
-    setStep(1);
-    setAuthLoading(false);
-  };
-
-  const saveProfile = async () => {
-    if (skills.length === 0) return;
-    try {
+    // Save profile data collected during the tour.
+    if (skills.length > 0) {
       await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ skills, job_vector: [3, 1, 3, 3, 3] }),
-      });
-    } catch {}
-    setStep(2);
+      }).catch(() => {});
+    }
+    setAuthLoading(false);
+    setStep(4);
   };
 
   const finish = async () => {
-    // Make sure profile is saved even if they skipped skills.
-    if (skills.length > 0) {
-      try {
-        await fetch("/api/profile", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ skills, job_vector: [3, 1, 3, 3, 3] }),
-        });
-      } catch {}
-    }
     router.push("/dashboard");
   };
 
-  const fact = SIDE_FACTS[factIdx.current % SIDE_FACTS.length];
+  const fact = (offset = 0) => SIDE_FACTS[(factIdx.current + offset) % SIDE_FACTS.length];
   const progress = ((step + 1) / 5) * 100;
 
   if (loading) {
@@ -147,61 +127,8 @@ export default function StartPage() {
         </div>
 
         <div key={step} className="animate-slide-up">
-          {/* ── STEP 0: Account ─────────────────────────────────── */}
+          {/* ── STEP 0: Skills ───────────────────────────────────── */}
           {step === 0 && (
-            <div className="text-center">
-              <p className="text-4xl mb-3">🍠</p>
-              <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
-                Let's make you a freelancing legend.
-              </h1>
-              <p className="text-slate-500 dark:text-slate-400 mt-2">
-                Create your account — 30 seconds, no credit card, no judgement.
-              </p>
-
-              <form onSubmit={createAccount} className="mt-8 space-y-4 text-left">
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="mt-1 w-full h-12 px-4 rounded-2xl border-2 border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200 focus:border-kawaii-purple focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Password</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 6 characters"
-                    className="mt-1 w-full h-12 px-4 rounded-2xl border-2 border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200 focus:border-kawaii-purple focus:outline-none"
-                  />
-                </div>
-                {authError && <p className="text-sm text-red-500">{authError}</p>}
-                <button
-                  type="submit"
-                  disabled={authLoading}
-                  className="w-full h-12 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base hover:opacity-90 transition-opacity disabled:opacity-60 squishy"
-                >
-                  {authLoading ? "Creating…" : "🚀 Start earning now"}
-                </button>
-                <p className="text-center text-xs text-slate-400">
-                  Already have an account?{" "}
-                  <a href="/auth/login?returnUrl=/start" className="text-kawaii-purple underline">Log in</a>
-                </p>
-              </form>
-
-              {/* Side fact */}
-              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-kawaii-lavender/15 dark:bg-dark-surface/50 text-xs font-semibold text-kawaii-purple dark:text-kawaii-lavender">
-                {fact}
-              </div>
-            </div>
-          )}
-
-          {/* ── STEP 1: Skills ───────────────────────────────────── */}
-          {step === 1 && (
             <div className="text-center">
               <p className="text-4xl mb-3">💪</p>
               <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
@@ -238,25 +165,24 @@ export default function StartPage() {
                 <button onClick={() => { if (customSkill.trim()) { toggleSkill(customSkill.trim()); setCustomSkill(""); } }} className="h-10 px-4 rounded-xl bg-kawaii-purple text-white text-sm font-bold squishy">Add</button>
               </div>
 
-              <div className="mt-8 flex gap-2 justify-center">
-                <button onClick={() => setStep(0)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
+              <div className="mt-8">
                 <button
-                  onClick={saveProfile}
+                  onClick={() => setStep(1)}
                   disabled={skills.length === 0}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold disabled:opacity-50 squishy"
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold disabled:opacity-50 squishy"
                 >
                   {skills.length === 0 ? "Pick at least one" : "Great, next →"}
                 </button>
               </div>
 
               <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-kawaii-lavender/15 dark:bg-dark-surface/50 text-xs font-semibold text-kawaii-purple dark:text-kawaii-lavender">
-                {SIDE_FACTS[(factIdx.current + 1) % SIDE_FACTS.length]}
+                {fact(0)}
               </div>
             </div>
           )}
 
-          {/* ── STEP 2: Goal ────────────────────────────────────── */}
-          {step === 2 && (
+          {/* ── STEP 1: Goal ────────────────────────────────────── */}
+          {step === 1 && (
             <div className="text-center">
               <p className="text-4xl mb-3">🎯</p>
               <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
@@ -287,24 +213,30 @@ export default function StartPage() {
               </div>
 
               <div className="mt-8 flex gap-2 justify-center">
-                <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
-                <button onClick={() => setStep(3)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">
-                  Pick & continue →
+                <button onClick={() => setStep(0)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
+                <button onClick={() => setStep(2)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">
+                  Continue →
                 </button>
               </div>
 
               <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-kawaii-lavender/15 dark:bg-dark-surface/50 text-xs font-semibold text-kawaii-purple dark:text-kawaii-lavender">
-                {SIDE_FACTS[(factIdx.current + 2) % SIDE_FACTS.length]}
+                {fact(1)}
               </div>
             </div>
           )}
 
-          {/* ── STEP 3: Feature tour ────────────────────────────── */}
-          {step === 3 && (
+          {/* ── STEP 2: Feature tour (slider) ────────────────────── */}
+          {step === 2 && (
             <div className="text-center">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Quick look — what you're getting</p>
               <div className="mb-4 flex items-center justify-between">
-                <button onClick={() => setStep(2)} className="text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">← Back</button>
-                <span className="text-xs font-bold text-slate-400">{tourIdx + 1} / {FEATURES.length}</span>
+                <button onClick={() => setTourIdx(Math.max(0, tourIdx - 1))} disabled={tourIdx === 0} className="w-10 h-10 rounded-full bg-white/80 dark:bg-dark-card border-2 border-kawaii-lavender/30 dark:border-dark-surface text-slate-500 disabled:opacity-30 squishy">←</button>
+                <div className="flex gap-1.5">
+                  {FEATURES.map((_, i) => (
+                    <button key={i} onClick={() => setTourIdx(i)} className={`w-2.5 h-2.5 rounded-full transition-all ${i === tourIdx ? "bg-kawaii-purple scale-125" : "bg-kawaii-lavender/30"}`} />
+                  ))}
+                </div>
+                <button onClick={() => setTourIdx(Math.min(FEATURES.length - 1, tourIdx + 1))} disabled={tourIdx === FEATURES.length - 1} className="w-10 h-10 rounded-full bg-white/80 dark:bg-dark-card border-2 border-kawaii-lavender/30 dark:border-dark-surface text-slate-500 disabled:opacity-30 squishy">→</button>
               </div>
 
               <div key={tourIdx} className="animate-slide-up">
@@ -316,22 +248,89 @@ export default function StartPage() {
               </div>
 
               <div className="mt-8 flex gap-2 justify-center">
-                {tourIdx > 0 && (
-                  <button onClick={() => setTourIdx((i) => i - 1)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">←</button>
-                )}
+                <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
                 {tourIdx < FEATURES.length - 1 ? (
-                  <button onClick={() => setTourIdx((i) => i + 1)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">
-                    Next →
-                  </button>
+                  <button onClick={() => setTourIdx((i) => i + 1)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">Next →</button>
                 ) : (
-                  <button onClick={finish} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold animate-glow-pulse squishy">
-                    🍠 Take me in
-                  </button>
+                  <button onClick={() => setStep(3)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold animate-glow-pulse squishy">Ready — let's set you up 🚀</button>
                 )}
               </div>
 
               <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-kawaii-lavender/15 dark:bg-dark-surface/50 text-xs font-semibold text-kawaii-purple dark:text-kawaii-lavender">
-                {SIDE_FACTS[(factIdx.current + 3) % SIDE_FACTS.length]}
+                {fact(2)}
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 3: Create account (before entering workspace) ── */}
+          {step === 3 && (
+            <div className="text-center">
+              <p className="text-4xl mb-3">🔑</p>
+              <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
+                Almost there — create your account.
+              </h1>
+              <p className="text-slate-500 dark:text-slate-400 mt-2">
+                Your workspace is ready. 30 seconds and you're in — no credit card.
+              </p>
+
+              <form onSubmit={createAccount} className="mt-8 space-y-4 text-left">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="mt-1 w-full h-12 px-4 rounded-2xl border-2 border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200 focus:border-kawaii-purple focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    className="mt-1 w-full h-12 px-4 rounded-2xl border-2 border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200 focus:border-kawaii-purple focus:outline-none"
+                  />
+                </div>
+                {authError && <p className="text-sm text-red-500">{authError}</p>}
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="w-full h-12 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base hover:opacity-90 transition-opacity disabled:opacity-60 squishy"
+                >
+                  {authLoading ? "Creating…" : "🍠 Create account & enter"}
+                </button>
+                <p className="text-center text-xs text-slate-400">
+                  Already have an account?{" "}
+                  <a href="/auth/login?returnUrl=/dashboard" className="text-kawaii-purple underline">Log in</a>
+                </p>
+              </form>
+
+              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-kawaii-lavender/15 dark:bg-dark-surface/50 text-xs font-semibold text-kawaii-purple dark:text-kawaii-lavender">
+                {fact(3)}
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 4: Done → dashboard ─────────────────────────── */}
+          {step === 4 && (
+            <div className="text-center">
+              <div className="animate-vibrate inline-block text-6xl">🍠</div>
+              <h1 className="text-4xl font-extrabold text-slate-800 dark:text-slate-100 mt-4">
+                You're in. Let's make money.
+              </h1>
+              <p className="text-lg text-slate-500 dark:text-slate-400 max-w-lg mx-auto mt-2">
+                Your workspace is ready — we'll walk you through the core features real quick.
+              </p>
+              <div className="mt-8">
+                <button
+                  onClick={finish}
+                  className="px-10 py-4 text-lg rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold animate-glow-pulse squishy"
+                >
+                  📡 Open my workspace
+                </button>
               </div>
             </div>
           )}

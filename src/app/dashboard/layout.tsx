@@ -13,6 +13,7 @@ import { Menu, X, LayoutDashboard, Briefcase, FileText, GitBranch, Settings, Log
 import dynamic from "next/dynamic";
 const MochiHub = dynamic(() => import("@/components/mochi-hub"), { ssr: false });
 import UpgradeNudge from "@/components/upgrade-nudge";
+import FirstRunTour from "@/components/first-run-tour";
 import { ToastProvider } from "@/components/toast";
 import { FocusTimerProvider } from "@/components/focus-timer-provider";
 import ClientErrorReporter from "@/components/client-error-reporter";
@@ -248,6 +249,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <MochiHub />
       <UpgradeNudge />
+      <FirstRunTour />
       <ClientErrorReporter />
     </div>
     </ToastProvider>
