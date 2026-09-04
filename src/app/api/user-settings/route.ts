@@ -40,6 +40,7 @@ export async function PUT(request: Request) {
   if (body.notification_email !== undefined) update.notification_email = String(body.notification_email).trim() || null;
   if (body.email_push_matches !== undefined) update.email_push_matches = body.email_push_matches === true;
   if (body.email_marketing_opt_in !== undefined) update.email_marketing_opt_in = body.email_marketing_opt_in === true;
+  if (body.onboarding_tour_done !== undefined) update.onboarding_tour_done = body.onboarding_tour_done === true;
   for (const key of [
     "telegram_enabled",
     "telegram_push_matches",
