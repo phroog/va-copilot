@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { trackEvent } from "@/components/meta-pixel";
 
 /* ⚡ Sari Start — the cinematic, funny onboarding.
    Skills → Goal → Feature-tour (slider) → then create your account, right
@@ -105,8 +106,9 @@ export default function StartPage() {
         body: JSON.stringify({ skills, job_vector: jobVector }),
       }).catch(() => {});
     }
-    // Fire-and-forget welcome email.
+    // Fire-and-forget welcome email + Meta Lead conversion.
     fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
+    trackEvent("Lead", { content_name: "signup", content_category: "account" });
     setAuthLoading(false);
     setStep(4);
   };

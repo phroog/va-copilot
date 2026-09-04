@@ -16,7 +16,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { LanguageDropdown } from "@/components/language-dropdown";
 import { useLocale } from "@/lib/i18n/context";
-import { trackCustom } from "@/components/meta-pixel";
+import { trackEvent } from "@/components/meta-pixel";
 
 export default function SignupPage() {
   const { t } = useLocale();
@@ -37,7 +37,7 @@ export default function SignupPage() {
       setLoading(false);
     } else {
       fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
-      trackCustom("Signup", { email });
+      trackEvent("Lead", { content_name: "signup", content_category: "account" });
       router.push("/welcome");
     }
   };
