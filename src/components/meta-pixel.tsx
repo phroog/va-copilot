@@ -50,6 +50,11 @@ export default function MetaPixel() {
 
   useEffect(() => {
     setConsented(hasConsent());
+    // If the user accepts cookies after mount (the banner appears late), the
+    // pixel must load right away — listen for the consent-granted event.
+    const onGranted = () => setConsented(true);
+    try { window.addEventListener("sari-consent-granted", onGranted); } catch {}
+    return () => { try { window.removeEventListener("sari-consent-granted", onGranted); } catch {} };
   }, []);
 
   // Fire PageView on route changes after the initial load (the inline script

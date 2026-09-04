@@ -23,6 +23,8 @@ export default function CookieConsent() {
   const accept = () => {
     try { localStorage.setItem(CONSENT_KEY, "accepted"); } catch {}
     setVisible(false);
+    // Notify the Meta Pixel so it loads immediately (not just on next reload).
+    try { window.dispatchEvent(new Event("sari-consent-granted")); } catch {}
   };
 
   if (!visible) return null;
