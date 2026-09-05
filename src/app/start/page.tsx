@@ -53,10 +53,10 @@ export default function StartPage() {
   useEffect(() => {
     if (step !== 3) return;
     setAnalysis(0);
-    const t1 = setTimeout(() => setAnalysis(1), 600);
-    const t2 = setTimeout(() => setAnalysis(2), 1600);
-    const t3 = setTimeout(() => setAnalysis(3), 2600);
-    const t4 = setTimeout(() => setAnalysis(4), 3600);
+    const t1 = setTimeout(() => setAnalysis(1), 400);
+    const t2 = setTimeout(() => setAnalysis(2), 900);
+    const t3 = setTimeout(() => setAnalysis(3), 1400);
+    const t4 = setTimeout(() => setAnalysis(4), 1800);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
   }, [step]);
 
@@ -302,6 +302,7 @@ export default function StartPage() {
                   <div className="mt-6 h-2 w-full max-w-xs mx-auto rounded-full bg-kawaii-lavender/20 overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-kawaii-purple to-kawaii-pink transition-all duration-700" style={{ width: `${(analysis / 4) * 100}%` }} />
                   </div>
+                  <button onClick={() => setStep(4)} className="mt-6 text-xs text-slate-400 underline hover:text-slate-600">Skip →</button>
                 </>
               ) : (
                 <>
@@ -320,8 +321,8 @@ export default function StartPage() {
                     </p>
                   </div>
                   <div className="mt-6">
-                    <button onClick={() => setStep(4)} className="px-6 py-3 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">
-                      Show me how →
+                    <button onClick={() => setStep(4)} className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base squishy">
+                      🚀 See what Sari does for you →
                     </button>
                   </div>
                 </>
