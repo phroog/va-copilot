@@ -30,12 +30,22 @@ Looking forward to hearing from you,
 [Your name]`;
 
 export default function DemoPitchPage() {
-  const [pitch, setPitch] = useState(SAMPLE_PITCH);
+  const [pitch, setPitch] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const generate = () => {
+    setGenerating(true);
+    setPitch(null);
+    setTimeout(() => {
+      setPitch(SAMPLE_PITCH);
+      setGenerating(false);
+    }, 1600);
+  };
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(pitch);
+      await navigator.clipboard.writeText(pitch || "");
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {}
@@ -74,19 +84,41 @@ export default function DemoPitchPage() {
       {/* The generated pitch */}
       <Card className="border-kawaii-purple/40 dark:border-kawaii-lavender/30 bg-gradient-to-br from-kawaii-purple/5 to-kawaii-pink/5 dark:from-kawaii-purple/10 dark:to-kawaii-pink/10">
         <CardContent className="p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-kawaii-purple dark:text-kawaii-lavender">
-              ✨ Generated pitch
-            </span>
-            <Button size="sm" variant="outline" onClick={copy}>
-              {copied ? "✅ Copied!" : "📋 Copy"}
-            </Button>
-          </div>
-          <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{pitch}</p>
-          <div className="mt-4 pt-3 border-t border-kawaii-lavender/20 dark:border-dark-surface flex items-center gap-2 text-xs text-slate-400">
-            <span>🎯 Tailored to the client · 1 credit for real generations</span>
-            <span className="ml-auto">📝 Editable before you send</span>
-          </div>
+          {!pitch && (
+            <div className="text-center py-6">
+              <p className="text-3xl mb-2">🤖</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {generating ? "Writing your pitch…" : "Click to generate a tailored pitch for this job."}
+              </p>
+              {generating && (
+                <div className="mt-3 h-2 w-full max-w-xs mx-auto rounded-full bg-kawaii-lavender/20 overflow-hidden">
+                  <div className="h-full w-2/3 bg-gradient-to-r from-kawaii-purple to-kawaii-pink rounded-full animate-pulse" />
+                </div>
+              )}
+              {!generating && (
+                <Button className="mt-4 px-8 py-3 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy" onClick={generate}>
+                  ✨ Generate pitch
+                </Button>
+              )}
+            </div>
+          )}
+          {pitch && (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-kawaii-purple dark:text-kawaii-lavender">
+                  ✨ Generated pitch
+                </span>
+                <Button size="sm" variant="outline" onClick={copy}>
+                  {copied ? "✅ Copied!" : "📋 Copy"}
+                </Button>
+              </div>
+              <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed animate-fade-in">{pitch}</p>
+              <div className="mt-4 pt-3 border-t border-kawaii-lavender/20 dark:border-dark-surface flex items-center gap-2 text-xs text-slate-400">
+                <span>🎯 Tailored to the client · 1 credit for real generations</span>
+                <span className="ml-auto">📝 Editable before you send</span>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
