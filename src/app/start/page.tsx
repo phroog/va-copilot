@@ -39,7 +39,7 @@ const FEATURES = [
 export default function StartPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [step, setStep] = useState(0); // 0 account, 1 skills, 2 goal, 3 tour, 4 done
+  const [step, setStep] = useState(0); // 0 account, 1 skills, 2 goal, 3 analysis, 4 tour, 5 done
   const [loading, setLoading] = useState(true);
 
   const [skills, setSkills] = useState<string[]>([]);
@@ -47,6 +47,18 @@ export default function StartPage() {
   const [goal, setGoal] = useState<string>("");
   const [tourIdx, setTourIdx] = useState(0);
   const [jobVector, setJobVector] = useState<number[]>([3, 3, 3, 3, 3]);
+  const [analysis, setAnalysis] = useState(0); // 0 idle, 1..3 scanning, 4 done
+
+  // "Profile analysis" show: a short scan then a FOMO result.
+  useEffect(() => {
+    if (step !== 3) return;
+    setAnalysis(0);
+    const t1 = setTimeout(() => setAnalysis(1), 600);
+    const t2 = setTimeout(() => setAnalysis(2), 1600);
+    const t3 = setTimeout(() => setAnalysis(3), 2600);
+    const t4 = setTimeout(() => setAnalysis(4), 3600);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+  }, [step]);
 
   const VECTOR_AXES = [
     { label: "Experience", opts: ["Beginner", "Basic", "Experienced", "Advanced", "Expert"] },
@@ -135,7 +147,7 @@ export default function StartPage() {
   };
 
   const fact = (offset = 0) => SIDE_FACTS[(factIdx.current + offset) % SIDE_FACTS.length];
-  const progress = ((step + 1) / 5) * 100;
+  const progress = ((step + 1) / 6) * 100;
 
   if (loading) {
     return (
@@ -265,7 +277,7 @@ export default function StartPage() {
               <div className="mt-8 flex gap-2 justify-center">
                 <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
                 <button onClick={() => setStep(3)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">
-                  Continue →
+                  Analyze my profile →
                 </button>
               </div>
 
@@ -275,8 +287,50 @@ export default function StartPage() {
             </div>
           )}
 
-          {/* ── STEP 3: Feature tour (slider) ────────────────────── */}
+          {/* ── STEP 3: Profile analysis (FOMO) ─────────────────── */}
           {step === 3 && (
+            <div className="text-center">
+              {analysis < 4 ? (
+                <>
+                  <p className="text-4xl mb-3">🔍</p>
+                  <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">Analyzing your profile…</h1>
+                  <div className="mt-6 space-y-2 text-sm text-slate-500 dark:text-slate-400 min-h-[60px]">
+                    {analysis >= 1 && <p className="animate-fade-in">📊 Scanning your skills…</p>}
+                    {analysis >= 2 && <p className="animate-fade-in">👥 Comparing you to 2,000+ VAs…</p>}
+                    {analysis >= 3 && <p className="animate-fade-in">⏱️ Calculating the time you're losing…</p>}
+                  </div>
+                  <div className="mt-6 h-2 w-full max-w-xs mx-auto rounded-full bg-kawaii-lavender/20 overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-kawaii-purple to-kawaii-pink transition-all duration-700" style={{ width: `${(analysis / 4) * 100}%` }} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-4xl mb-3">😬</p>
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-slate-100 leading-snug">
+                    You match the <span className="text-kawaii-coral dark:text-kawaii-pink">standard VA profile.</span>
+                  </h1>
+                  <p className="text-slate-500 dark:text-slate-400 mt-4 text-base max-w-md mx-auto">
+                    Right now you're losing about <b className="text-kawaii-coral">12 hours a week</b> and roughly{" "}
+                    <b className="text-kawaii-coral">$350/month</b> to manual job hunting — refreshing boards,
+                    writing pitches, dodging scams.
+                  </p>
+                  <div className="mt-6 rounded-2xl bg-kawaii-coral/10 dark:bg-kawaii-coral/15 border border-kawaii-coral/30 p-4">
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                      ⚡ The VAs using Sari already found their next client while you were reading this.
+                    </p>
+                  </div>
+                  <div className="mt-6">
+                    <button onClick={() => setStep(4)} className="px-6 py-3 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">
+                      Show me how →
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ── STEP 4: Feature tour (slider) ────────────────────── */}
+          {step === 4 && (
             <div className="text-center">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Quick look — what you're getting</p>
               <div className="mb-4 flex items-center justify-between">
@@ -298,11 +352,11 @@ export default function StartPage() {
               </div>
 
               <div className="mt-8 flex gap-2 justify-center">
-                <button onClick={() => setStep(2)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
+                <button onClick={() => setStep(3)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
                 {tourIdx < FEATURES.length - 1 ? (
                   <button onClick={() => setTourIdx((i) => i + 1)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">Next →</button>
                 ) : (
-                  <button onClick={() => setStep(4)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">Ready — let's set you up 🚀</button>
+                  <button onClick={() => setStep(5)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">Ready — let's set you up 🚀</button>
                 )}
               </div>
 
@@ -353,8 +407,8 @@ export default function StartPage() {
             </div>
           )}
 
-          {/* ── STEP 4: Done → dashboard ─────────────────────────── */}
-          {step === 4 && (
+          {/* ── STEP 5: Done → dashboard ─────────────────────────── */}
+          {step === 5 && (
             <div className="text-center">
               <div className="animate-vibrate inline-block text-6xl">🍠</div>
               <h1 className="text-4xl font-extrabold text-slate-800 dark:text-slate-100 mt-4">
