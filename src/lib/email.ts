@@ -79,7 +79,8 @@ export async function sendWelcomeEmail(to: string, firstName?: string): Promise<
          <li>⏱️ Time tracking your clients can actually trust</li>
        </ul>
        <p style="margin-top:16px;"><a href="${appUrl}/dashboard" style="display:inline-block;background:#6C4E8F;color:#fff;padding:12px 22px;border-radius:12px;text-decoration:none;font-weight:700;">Open my workspace →</a></p>
-       <p style="margin-top:16px;color:#64748b;font-size:13px;">Quick tip: connect Telegram in Settings → Configuration to get job alerts the second they appear.</p>`
+       <p style="margin-top:16px;color:#64748b;font-size:13px;">Quick tip: connect Telegram in Settings → Configuration to get job alerts the second they appear.</p>
+       <p style="margin-top:12px;color:#94a3b8;font-size:12px;">Logging in on another device? Use your email on the <a href="${appUrl}/auth/login" style="color:#6C4E8F;">login page</a> — or set a password in <b>Settings → Password</b>.</p>`
     ),
   });
 }

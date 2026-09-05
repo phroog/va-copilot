@@ -60,7 +60,6 @@ export default function StartPage() {
   const [email, setEmail] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-  const [magicSent, setMagicSent] = useState(false);
 
   const factIdx = useRef(Math.floor(Math.random() * SIDE_FACTS.length));
   const titleIdx = useRef(Math.floor(Math.random() * FUNNY_TITLES.length));
@@ -102,24 +101,25 @@ export default function StartPage() {
     }
     setAuthLoading(true);
     setAuthError("");
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: "https://getsari.com/start" },
-    });
+    // Instant signup: create the account with an invisible random password so
+    // the user is logged in IMMEDIATELY (no email-confirmation step → zero
+    // dropoff). They can set a real password later in Settings → Password.
+    const randomPw = "sari_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const { error } = await supabase.auth.signUp({ email, password: randomPw });
     setAuthLoading(false);
     if (error) {
       setAuthError(error.message);
       return;
     }
-    // Count as a successful registration for Meta the moment they submit their
-    // email (even if they never click the magic link). Browser pixel + CAPI.
+    // Welcome email + Meta conversion (browser pixel + CAPI) at signup.
     trackEvent("CompleteRegistration", { content_name: "signup", status: "true" });
     fetch("/api/meta/registration", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
     }).catch(() => {});
-    setMagicSent(true); // show "check your email"
+    fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
+    setStep(1); // straight to the questions — no email check
   };
 
   const finish = async () => {
@@ -323,41 +323,29 @@ export default function StartPage() {
                 No credit card. Then we'll ask you a couple of quick questions.
               </p>
 
-              {magicSent ? (
-                <div className="mt-8 rounded-2xl bg-kawaii-purple/10 border border-kawaii-purple/30 p-6 text-center">
-                  <p className="text-4xl mb-3">📬</p>
-                  <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Check your email!</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                    We sent a magic link to <b>{email}</b>. Click it and you're in — no password needed.
-                  </p>
-                  <p className="text-xs text-slate-400 mt-3">Didn't get it? Check spam, or</p>
-                  <button onClick={() => setMagicSent(false)} className="text-xs text-kawaii-purple underline mt-1">try a different email</button>
+              <form onSubmit={createAccount} className="mt-8 space-y-4 text-left">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="mt-1 w-full h-12 px-4 rounded-2xl border-2 border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200 focus:border-kawaii-purple focus:outline-none"
+                  />
                 </div>
-              ) : (
-                <form onSubmit={createAccount} className="mt-8 space-y-4 text-left">
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Email</label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      className="mt-1 w-full h-12 px-4 rounded-2xl border-2 border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200 focus:border-kawaii-purple focus:outline-none"
-                    />
-                  </div>
-                  {authError && <p className="text-sm text-red-500">{authError}</p>}
-                  <button
-                    type="submit"
-                    disabled={authLoading}
-                    className="w-full h-12 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base hover:opacity-90 transition-opacity disabled:opacity-60 squishy"
-                  >
-                    {authLoading ? "Sending…" : "🚀 Continue with email"}
-                  </button>
-                  <p className="text-center text-xs text-slate-400">
-                    No password needed — we'll email you a magic link.
-                  </p>
-                </form>
-              )}
+                {authError && <p className="text-sm text-red-500">{authError}</p>}
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="w-full h-12 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base hover:opacity-90 transition-opacity disabled:opacity-60 squishy"
+                >
+                  {authLoading ? "Creating…" : "🚀 Start free"}
+                </button>
+                <p className="text-center text-xs text-slate-400">
+                  No credit card · No password needed — you're in instantly.
+                </p>
+              </form>
 
               <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-kawaii-lavender/15 dark:bg-dark-surface/50 text-xs font-semibold text-kawaii-purple dark:text-kawaii-lavender">
                 {fact(3)}
