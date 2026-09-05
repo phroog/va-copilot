@@ -65,8 +65,9 @@ export default function StartPage() {
   const factIdx = useRef(Math.floor(Math.random() * SIDE_FACTS.length));
   const titleIdx = useRef(Math.floor(Math.random() * FUNNY_TITLES.length));
 
-  // On return from the magic link (now authenticated), fire onboarding events
-  // once and skip straight to the questions.
+  // On return from the magic link (now authenticated), send the welcome email
+  // once and skip straight to the questions. (CompleteRegistration already
+  // fired at email submit.)
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
@@ -74,7 +75,6 @@ export default function StartPage() {
           if (localStorage.getItem("sari_welcome_fired") !== "1") {
             localStorage.setItem("sari_welcome_fired", "1");
             fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
-            trackEvent("CompleteRegistration", { content_name: "signup", status: "true" });
           }
         } catch {}
         setStep(1);
@@ -111,6 +111,14 @@ export default function StartPage() {
       setAuthError(error.message);
       return;
     }
+    // Count as a successful registration for Meta the moment they submit their
+    // email (even if they never click the magic link). Browser pixel + CAPI.
+    trackEvent("CompleteRegistration", { content_name: "signup", status: "true" });
+    fetch("/api/meta/registration", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }).catch(() => {});
     setMagicSent(true); // show "check your email"
   };
 
