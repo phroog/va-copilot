@@ -144,50 +144,45 @@ export default function FirstRunTour() {
 
   return (
     <>
-      {/* ── Intro bubble ────────────────────────────────────────── */}
+      {/* ── Intro — top guide bar ────────────────────────────────── */}
       {phase === "intro" && (
-        <div className="fixed inset-0 z-[90] flex items-end sm:items-center sm:justify-end p-3 sm:p-8">
-          <button aria-label="Skip" onClick={finish} className="absolute inset-0 bg-black/25 backdrop-blur-[1px]" />
-          <div className="relative w-full sm:w-80 rounded-3xl bg-white dark:bg-dark-card border border-kawaii-lavender/40 dark:border-dark-surface shadow-2xl p-5 animate-slide-up">
-            <p className="text-3xl mb-2">🗺️</p>
-            <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Quick tour of your workspace</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              I'll open the real pages and show you what each one does. Takes ~30 seconds.
-            </p>
-            <div className="mt-4 flex gap-2">
-              <button onClick={finish} className="h-11 px-4 rounded-xl text-slate-400 hover:bg-kawaii-lavender/10 font-bold">Skip</button>
-              <button onClick={startWalk} className="flex-1 h-11 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">Let's go 🚀</button>
+        <div className="fixed top-0 inset-x-0 z-[90] px-3 pt-3">
+          <div className="max-w-md mx-auto rounded-2xl bg-white/95 dark:bg-dark-card/95 border border-kawaii-lavender/40 dark:border-dark-surface shadow-sari p-3 animate-slide-up">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl shrink-0">🗺️</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100">Quick tour of your workspace</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">I'll open the real pages — takes ~30 seconds.</p>
+              </div>
+              <button onClick={finish} className="shrink-0 text-slate-400 hover:text-slate-600 text-sm font-bold px-2">Skip</button>
+              <button onClick={startWalk} className="shrink-0 h-10 px-4 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white text-sm font-extrabold squishy">Let's go 🚀</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Walk-through coachmark on each real page ────────────── */}
+      {/* ── Walk-through — top guide bar (not a popup) ───────────── */}
       {phase === "walk" && showBubble && (
-        <div className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:bottom-8 sm:w-80 z-[90]">
-          <div className="rounded-3xl bg-white dark:bg-dark-card border border-kawaii-lavender/40 dark:border-dark-surface shadow-2xl p-5 animate-slide-up">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{idx + 1} / {STEPS.length}</span>
-              <button onClick={finish} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none p-1 -m-1" aria-label="Close">✕</button>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br from-kawaii-purple to-kawaii-pink flex items-center justify-center text-xl shrink-0`}>
+        <div className="fixed top-0 inset-x-0 z-[90] px-3 pt-3">
+          <div className="max-w-md mx-auto rounded-2xl bg-white/95 dark:bg-dark-card/95 border border-kawaii-lavender/40 dark:border-dark-surface shadow-sari px-4 py-3 animate-slide-up">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-kawaii-purple to-kawaii-pink flex items-center justify-center text-lg shrink-0">
                 {step.emoji}
               </div>
-              <div>
-                <h3 className="font-extrabold text-slate-800 dark:text-slate-100 leading-tight">{step.title}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{step.desc}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{idx + 1} / {STEPS.length}</p>
+                <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100 leading-tight truncate">{step.title}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{step.desc}</p>
               </div>
-            </div>
-            <div className="mt-4 flex items-center justify-between gap-2">
-              <div className="flex gap-1.5">
-                {STEPS.map((_, i) => (
-                  <span key={i} className={`w-2 h-2 rounded-full transition-all ${i === idx ? "bg-kawaii-purple scale-125" : "bg-kawaii-lavender/30"}`} />
-                ))}
-              </div>
-              <button onClick={next} className="h-11 px-5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">
-                {idx < STEPS.length - 1 ? "Next →" : "See plans ✨"}
+              <button onClick={next} className="shrink-0 h-9 px-4 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white text-sm font-extrabold squishy">
+                {idx < STEPS.length - 1 ? "Next →" : "Plans ✨"}
               </button>
+              <button onClick={finish} className="shrink-0 text-slate-400 hover:text-slate-600 text-lg leading-none p-1 -m-1" aria-label="Close">✕</button>
+            </div>
+            <div className="flex gap-1 mt-2.5">
+              {STEPS.map((_, i) => (
+                <span key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= idx ? "bg-kawaii-purple" : "bg-kawaii-lavender/30"}`} />
+              ))}
             </div>
           </div>
         </div>
