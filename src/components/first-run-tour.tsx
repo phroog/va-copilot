@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import { daysLeft, formatPeso, coffeeCompare } from "@/lib/sale";
 
 /* First-run guided tour — walks the user through the REAL workspace pages.
    Each step opens an actual feature page and shows a coachmark bubble that
@@ -29,17 +30,17 @@ const STEPS: TourStep[] = [
 
 const PLANS = [
   {
-    emoji: "🌱", name: "Sari Sprout", price: "$0", per: "", planKey: "free", desc: "For trying things out",
+    emoji: "🌱", name: "Sari Sprout", price: "$0", per: "", orig: null, planKey: "free", desc: "For trying things out",
     features: ["20 matching jobs / day", "5 AI credits / month", "Match & scam score", "CV & PDF"],
     accent: "from-kawaii-mint to-kawaii-lavender", highlight: false,
   },
   {
-    emoji: "🌸", name: "Sari Bloom", price: "$4.99", per: "/mo", planKey: "basic", desc: "For active job hunting",
+    emoji: "🌸", name: "Sari Bloom", price: "$4.99", per: "/mo", orig: "$9.99", planKey: "basic", desc: "For active job hunting",
     features: ["100 matching jobs / day", "50 AI credits / month", "Telegram live jobs", "10 swaps / day"],
     accent: "from-kawaii-lavender to-kawaii-pink", highlight: false,
   },
   {
-    emoji: "👑", name: "Sari Money Club", price: "$9.99", per: "/mo", planKey: "pro", desc: "For pro freelancers",
+    emoji: "👑", name: "Sari Money Club", price: "$9.99", per: "/mo", orig: "$19.99", planKey: "pro", desc: "For pro freelancers",
     features: ["Unlimited matching jobs", "200 AI credits / month", "Full Telegram bot", "Unlimited swaps"],
     accent: "from-kawaii-purple to-kawaii-pink", highlight: true,
   },
@@ -200,7 +201,9 @@ export default function FirstRunTour() {
             <div className="text-center mb-6">
               <p className="text-4xl mb-1 inline-block animate-vibrate">👑</p>
               <h3 className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow">Choose how seriously you want to play</h3>
-              <p className="text-white/80 text-sm mt-1">Every plan includes the workspace. More power = more jobs, more AI, more edge.</p>
+              <p className="text-white/80 text-sm mt-1">
+                🍂 Late Summer Sale — {daysLeft()} days left. Every plan includes the workspace.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -218,14 +221,22 @@ export default function FirstRunTour() {
                   <div className={`w-10 h-10 mx-auto rounded-xl bg-gradient-to-br ${p.accent} flex items-center justify-center text-xl mb-2`}>{p.emoji}</div>
                   <p className="font-bold text-sm text-slate-500 dark:text-slate-400">{p.name}</p>
                   <p className="mt-1 text-3xl font-extrabold text-slate-800 dark:text-slate-100">
-                    {p.price}<span className="text-sm font-medium text-slate-400">{p.per}</span>
+                    {p.price}
+                    {p.orig && <span className="text-base font-medium text-slate-400 line-through ml-1">{p.orig}</span>}
+                    <span className="text-sm font-medium text-slate-400">{p.per}</span>
                   </p>
+                  {p.orig && (
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5">{formatPeso(parseFloat(p.price.replace("$", "")))}/mo</p>
+                  )}
                   <p className="text-[11px] text-slate-400 mt-0.5">{p.desc}</p>
                   <ul className="mt-3 space-y-1 text-left text-xs text-slate-600 dark:text-slate-300">
                     {p.features.map((f) => (
                       <li key={f} className="flex items-start gap-1.5"><span className="text-kawaii-purple dark:text-kawaii-lavender">✓</span>{f}</li>
                     ))}
                   </ul>
+                  {p.orig && (
+                    <p className="mt-2 text-[11px] text-slate-400">☕ {coffeeCompare(parseFloat(p.price.replace("$", "")))}</p>
+                  )}
                   <button
                     onClick={() => choosePlan(p.planKey)}
                     className={`mt-4 block w-full h-11 rounded-2xl flex items-center justify-center font-extrabold text-sm squishy ${

@@ -6,6 +6,7 @@ import TrustBar from "@/components/trust-bar";
 import SocialProof from "@/components/social-proof";
 import CaseStudy from "@/components/case-study";
 import PricingSection from "@/components/pricing-section";
+import LiveTicker from "@/components/live-ticker";
 import Footer from "@/components/footer";
 
 export default function Home() {
@@ -26,6 +27,7 @@ export default function Home() {
         <SocialProof />
         <CaseStudy />
         <PricingSection />
+        <LiveTicker />
         <Footer />
       </div>
     </main>
