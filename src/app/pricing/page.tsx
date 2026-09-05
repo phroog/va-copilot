@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { LanguageDropdown } from "@/components/language-dropdown";
 import { useLocale } from "@/lib/i18n/context";
 import { UPGRADE_SLOGANS } from "@/lib/upgrade-slogans";
+import { daysLeft, formatPeso, coffeeCompare } from "@/lib/sale";
 
 export default function PricingPage() {
   const { t } = useLocale();
@@ -58,6 +59,7 @@ export default function PricingPage() {
       key: "free",
       name: t("planFreeName"),
       price: t("planFreePrice"),
+      orig: null,
       per: "",
       desc: t("planFreeDesc"),
       features: [t("planFreeFeature1"), t("planFreeFeature2"), t("planFreeFeature3"), t("planFreeFeature4")],
@@ -67,7 +69,10 @@ export default function PricingPage() {
     {
       key: "basic",
       name: t("planBasicName"),
-      price: t("planBasicPrice"),
+      price: "$4.99",
+      orig: "$9.99",
+      peso: formatPeso(4.99),
+      coffee: coffeeCompare(4.99),
       per: "/mo",
       desc: t("planBasicDesc"),
       features: [t("planBasicFeature1"), t("planBasicFeature2"), t("planBasicFeature3"), t("planBasicFeature4")],
@@ -77,7 +82,10 @@ export default function PricingPage() {
     {
       key: "pro",
       name: t("planProName"),
-      price: t("planProPrice"),
+      price: "$9.99",
+      orig: "$19.99",
+      peso: formatPeso(9.99),
+      coffee: coffeeCompare(9.99),
       per: "/mo",
       desc: t("planProDesc"),
       features: [t("planProFeature1"), t("planProFeature2"), t("planProFeature3"), t("planProFeature4")],
@@ -112,12 +120,15 @@ export default function PricingPage() {
         <div className="text-center mb-10">
           <div className="flex justify-end -mt-6 mb-4"><LanguageDropdown /></div>
           <Link href="/" className="text-2xl">🍠</Link>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-800 dark:text-slate-100 mt-2">{t("pricingPageTitle")}</h1>
+          <div className="mt-2 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-kawaii-coral/15 dark:bg-kawaii-coral/20 text-sm font-extrabold text-kawaii-coral dark:text-kawaii-pink">
+            🍂 Late Summer Sale — {daysLeft()} {daysLeft() === 1 ? "day" : "days"} left
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-800 dark:text-slate-100 mt-4">{t("pricingPageTitle")}</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">{t("pricingPageSub")}</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-5">
-          {TIERS.map((ti) => (
+          {TIERS.map((ti: any) => (
             <Card key={ti.key} className={`relative ${ti.highlight ? "border-2 border-kawaii-purple dark:border-kawaii-lavender shadow-sari" : "border-kawaii-lavender/30 dark:border-dark-surface"}`}>
               {ti.highlight && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-extrabold px-3 py-1 rounded-full bg-kawaii-purple text-white whitespace-nowrap">
@@ -128,14 +139,17 @@ export default function PricingPage() {
                 <p className="text-sm font-bold uppercase tracking-wider text-slate-400">{ti.name}</p>
                 <p className="mt-3 text-4xl font-extrabold text-slate-800 dark:text-slate-100">
                   {ti.price}
+                  {ti.orig && <span className="text-base font-medium text-slate-400 line-through ml-2">{ti.orig}</span>}
                   <span className="text-sm font-medium text-slate-400">{ti.per}</span>
                 </p>
+                {ti.peso && <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">{ti.peso}/mo</p>}
                 <p className="text-xs text-slate-400 mt-1">{ti.desc}</p>
                 <ul className="mt-4 space-y-1.5 text-left text-sm text-slate-600 dark:text-slate-300">
-                  {ti.features.map((f) => (
+                  {ti.features.map((f: string) => (
                     <li key={f} className="flex items-start gap-1.5"><span className="text-kawaii-purple">✓</span>{f}</li>
                   ))}
                 </ul>
+                {ti.coffee && <p className="mt-3 text-xs text-slate-400">☕ That's {ti.coffee}.</p>}
                 <Button
                   className={`w-full mt-5 ${ti.highlight ? "" : "bg-white text-kawaii-purple border border-kawaii-purple/40 hover:bg-kawaii-lavender/20"}`}
                   onClick={() => startPlan(ti.key)}

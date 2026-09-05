@@ -236,7 +236,7 @@ export default function FirstRunTour() {
                     onClick={() => choosePlan(p.planKey)}
                     className={`mt-4 block w-full h-11 rounded-2xl flex items-center justify-center font-extrabold text-sm squishy ${
                       p.highlight
-                        ? "bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white animate-glow-pulse"
+                        ? "bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white"
                         : "bg-white text-kawaii-purple border border-kawaii-purple/40 hover:bg-kawaii-lavender/20 dark:bg-dark-surface"
                     }`}
                   >
