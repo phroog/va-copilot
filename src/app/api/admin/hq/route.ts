@@ -17,8 +17,10 @@ export async function GET() {
 
   const supabase = createServiceRoleClient();
 
-  // Resolve all auth emails once.
+  // Resolve all auth users once — this is the source of truth for signups +
+  // email lookup (profiles is only populated after the user completes onboarding).
   const emailById = new Map<string, string>();
+  const allUsers: { id: string; email: string | null; created_at: string | null; name: string | null }[] = [];
   try {
     let page = 1;
     while (page <= 20) {
@@ -26,7 +28,12 @@ export async function GET() {
       const arr = users.data?.users ?? [];
       for (const u of arr) {
         if (u.id && u.email) emailById.set(u.id, u.email);
-        if (u.email) emailById.set(u.email, u.email);
+        allUsers.push({
+          id: u.id,
+          email: u.email ?? null,
+          created_at: u.created_at ?? null,
+          name: (u.user_metadata?.full_name as string) || null,
+        });
       }
       if (!users.data?.users || users.data.users.length < 1000) break;
       page++;
@@ -40,19 +47,25 @@ export async function GET() {
     supabase.from("subscriptions").select("*").order("created_at", { ascending: false }).limit(200),
     supabase.from("support_letters").select("*").order("created_at", { ascending: false }).limit(200),
     supabase.from("scam_registry").select("*").order("created_at", { ascending: false }).limit(200),
-    supabase.from("profiles").select("user_id, full_name, created_at").order("created_at", { ascending: false }).limit(500),
+    supabase.from("profiles").select("user_id, full_name").limit(2000),
   ]);
 
-  // Signups: profiles ordered by created_at (fallback to auth users if empty).
-  const signups = (profiles.data ?? [])
-    .filter((p: any) => p.created_at)
-    .map((p: any) => ({
-      user_id: p.user_id,
-      name: p.full_name || null,
-      email: emailFor(p.user_id),
-      created_at: p.created_at,
+  // Signups: from auth.users directly (every signup, even if onboarding was
+  // never completed), sorted by created_at desc.
+  const nameById = new Map<string, string>();
+  for (const p of profiles.data ?? []) {
+    if (p.user_id && p.full_name) nameById.set(p.user_id, p.full_name);
+  }
+  const signups = allUsers
+    .filter((u) => u.created_at)
+    .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
+    .map((u) => ({
+      user_id: u.id,
+      name: u.name || nameById.get(u.id) || null,
+      email: u.email,
+      created_at: u.created_at,
     }))
-    .slice(0, 100);
+    .slice(0, 200);
 
   const purchases = (subs.data ?? []).map((s: any) => ({
     id: s.id,
