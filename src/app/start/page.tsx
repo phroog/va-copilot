@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/components/meta-pixel";
+import { classifyJobVector } from "@/lib/jobs/profile-vector";
 
 /* ⚡ Sari Start — fast onboarding built around ONE goal: show the user their
    first real matches in under a minute. Account → skills → goal → matches. */
@@ -89,7 +90,18 @@ export default function StartPage() {
   ];
 
   const toggleSkill = (s: string) => {
-    setSkills((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+    setSkills((prev) => {
+      const next = prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s];
+      // Auto-derive the matching vector from the chosen skills so the first
+      // matches are real and relevant — no manual tuning required.
+      if (next.length > 0) {
+        try {
+          const { vector } = classifyJobVector({ title: "", description: next.join(" "), skills: next });
+          setJobVector(vector);
+        } catch {}
+      }
+      return next;
+    });
   };
 
   const createAccount = async (e: React.FormEvent) => {
@@ -135,7 +147,7 @@ export default function StartPage() {
       const r = await fetch("/api/jobs/feed?mode=best&limit=3&count_views=1");
       const d = await r.json();
       const top = (d.jobs ?? [])
-        .filter((j: any) => (j.profile_match ?? 0) >= 50)
+        .filter((j: any) => (j.profile_match ?? 0) >= 40)
         .slice(0, 3);
       setMatches(top);
     } catch {
