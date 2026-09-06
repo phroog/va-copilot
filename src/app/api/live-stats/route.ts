@@ -29,7 +29,7 @@ export async function GET() {
   let scams = 0;
   for (const j of scamPoolRes.data ?? []) {
     const s = scamScore(j);
-    if (s.level === "red" || s.level === "orange") scams++;
+    if (s.risk >= 30) scams++; // yellow + orange + red = flagged as risky
   }
 
   const scamsPerHour = Math.max(1, Math.round(scams / 24));
