@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/components/meta-pixel";
 
-/* ⚡ Sari Start — the cinematic, funny onboarding.
-   Account first (email+password), then the questions: skills → goal → tour. */
+/* ⚡ Sari Start — fast onboarding built around ONE goal: show the user their
+   first real matches in under a minute. Account → skills → goal → matches. */
 
 const SIDE_FACTS = [
   "⚡ You're up to 60% faster with Sari — that's 60% more time for naps.",
@@ -28,37 +28,27 @@ const GOALS = [
   { emoji: "🌴", label: "Work less, earn more", hint: "The dream, honestly" },
 ];
 
-const FEATURES = [
-  { emoji: "📡", title: "Your jobs find you", desc: "Matching jobs from 10+ platforms land in one live feed. No tab-hopping, no refresh marathons.", accent: "from-kawaii-purple to-kawaii-pink" },
-  { emoji: "🚀", title: "Pitches that win", desc: "AI writes a tailored pitch per job. You sound brilliant. It's our little secret.", accent: "from-kawaii-pink to-kawaii-coral" },
-  { emoji: "🛡️", title: "Scam-proof", desc: "Fake clients get flagged before they waste your week. Your time is precious.", accent: "from-kawaii-coral to-kawaii-peach" },
-  { emoji: "⏱️", title: "Track & prove it", desc: "Hours + screenshots + a client portal. Trust on autopilot.", accent: "from-kawaii-purple to-kawaii-lavender" },
-  { emoji: "👑", title: "A profile you brag about", desc: "Ratings, hours, verified work — a link you send with pride.", accent: "from-kawaii-pink to-kawaii-purple" },
-];
+interface MatchJob {
+  id: string;
+  title: string;
+  platform: string | null;
+  budget: string | null;
+  profile_match: number | null;
+}
 
 export default function StartPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [step, setStep] = useState(0); // 0 account, 1 skills, 2 goal, 3 analysis, 4 tour, 5 done
+  const [step, setStep] = useState(0); // 0 account, 1 skills, 2 goal, 3 matches, 4 done
   const [loading, setLoading] = useState(true);
 
   const [skills, setSkills] = useState<string[]>([]);
   const [customSkill, setCustomSkill] = useState("");
   const [goal, setGoal] = useState<string>("");
-  const [tourIdx, setTourIdx] = useState(0);
   const [jobVector, setJobVector] = useState<number[]>([3, 3, 3, 3, 3]);
-  const [analysis, setAnalysis] = useState(0); // 0 idle, 1..3 scanning, 4 done
 
-  // "Profile analysis" show: a short scan then a FOMO result.
-  useEffect(() => {
-    if (step !== 3) return;
-    setAnalysis(0);
-    const t1 = setTimeout(() => setAnalysis(1), 400);
-    const t2 = setTimeout(() => setAnalysis(2), 900);
-    const t3 = setTimeout(() => setAnalysis(3), 1400);
-    const t4 = setTimeout(() => setAnalysis(4), 1800);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
-  }, [step]);
+  const [matches, setMatches] = useState<MatchJob[]>([]);
+  const [matchLoading, setMatchLoading] = useState(false);
 
   const VECTOR_AXES = [
     { label: "Experience", opts: ["Beginner", "Basic", "Experienced", "Advanced", "Expert"] },
@@ -68,7 +58,6 @@ export default function StartPage() {
     { label: "Rate tier", opts: ["Low", "Budget", "Mid", "Upper-mid", "Premium"] },
   ];
 
-  // Account (created at the end, before entering the workspace)
   const [email, setEmail] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
@@ -77,8 +66,7 @@ export default function StartPage() {
   const titleIdx = useRef(Math.floor(Math.random() * FUNNY_TITLES.length));
 
   // On return from the magic link (now authenticated), send the welcome email
-  // once and skip straight to the questions. (CompleteRegistration already
-  // fired at email submit.)
+  // once and skip straight to the questions.
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
@@ -113,9 +101,6 @@ export default function StartPage() {
     }
     setAuthLoading(true);
     setAuthError("");
-    // Instant signup: create the account with an invisible random password so
-    // the user is logged in IMMEDIATELY (no email-confirmation step → zero
-    // dropoff). They can set a real password later in Settings → Password.
     const randomPw = "sari_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
     const { error } = await supabase.auth.signUp({ email, password: randomPw });
     setAuthLoading(false);
@@ -123,7 +108,6 @@ export default function StartPage() {
       setAuthError(error.message);
       return;
     }
-    // Welcome email + Meta conversion (browser pixel + CAPI) at signup.
     trackEvent("CompleteRegistration", { content_name: "signup", status: "true" });
     fetch("/api/meta/registration", {
       method: "POST",
@@ -131,11 +115,13 @@ export default function StartPage() {
       body: JSON.stringify({ email }),
     }).catch(() => {});
     fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
-    setStep(1); // straight to the questions — no email check
+    setStep(1);
   };
 
-  const finish = async () => {
-    // Save everything collected during the questions.
+  /* Save the profile and immediately fetch the user's first real matches —
+     the "aha" moment. Auto-grants the top matches into My Matches so the
+     dashboard is never empty. */
+  const goToMatches = async () => {
     if (skills.length > 0) {
       await fetch("/api/profile", {
         method: "PUT",
@@ -143,11 +129,27 @@ export default function StartPage() {
         body: JSON.stringify({ skills, job_vector: jobVector }),
       }).catch(() => {});
     }
+    setStep(3);
+    setMatchLoading(true);
+    try {
+      const r = await fetch("/api/jobs/feed?mode=best&limit=3&count_views=1");
+      const d = await r.json();
+      const top = (d.jobs ?? [])
+        .filter((j: any) => (j.profile_match ?? 0) >= 50)
+        .slice(0, 3);
+      setMatches(top);
+    } catch {
+      setMatches([]);
+    }
+    setMatchLoading(false);
+  };
+
+  const finish = async () => {
     router.push("/dashboard");
   };
 
   const fact = (offset = 0) => SIDE_FACTS[(factIdx.current + offset) % SIDE_FACTS.length];
-  const progress = ((step + 1) / 6) * 100;
+  const progress = ((step + 1) / 5) * 100;
 
   if (loading) {
     return (
@@ -177,7 +179,7 @@ export default function StartPage() {
                 What are you great at?
               </h1>
               <p className="text-slate-500 dark:text-slate-400 mt-2">
-                Pick a few — Sari uses them to find your perfect jobs.
+                Pick a few — we'll find matching jobs for you right after.
               </p>
 
               <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -276,8 +278,8 @@ export default function StartPage() {
 
               <div className="mt-8 flex gap-2 justify-center">
                 <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
-                <button onClick={() => setStep(3)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">
-                  Analyze my profile →
+                <button onClick={goToMatches} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">
+                  🎯 Find my first jobs →
                 </button>
               </div>
 
@@ -287,83 +289,72 @@ export default function StartPage() {
             </div>
           )}
 
-          {/* ── STEP 3: Profile analysis (FOMO) ─────────────────── */}
+          {/* ── STEP 3: First matches (the aha moment) ───────────── */}
           {step === 3 && (
             <div className="text-center">
-              {analysis < 4 ? (
+              {matchLoading ? (
                 <>
                   <p className="text-4xl mb-3">🔍</p>
-                  <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">Analyzing your profile…</h1>
+                  <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">Finding jobs that fit you…</h1>
                   <div className="mt-6 space-y-2 text-sm text-slate-500 dark:text-slate-400 min-h-[60px]">
-                    {analysis >= 1 && <p className="animate-fade-in">📊 Scanning your skills…</p>}
-                    {analysis >= 2 && <p className="animate-fade-in">👥 Comparing you to 2,000+ VAs…</p>}
-                    {analysis >= 3 && <p className="animate-fade-in">⏱️ Calculating the time you're losing…</p>}
+                    <p className="animate-fade-in">📊 Scanning your skills…</p>
+                    <p className="animate-fade-in">👥 Matching you against 1,000+ live jobs…</p>
+                    <p className="animate-fade-in">🎯 Picking your best fits…</p>
                   </div>
                   <div className="mt-6 h-2 w-full max-w-xs mx-auto rounded-full bg-kawaii-lavender/20 overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-kawaii-purple to-kawaii-pink transition-all duration-700" style={{ width: `${(analysis / 4) * 100}%` }} />
+                    <div className="h-full w-1/2 bg-gradient-to-r from-kawaii-purple to-kawaii-pink rounded-full animate-pulse" />
                   </div>
-                  <button onClick={() => setStep(4)} className="mt-6 text-xs text-slate-400 underline hover:text-slate-600">Skip →</button>
+                </>
+              ) : matches.length > 0 ? (
+                <>
+                  <p className="text-4xl mb-3">🎉</p>
+                  <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
+                    {matches.length} job{matches.length === 1 ? "" : "s"} that fit <span className="text-kawaii-purple dark:text-kawaii-lavender">you</span>
+                  </h1>
+                  <p className="text-slate-500 dark:text-slate-400 mt-2">
+                    Real openings, matched to your skills. This is what you'd otherwise scroll 2 hours to find.
+                  </p>
+
+                  <div className="mt-6 space-y-3">
+                    {matches.map((m) => (
+                      <div key={m.id} className="text-left rounded-2xl border-2 border-kawaii-purple/30 dark:border-kawaii-lavender/30 bg-white/80 dark:bg-dark-card p-4 flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{m.title}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {m.platform || "Online"}{m.budget ? ` · ${m.budget}` : ""}
+                          </p>
+                        </div>
+                        {m.profile_match != null && (
+                          <span className="text-sm font-extrabold text-kawaii-purple dark:text-kawaii-lavender shrink-0">
+                            {m.profile_match}% match
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-8">
+                    <button onClick={finish} className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base animate-glow-pulse squishy">
+                      See all my matches →
+                    </button>
+                  </div>
                 </>
               ) : (
                 <>
-                  <p className="text-4xl mb-3">😬</p>
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-slate-100 leading-snug">
-                    You match the <span className="text-kawaii-coral dark:text-kawaii-pink">standard VA profile.</span>
+                  <p className="text-4xl mb-3">🌱</p>
+                  <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100">
+                    Your workspace is ready
                   </h1>
-                  <p className="text-slate-500 dark:text-slate-400 mt-4 text-base max-w-md mx-auto">
-                    Right now you're losing about <b className="text-kawaii-coral">12 hours a week</b> and roughly{" "}
-                    <b className="text-kawaii-coral">$350/month</b> to manual job hunting — refreshing boards,
-                    writing pitches, dodging scams.
+                  <p className="text-slate-500 dark:text-slate-400 mt-3">
+                    Add more skills in Settings to unlock sharper matches.
                   </p>
-                  <div className="mt-6 rounded-2xl bg-kawaii-coral/10 dark:bg-kawaii-coral/15 border border-kawaii-coral/30 p-4">
-                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                      ⚡ The VAs using Sari already found their next client while you were reading this.
-                    </p>
-                  </div>
-                  <div className="mt-6">
-                    <button onClick={() => setStep(4)} className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base squishy">
-                      🚀 See what Sari does for you →
+                  <div className="mt-8">
+                    <button onClick={finish} className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base squishy">
+                      Open my workspace →
                     </button>
                   </div>
                 </>
               )}
-            </div>
-          )}
-
-          {/* ── STEP 4: Feature tour (slider) ────────────────────── */}
-          {step === 4 && (
-            <div className="text-center">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Quick look — what you're getting</p>
-              <div className="mb-4 flex items-center justify-between">
-                <button onClick={() => setTourIdx(Math.max(0, tourIdx - 1))} disabled={tourIdx === 0} className="w-10 h-10 rounded-full bg-white/80 dark:bg-dark-card border-2 border-kawaii-lavender/30 dark:border-dark-surface text-slate-500 disabled:opacity-30 squishy">←</button>
-                <div className="flex gap-1.5">
-                  {FEATURES.map((_, i) => (
-                    <button key={i} onClick={() => setTourIdx(i)} className={`w-2.5 h-2.5 rounded-full transition-all ${i === tourIdx ? "bg-kawaii-purple scale-125" : "bg-kawaii-lavender/30"}`} />
-                  ))}
-                </div>
-                <button onClick={() => setTourIdx(Math.min(FEATURES.length - 1, tourIdx + 1))} disabled={tourIdx === FEATURES.length - 1} className="w-10 h-10 rounded-full bg-white/80 dark:bg-dark-card border-2 border-kawaii-lavender/30 dark:border-dark-surface text-slate-500 disabled:opacity-30 squishy">→</button>
-              </div>
-
-              <div key={tourIdx} className="animate-slide-up">
-                <div className={`w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br ${FEATURES[tourIdx].accent} flex items-center justify-center text-3xl mb-4`}>
-                  {FEATURES[tourIdx].emoji}
-                </div>
-                <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100">{FEATURES[tourIdx].title}</h1>
-                <p className="text-slate-500 dark:text-slate-400 mt-3 max-w-sm mx-auto">{FEATURES[tourIdx].desc}</p>
-              </div>
-
-              <div className="mt-8 flex gap-2 justify-center">
-                <button onClick={() => setStep(3)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
-                {tourIdx < FEATURES.length - 1 ? (
-                  <button onClick={() => setTourIdx((i) => i + 1)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">Next →</button>
-                ) : (
-                  <button onClick={() => setStep(5)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">Ready — let's set you up 🚀</button>
-                )}
-              </div>
-
-              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-kawaii-lavender/15 dark:bg-dark-surface/50 text-xs font-semibold text-kawaii-purple dark:text-kawaii-lavender">
-                {fact(2)}
-              </div>
             </div>
           )}
 
@@ -375,7 +366,7 @@ export default function StartPage() {
                 Create your account — 30 seconds.
               </h1>
               <p className="text-slate-500 dark:text-slate-400 mt-2">
-                No credit card. Then we'll ask you a couple of quick questions.
+                No credit card. We'll find matching jobs for you in under a minute.
               </p>
 
               <form onSubmit={createAccount} className="mt-8 space-y-4 text-left">
@@ -404,27 +395,6 @@ export default function StartPage() {
 
               <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-kawaii-lavender/15 dark:bg-dark-surface/50 text-xs font-semibold text-kawaii-purple dark:text-kawaii-lavender">
                 {fact(3)}
-              </div>
-            </div>
-          )}
-
-          {/* ── STEP 5: Done → dashboard ─────────────────────────── */}
-          {step === 5 && (
-            <div className="text-center">
-              <div className="animate-vibrate inline-block text-6xl">🍠</div>
-              <h1 className="text-4xl font-extrabold text-slate-800 dark:text-slate-100 mt-4">
-                You're in. Let's make money.
-              </h1>
-              <p className="text-lg text-slate-500 dark:text-slate-400 max-w-lg mx-auto mt-2">
-                Your workspace is ready — we'll walk you through the core features real quick.
-              </p>
-              <div className="mt-8">
-                <button
-                  onClick={finish}
-                  className="px-10 py-4 text-lg rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold animate-glow-pulse squishy"
-                >
-                  📡 Open my workspace
-                </button>
               </div>
             </div>
           )}

@@ -92,7 +92,7 @@ export default function DashboardHome() {
         const [finRes, invRes, feedRes, timeRes, eventsRes, subRes, creditsRes] = await Promise.all([
           fetch("/api/finances"),
           fetch("/api/invoices"),
-          fetch("/api/jobs/feed?limit=5&count_views=0&sort=match"),
+          fetch("/api/jobs/feed?limit=5&count_views=1&sort=match"),
           fetch("/api/time-entries"),
           fetch("/api/events"),
           fetch("/api/subscription-status"),
@@ -263,6 +263,88 @@ export default function DashboardHome() {
         </div>
       )}
 
+      {/* Best matches first — the activation moment */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center justify-between">
+              <span>🎯 Best Matches</span>
+              <Link href="/dashboard/live-feed" className="text-xs text-kawaii-purple underline font-medium">View all</Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {topMatches.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-sm text-slate-400">No matches yet.</p>
+                <Link href="/dashboard/live-feed" className="inline-block mt-2 text-sm font-bold text-kawaii-purple underline">
+                  Find your first jobs →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {topMatches.map((job) => (
+                  <Link key={job.id} href={`/jobs/${job.id}`} className="block">
+                    <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 hover:bg-kawaii-lavender/30 squishy">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{job.title}</p>
+                        <p className="text-xs text-slate-400">
+                          {job.platform}
+                          {job.budget ? ` · ${job.budget}` : ""}
+                        </p>
+                      </div>
+                      {job.profile_match != null && (
+                        <span className="text-xs font-extrabold px-2 py-0.5 rounded-lg bg-kawaii-purple/10 text-kawaii-purple dark:text-kawaii-lavender shrink-0">
+                          {job.profile_match}%
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center justify-between">
+              <span>📄 Invoices</span>
+              <Link href="/dashboard/invoices" className="text-xs text-kawaii-purple underline font-medium">
+                {invoiceCount > 0 ? `${invoiceCount} total` : "Create invoice"}
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentInvoices.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">No invoices yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {recentInvoices.map((inv) => {
+                  const sub = (inv.invoice_items ?? []).reduce((s, it) => s + Number(it.total ?? it.quantity * it.unit_price), 0);
+                  const total = sub + sub * (Number(inv.tax_rate) / 100);
+                  return (
+                    <Link key={inv.id} href="/dashboard/invoices" className="block">
+                      <div className="flex items-center justify-between p-3 rounded-2xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 squishy">
+                        <div>
+                          <p className="font-semibold text-sm">{inv.invoice_number}</p>
+                          <p className="text-xs text-slate-400">{inv.client_name}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${statusColors[inv.status] || statusColors.draft}`}>
+                            {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
+                          </span>
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mt-1">{formatMoney(total, inv.currency)}</p>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Quota + Timer */}
       <ProfileReminder />
       <StreakCard />
@@ -333,83 +415,6 @@ export default function DashboardHome() {
                 <Link href="/dashboard/time-tracker">
                   <Button variant="primary" size="sm">▶ Start Tracking</Button>
                 </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Top matches + Recent invoices */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center justify-between">
-              <span>🎯 Best Matches</span>
-              <Link href="/dashboard/live-feed" className="text-xs text-kawaii-purple underline font-medium">View all</Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {topMatches.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">No matches yet — set up your profile in the settings.</p>
-            ) : (
-              <div className="space-y-2">
-                {topMatches.map((job) => (
-                  <Link key={job.id} href={`/jobs/${job.id}`} className="block">
-                    <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 hover:bg-kawaii-lavender/30 squishy">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-sm truncate">{job.title}</p>
-                        <p className="text-xs text-slate-400">
-                          {job.platform}
-                          {job.budget ? ` · ${job.budget}` : ""}
-                        </p>
-                      </div>
-                      {job.profile_match != null && (
-                        <span className="text-xs font-extrabold px-2 py-0.5 rounded-lg bg-kawaii-purple/10 text-kawaii-purple dark:text-kawaii-lavender shrink-0">
-                          {job.profile_match}%
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center justify-between">
-              <span>📄 Invoices</span>
-              <Link href="/dashboard/invoices" className="text-xs text-kawaii-purple underline font-medium">
-                {invoiceCount > 0 ? `${invoiceCount} total` : "Create invoice"}
-              </Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {recentInvoices.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">No invoices yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {recentInvoices.map((inv) => {
-                  const sub = (inv.invoice_items ?? []).reduce((s, it) => s + Number(it.total ?? it.quantity * it.unit_price), 0);
-                  const total = sub + sub * (Number(inv.tax_rate) / 100);
-                  return (
-                    <Link key={inv.id} href="/dashboard/invoices" className="block">
-                      <div className="flex items-center justify-between p-3 rounded-2xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 squishy">
-                        <div>
-                          <p className="font-semibold text-sm">{inv.invoice_number}</p>
-                          <p className="text-xs text-slate-400">{inv.client_name}</p>
-                        </div>
-                        <div className="text-right">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${statusColors[inv.status] || statusColors.draft}`}>
-                            {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
-                          </span>
-                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mt-1">{formatMoney(total, inv.currency)}</p>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
               </div>
             )}
           </CardContent>
