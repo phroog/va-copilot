@@ -37,10 +37,29 @@ interface MatchJob {
   profile_match: number | null;
 }
 
+/* Animated count-up for the "wow" numbers (jobs scanned, scams caught). */
+function useCountUp(target: number, start: boolean, duration = 1400): number {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (!start) { setVal(0); return; }
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setVal(Math.round(target * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, start, duration]);
+  return val;
+}
+
 export default function StartPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [step, setStep] = useState(0); // 0 account, 1 skills, 2 goal, 3 matches, 4 done
+  const [step, setStep] = useState(0); // 0 account, 1 wow, 2 skills, 3 goal, 4 matches
   const [loading, setLoading] = useState(true);
 
   const [skills, setSkills] = useState<string[]>([]);
@@ -50,6 +69,14 @@ export default function StartPage() {
 
   const [matches, setMatches] = useState<MatchJob[]>([]);
   const [matchLoading, setMatchLoading] = useState(false);
+
+  const [liveStats, setLiveStats] = useState<any>(null);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [tickerIdx, setTickerIdx] = useState(0);
+
+  const jobsHour = useCountUp(liveStats?.jobs_last_hour ?? 0, step === 1 && !liveLoading);
+  const scamsHour = useCountUp(liveStats?.scams_per_hour ?? 0, step === 1 && !liveLoading);
+  const totalPool = useCountUp(liveStats?.total_jobs ?? 0, step === 1 && !liveLoading);
 
   const VECTOR_AXES = [
     { label: "Experience", opts: ["Beginner", "Basic", "Experienced", "Advanced", "Expert"] },
@@ -77,7 +104,7 @@ export default function StartPage() {
             fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
           }
         } catch {}
-        setStep(1);
+        setStep(2);
       }
       setLoading(false);
     });
@@ -88,6 +115,15 @@ export default function StartPage() {
     "Customer Support", "Video Editing", "Bookkeeping", "Web Research",
     "Content Writing", "Admin Support", "Transcription", "Graphic Design",
   ];
+
+  // Rotate the live-feed ticker on the "wow" step.
+  useEffect(() => {
+    if (step !== 1) return;
+    const jobs = liveStats?.recent_jobs ?? [];
+    if (jobs.length <= 1) return;
+    const iv = setInterval(() => setTickerIdx((i) => (i + 1) % jobs.length), 1800);
+    return () => clearInterval(iv);
+  }, [step, liveStats]);
 
   const toggleSkill = (s: string) => {
     setSkills((prev) => {
@@ -127,7 +163,14 @@ export default function StartPage() {
       body: JSON.stringify({ email }),
     }).catch(() => {});
     fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
+    // Kick off the "wow" step: load live scan numbers right away.
     setStep(1);
+    setLiveLoading(true);
+    fetch("/api/live-stats")
+      .then((r) => r.json())
+      .then((d) => setLiveStats(d))
+      .catch(() => setLiveStats(null))
+      .finally(() => setLiveLoading(false));
   };
 
   /* Save the profile and immediately fetch the user's first real matches —
@@ -141,7 +184,7 @@ export default function StartPage() {
         body: JSON.stringify({ skills, job_vector: jobVector }),
       }).catch(() => {});
     }
-    setStep(3);
+    setStep(4);
     setMatchLoading(true);
     try {
       const r = await fetch("/api/jobs/feed?mode=best&limit=3&count_views=1");
@@ -183,8 +226,70 @@ export default function StartPage() {
         </div>
 
         <div key={step} className="animate-slide-up">
-          {/* ── STEP 1: Skills ───────────────────────────────────── */}
+          {/* ── STEP 1: Wow — live scan numbers ────────────────── */}
           {step === 1 && (
+            <div className="text-center">
+              <p className="text-xs font-bold uppercase tracking-widest text-kawaii-coral dark:text-kawaii-pink mb-2">🔴 Live right now</p>
+              <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
+                We just scanned the internet<br />
+                <span className="text-kawaii-purple dark:text-kawaii-lavender">before everyone else</span>
+              </h1>
+
+              {/* Live feed ticker */}
+              <div className="mt-6 rounded-2xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white/70 dark:bg-dark-card/70 p-4 text-left">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">🟢 Jobs detected in the last hour</p>
+                {liveLoading ? (
+                  <p className="text-sm text-slate-400 animate-pulse">Scanning 10+ platforms…</p>
+                ) : (liveStats?.recent_jobs ?? []).length === 0 ? (
+                  <p className="text-sm text-slate-400">Warming up the feed…</p>
+                ) : (
+                  <div className="min-h-[56px]">
+                    {(liveStats.recent_jobs ?? []).map((j: any, i: number) => (
+                      <div key={j.id} className={`flex items-center justify-between gap-2 py-1 transition-opacity duration-500 ${i === tickerIdx ? "opacity-100" : "opacity-20"}`}>
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{j.title}</span>
+                        <span className="text-[10px] text-slate-400 shrink-0">{j.platform}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Big numbers */}
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                <div className="rounded-2xl bg-gradient-to-br from-kawaii-purple/10 to-kawaii-pink/10 p-3">
+                  <p className="text-2xl font-extrabold text-kawaii-purple dark:text-kawaii-lavender tabular-nums">{jobsHour}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold leading-tight">jobs / hour</p>
+                </div>
+                <div className="rounded-2xl bg-gradient-to-br from-kawaii-coral/10 to-kawaii-pink/10 p-3">
+                  <p className="text-2xl font-extrabold text-kawaii-coral dark:text-kawaii-pink tabular-nums">{scamsHour}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold leading-tight">scams caught / hr</p>
+                </div>
+                <div className="rounded-2xl bg-gradient-to-br from-kawaii-mint/10 to-kawaii-purple/10 p-3">
+                  <p className="text-2xl font-extrabold text-slate-700 dark:text-slate-100 tabular-nums">{totalPool}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold leading-tight">jobs in our pool</p>
+                </div>
+              </div>
+
+              <p className="mt-4 text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                These are real jobs Sari scanned in the <b>last hour</b> — and real scams we flagged{" "}
+                <b>before they wasted your week</b>.
+              </p>
+
+              <div className="mt-6">
+                <button onClick={() => setStep(2)} className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base animate-glow-pulse squishy">
+                  🎯 Find MY jobs →
+                </button>
+              </div>
+              <div className="mt-3">
+                <button onClick={() => router.push("/pricing")} className="text-xs text-slate-400 underline hover:text-slate-600">
+                  Or unlock everything now — from $4.99
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 2: Skills ───────────────────────────────────── */}
+          {step === 2 && (
             <div className="text-center">
               <p className="text-4xl mb-3">💪</p>
               <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
@@ -243,7 +348,7 @@ export default function StartPage() {
 
               <div className="mt-8">
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(3)}
                   disabled={skills.length === 0}
                   className="px-6 py-3 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold disabled:opacity-50 squishy"
                 >
@@ -257,8 +362,8 @@ export default function StartPage() {
             </div>
           )}
 
-          {/* ── STEP 2: Goal ────────────────────────────────────── */}
-          {step === 2 && (
+          {/* ── STEP 3: Goal ────────────────────────────────────── */}
+          {step === 3 && (
             <div className="text-center">
               <p className="text-4xl mb-3">🎯</p>
               <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
@@ -289,7 +394,7 @@ export default function StartPage() {
               </div>
 
               <div className="mt-8 flex gap-2 justify-center">
-                <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
+                <button onClick={() => setStep(2)} className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold">← Back</button>
                 <button onClick={goToMatches} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold squishy">
                   🎯 Find my first jobs →
                 </button>
@@ -301,8 +406,8 @@ export default function StartPage() {
             </div>
           )}
 
-          {/* ── STEP 3: First matches (the aha moment) ───────────── */}
-          {step === 3 && (
+          {/* ── STEP 4: First matches (the aha moment) ───────────── */}
+          {step === 4 && (
             <div className="text-center">
               {matchLoading ? (
                 <>
