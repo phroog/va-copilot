@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/components/meta-pixel";
 import { classifyJobVector } from "@/lib/jobs/profile-vector";
+import { daysLeft, formatPeso, coffeeCompare } from "@/lib/sale";
 
 /* ⚡ Sari Start — fast onboarding built around ONE goal: show the user their
    first real matches in under a minute. Account → skills → goal → matches. */
@@ -73,6 +74,9 @@ export default function StartPage() {
   const [liveStats, setLiveStats] = useState<any>(null);
   const [liveLoading, setLiveLoading] = useState(false);
   const [tickerIdx, setTickerIdx] = useState(0);
+
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
 
   const jobsHour = useCountUp(liveStats?.jobs_last_hour ?? 0, step === 1 && !liveLoading);
   const scamsDay = useCountUp(liveStats?.scams_last_24h ?? 0, step === 1 && !liveLoading);
@@ -201,6 +205,22 @@ export default function StartPage() {
 
   const finish = async () => {
     router.push("/dashboard");
+  };
+
+  const startPlan = async (plan: string) => {
+    setCheckoutPlan(plan);
+    try {
+      const r = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data?.error || "Checkout failed");
+      if (data.url) window.location.href = data.url;
+    } catch (e: any) {
+      setCheckoutPlan(null);
+    }
   };
 
   const fact = (offset = 0) => SIDE_FACTS[(factIdx.current + offset) % SIDE_FACTS.length];
@@ -451,7 +471,7 @@ export default function StartPage() {
                   </div>
 
                   <div className="mt-8">
-                    <button onClick={finish} className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base animate-glow-pulse squishy">
+                    <button onClick={() => setShowPaywall(true)} className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-base animate-glow-pulse squishy">
                       See all my matches →
                     </button>
                   </div>
@@ -517,6 +537,95 @@ export default function StartPage() {
           )}
         </div>
       </div>
+
+      {/* ── Paywall modal (end of flow) ─────────────────────────── */}
+      {showPaywall && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-dark-card rounded-3xl p-6 shadow-2xl animate-slide-up max-h-[92vh] overflow-y-auto">
+            <p className="text-3xl">🔒</p>
+            <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 mt-1">
+              Your matches are reserved
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              These jobs fit you. Unlock them now — they get taken fast.
+            </p>
+
+            {/* Reserved matches */}
+            {matches.length > 0 && (
+              <div className="mt-4 space-y-1.5">
+                {matches.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between gap-2 rounded-xl bg-kawaii-lavender/15 dark:bg-dark-surface/40 px-3 py-2">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">🔒 {m.title}</span>
+                    {m.profile_match != null && (
+                      <span className="text-xs font-extrabold text-kawaii-purple dark:text-kawaii-lavender shrink-0">{m.profile_match}%</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Sale countdown */}
+            <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-kawaii-coral/15 dark:bg-kawaii-coral/20 px-3 py-1 text-xs font-extrabold text-kawaii-coral dark:text-kawaii-pink">
+              🍂 Late Summer Sale — {daysLeft()} {daysLeft() === 1 ? "day" : "days"} left
+            </div>
+            <p className="text-center text-[11px] text-slate-400 mt-2">
+              👋 <b>2,000+ VAs</b> are already landing clients with Sari.
+            </p>
+
+            {/* Plans */}
+            <div className="mt-4 space-y-3">
+              <button
+                onClick={() => startPlan("basic")}
+                disabled={checkoutPlan != null}
+                className="w-full rounded-2xl border-2 border-kawaii-purple/40 bg-white dark:bg-dark-surface p-4 text-left transition-all hover:border-kawaii-purple squishy disabled:opacity-60"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-slate-800 dark:text-slate-100">🌸 Sari Bloom</span>
+                  <span className="text-right">
+                    <span className="block text-lg font-extrabold text-kawaii-purple dark:text-kawaii-lavender">$4.99</span>
+                    <span className="block text-xs text-slate-400 line-through">$9.99</span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  100 jobs/day · 50 AI credits · {formatPeso(4.99)}/mo ({coffeeCompare(4.99)})
+                </p>
+              </button>
+
+              <button
+                onClick={() => startPlan("pro")}
+                disabled={checkoutPlan != null}
+                className="w-full rounded-2xl border-2 border-kawaii-purple bg-gradient-to-r from-kawaii-purple/10 to-kawaii-pink/10 dark:from-kawaii-purple/15 dark:to-kawaii-pink/10 p-4 text-left relative transition-all hover:border-kawaii-purple squishy disabled:opacity-60"
+              >
+                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-kawaii-purple text-white whitespace-nowrap">
+                  ⭐ Most Popular
+                </span>
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-slate-800 dark:text-slate-100">👑 Sari Money Club</span>
+                  <span className="text-right">
+                    <span className="block text-lg font-extrabold text-kawaii-purple dark:text-kawaii-lavender">$9.99</span>
+                    <span className="block text-xs text-slate-400 line-through">$19.99</span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Unlimited jobs · 200 AI credits · unlimited swaps · {formatPeso(9.99)}/mo
+                </p>
+              </button>
+            </div>
+
+            {checkoutPlan && <p className="text-center text-xs text-slate-400 mt-3 animate-pulse">Opening secure checkout…</p>}
+
+            {/* Risk reversal + skip */}
+            <p className="text-center text-[11px] text-slate-400 mt-4">🛡️ Cancel anytime · No hidden fees · Keep access until the period ends</p>
+            <button
+              onClick={finish}
+              disabled={checkoutPlan != null}
+              className="w-full mt-3 text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline disabled:opacity-50"
+            >
+              No thanks — I'll risk losing these jobs
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
