@@ -13,8 +13,13 @@ export const runtime = "nodejs";
  * email we send, so it stays quiet (no per-job spam).
  * Protected by x-admin-secret (same as the broadcast route). */
 export async function GET(request: Request) {
-  const secret = process.env.ADMIN_SECRET || process.env.ADMIN_DASHBOARD_PASSWORD || "";
-  if (!secret || request.headers.get("x-admin-secret") !== secret) {
+  const adminSecret = process.env.ADMIN_SECRET || process.env.ADMIN_DASHBOARD_PASSWORD || "";
+  const cronSecret = process.env.CRON_SECRET || "";
+  const auth = request.headers.get("authorization") || "";
+  const ok =
+    (cronSecret && auth === `Bearer ${cronSecret}`) ||
+    (adminSecret && request.headers.get("x-admin-secret") === adminSecret);
+  if (!ok) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

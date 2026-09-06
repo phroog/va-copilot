@@ -10,8 +10,13 @@ export const runtime = "nodejs";
  * sequence (welcome already sent at signup, then 2 nurture emails). Stops
  * as soon as a user upgrades. Protected by x-admin-secret. */
 export async function GET(request: Request) {
-  const secret = process.env.ADMIN_SECRET || process.env.ADMIN_DASHBOARD_PASSWORD || "";
-  if (!secret || request.headers.get("x-admin-secret") !== secret) {
+  const adminSecret = process.env.ADMIN_SECRET || process.env.ADMIN_DASHBOARD_PASSWORD || "";
+  const cronSecret = process.env.CRON_SECRET || "";
+  const auth = request.headers.get("authorization") || "";
+  const ok =
+    (cronSecret && auth === `Bearer ${cronSecret}`) ||
+    (adminSecret && request.headers.get("x-admin-secret") === adminSecret);
+  if (!ok) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
