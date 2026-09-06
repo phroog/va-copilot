@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { getStripe, PLANS, GRACE_DAYS, planFromPriceId, type PlanKey } from "@/lib/payments";
+import { getStripe, PLANS, GRACE_DAYS, planFromPriceId, PASSES, type PlanKey, type PassKey } from "@/lib/payments";
 import { sendEmail, layoutEmail } from "@/lib/email";
 import { metaPurchase } from "@/lib/meta-capi";
 
@@ -41,6 +41,32 @@ async function awardCredits(userId: string, plan: PlanKey) {
   // Set to at least the awarded amount (top up on renewal).
   const balance = Math.max(current, credits);
   await supabase().from("ai_credits").upsert({ user_id: userId, balance, total_used: 0 }, { onConflict: "user_id" });
+}
+
+/* One-time pass purchase: grant access for N months (no recurring billing). */
+async function applyPass(userId: string, passKey: PassKey) {
+  const pass = PASSES[passKey];
+  if (!pass) return;
+  const until = new Date();
+  until.setMonth(until.getMonth() + pass.months);
+  const untilIso = until.toISOString();
+
+  await supabase().from("subscriptions").upsert({
+    user_id: userId,
+    plan: pass.plan,
+    status: "pass",
+    stripe_subscription_id: null,
+    current_period_end: untilIso,
+    access_until: untilIso,
+  }, { onConflict: "user_id" });
+
+  const limit = PLANS[pass.plan].dailyJobLimit ?? 20;
+  await supabase().from("profiles").update({
+    daily_job_limit: limit,
+    monthly_ai_credits: PLANS[pass.plan].monthlyCredits,
+  }).eq("user_id", userId);
+
+  await awardCredits(userId, pass.plan);
 }
 
 /* Subscription ended: keep the plan for the grace period so the user doesn't
@@ -100,21 +126,32 @@ export async function POST(request: Request) {
       case "checkout.session.completed": {
         const s = event.data.object;
         const userId = s.client_reference_id;
-        const plan = (s.metadata?.plan || planFromPriceId(s.items?.data?.[0]?.price?.id)) as PlanKey;
-        if (userId) {
-          await upsertSubscription(userId, plan, "active", s.subscription, s.current_period_end);
-          await awardCredits(userId, plan);
-          // The Dream Streak free month is consumed by this checkout.
-          if (s.metadata?.freeMonth === "1") {
-            await supabase().from("profiles").update({ free_month_available: false }).eq("user_id", userId);
-          }
-          // Server-side Meta CAPI Purchase conversion.
-          const { data: authUser } = await supabase().auth.admin.getUserById(userId);
-          const email = authUser?.user?.email || null;
-          const amount = s.amount_total ? s.amount_total / 100 : undefined;
-          const currency = s.currency ? s.currency.toUpperCase() : undefined;
-          await metaPurchase({ email, value: amount, currency }).catch(() => {});
+        if (!userId) break;
+
+        // One-time pass checkout (supports PayPal).
+        if (s.mode === "payment" && s.metadata?.pass) {
+          await applyPass(userId, s.metadata.pass as PassKey);
+          const { data: passUser } = await supabase().auth.admin.getUserById(userId);
+          const passEmail = passUser?.user?.email || null;
+          const passAmount = s.amount_total ? s.amount_total / 100 : undefined;
+          const passCurrency = s.currency ? s.currency.toUpperCase() : undefined;
+          await metaPurchase({ email: passEmail, value: passAmount, currency: passCurrency }).catch(() => {});
+          break;
         }
+
+        const plan = (s.metadata?.plan || planFromPriceId(s.items?.data?.[0]?.price?.id)) as PlanKey;
+        await upsertSubscription(userId, plan, "active", s.subscription, s.current_period_end);
+        await awardCredits(userId, plan);
+        // The Dream Streak free month is consumed by this checkout.
+        if (s.metadata?.freeMonth === "1") {
+          await supabase().from("profiles").update({ free_month_available: false }).eq("user_id", userId);
+        }
+        // Server-side Meta CAPI Purchase conversion.
+        const { data: authUser } = await supabase().auth.admin.getUserById(userId);
+        const email = authUser?.user?.email || null;
+        const amount = s.amount_total ? s.amount_total / 100 : undefined;
+        const currency = s.currency ? s.currency.toUpperCase() : undefined;
+        await metaPurchase({ email, value: amount, currency }).catch(() => {});
         break;
       }
       case "customer.subscription.updated": {

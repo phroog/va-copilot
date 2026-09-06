@@ -9,6 +9,7 @@ import { LanguageDropdown } from "@/components/language-dropdown";
 import { useLocale } from "@/lib/i18n/context";
 import { UPGRADE_SLOGANS } from "@/lib/upgrade-slogans";
 import { daysLeft, formatPeso, coffeeCompare } from "@/lib/sale";
+import { PASSES, type PassKey } from "@/lib/payments";
 
 export default function PricingPage() {
   const { t } = useLocale();
@@ -19,6 +20,7 @@ export default function PricingPage() {
   const [currentPlan, setCurrentPlan] = useState<string | null>(null);
   const [inGrace, setInGrace] = useState(false);
   const [accessUntil, setAccessUntil] = useState<string | null>(null);
+  const [isPass, setIsPass] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [sloganIdx, setSloganIdx] = useState(() => Math.floor(Math.random() * UPGRADE_SLOGANS.length));
 
@@ -35,6 +37,7 @@ export default function PricingPage() {
         setCurrentPlan(d.plan ?? "free");
         setInGrace(!!d.inGrace);
         setAccessUntil(d.accessUntil ?? null);
+        setIsPass(!!d.isPass);
       })
       .catch(() => {})
       .finally(() => setChecking(false));
@@ -114,6 +117,25 @@ export default function PricingPage() {
     } finally { setLoadingPlan(null); }
   };
 
+  const startPass = async (passKey: PassKey) => {
+    setLoadingPlan(passKey);
+    setMsg("");
+    try {
+      const res = await fetch("/api/subscription-status");
+      if (res.status === 401) { router.push("/auth/login?next=/pricing"); return; }
+      const r = await fetch("/api/create-pass-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pass: passKey }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data?.error || "Checkout failed");
+      if (data.url) window.location.href = data.url;
+    } catch (e: any) {
+      setMsg(e?.message || "Checkout failed");
+    } finally { setLoadingPlan(null); }
+  };
+
   return (
     <div className="min-h-screen bg-[#FFF0F5] dark:bg-dark-bg">
       <div className="max-w-5xl mx-auto px-4 py-14">
@@ -164,6 +186,40 @@ export default function PricingPage() {
 
         {msg && <p className="text-center text-sm mt-4 text-slate-600 dark:text-slate-300">{msg}</p>}
 
+        {/* One-time passes — payable with PayPal (no recurring billing) */}
+        <div className="mt-10 max-w-3xl mx-auto">
+          <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 text-center">🎟️ Prefer a one-time pass?</h2>
+          <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Pay once, no auto-renewal, no cancellation needed. One-time passes also work with <b>PayPal</b>.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-5 mt-5">
+            <div className="rounded-2xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white/70 dark:bg-dark-card/70 p-5 text-center">
+              <p className="text-sm font-bold uppercase tracking-wider text-slate-400">Sari Bloom Pass</p>
+              <div className="mt-4 space-y-2">
+                <button onClick={() => startPass("basic_1m")} disabled={loadingPlan === "basic_1m"} className="w-full h-11 rounded-xl bg-white text-kawaii-purple border border-kawaii-purple/40 hover:bg-kawaii-lavender/20 dark:bg-dark-surface font-bold text-sm squishy">
+                  1 month — $4.99
+                </button>
+                <button onClick={() => startPass("basic_3m")} disabled={loadingPlan === "basic_3m"} className="w-full h-11 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-bold text-sm squishy">
+                  3 months — $11.99 <span className="opacity-80 line-through">$14.97</span>
+                </button>
+                <p className="text-xs text-slate-400">{formatPeso(11.99)} for 3 months · {coffeeCompare(11.99)}</p>
+              </div>
+            </div>
+            <div className="rounded-2xl border-2 border-kawaii-purple dark:border-kawaii-lavender bg-white/70 dark:bg-dark-card/70 p-5 text-center">
+              <p className="text-sm font-bold uppercase tracking-wider text-kawaii-purple dark:text-kawaii-lavender">Sari Money Club Pass</p>
+              <div className="mt-4 space-y-2">
+                <button onClick={() => startPass("pro_1m")} disabled={loadingPlan === "pro_1m"} className="w-full h-11 rounded-xl bg-white text-kawaii-purple border border-kawaii-purple/40 hover:bg-kawaii-lavender/20 dark:bg-dark-surface font-bold text-sm squishy">
+                  1 month — $9.99
+                </button>
+                <button onClick={() => startPass("pro_3m")} disabled={loadingPlan === "pro_3m"} className="w-full h-11 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-bold text-sm squishy">
+                  3 months — $23.99 <span className="opacity-80 line-through">$29.97</span>
+                </button>
+                <p className="text-xs text-slate-400">{formatPeso(23.99)} for 3 months · {coffeeCompare(23.99)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Cancel-anytime guarantee */}
         <div className="mt-6 rounded-2xl border-2 border-kawaii-mint/50 dark:border-green-700/50 bg-green-50/70 dark:bg-green-900/10 px-5 py-4 flex items-center gap-3">
           <span className="text-2xl shrink-0">🛡️</span>
@@ -194,7 +250,11 @@ export default function PricingPage() {
               <p className="text-xl font-extrabold text-slate-800 dark:text-slate-100">
                 {currentPlan === "pro" ? t("planProName") : t("planBasicName")}
               </p>
-              {inGrace && accessUntil ? (
+              {isPass && accessUntil ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Pass active until {new Date(accessUntil).toLocaleDateString()} — no renewal.
+                </p>
+              ) : inGrace && accessUntil ? (
                 <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
                   Access until {new Date(accessUntil).toLocaleDateString()} (grace period)
                 </p>
@@ -204,9 +264,11 @@ export default function PricingPage() {
                 </p>
               )}
             </div>
-            <Button variant="outline" size="sm" onClick={cancelSubscription} disabled={cancelling}>
-              {cancelling ? "Cancelling…" : "Cancel subscription (no renewal)"}
-            </Button>
+            {!isPass && (
+              <Button variant="outline" size="sm" onClick={cancelSubscription} disabled={cancelling}>
+                {cancelling ? "Cancelling…" : "Cancel subscription (no renewal)"}
+              </Button>
+            )}
           </div>
         )}
         <p className="text-center text-xs text-slate-400 mt-8">{t("pricingFooter")}</p>

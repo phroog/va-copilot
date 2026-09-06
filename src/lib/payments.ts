@@ -10,6 +10,26 @@ export const PLANS = {
 
 export type PlanKey = keyof typeof PLANS;
 
+/* One-time access passes (1 or 3 months) — payable with PayPal (which Stripe
+   can't use for recurring subscriptions). Temporary until PayPal subscriptions
+   are approved. */
+export type PassKey = "basic_1m" | "basic_3m" | "pro_1m" | "pro_3m";
+
+export interface Pass {
+  plan: PlanKey;
+  months: number;
+  priceId: string;
+  amountUsd: number;
+  label: string;
+}
+
+export const PASSES: Record<PassKey, Pass> = {
+  basic_1m: { plan: "basic", months: 1, priceId: "price_1UCcmfQtDRGVAHQg7eKX3NRE", amountUsd: 4.99, label: "Sari Bloom · 1 month" },
+  basic_3m: { plan: "basic", months: 3, priceId: "price_1UCcmfQtDRGVAHQgjVNBkLbh", amountUsd: 11.99, label: "Sari Bloom · 3 months" },
+  pro_1m: { plan: "pro", months: 1, priceId: "price_1UCcmfQtDRGVAHQgHs4wWCdE", amountUsd: 9.99, label: "Sari Money Club · 1 month" },
+  pro_3m: { plan: "pro", months: 3, priceId: "price_1UCcmgQtDRGVAHQg5r1wizsT", amountUsd: 23.99, label: "Sari Money Club · 3 months" },
+};
+
 /* Grace period after a subscription ends before the user drops back to free. */
 export const GRACE_DAYS = 2;
 

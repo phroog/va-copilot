@@ -22,6 +22,7 @@ export async function GET() {
   const rawPlan = ((subRes.data?.plan as PlanKey) || "free");
   const plan = effectivePlan(subRes.data);
   const status = subRes.data?.status || "active";
+  const isPass = status === "pass";
   const accessUntil = subRes.data?.access_until || null;
   const dailyJobLimit = PLANS[plan].dailyJobLimit;
   const usedToday = viewsRes.data?.count ?? 0;
@@ -32,6 +33,7 @@ export async function GET() {
     planLabel: PLANS[plan].label,
     rawPlan,
     status,
+    isPass,
     inGrace,
     accessUntil,
     periodEnd: subRes.data?.current_period_end ?? null,
