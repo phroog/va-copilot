@@ -75,7 +75,7 @@ export default function StartPage() {
   const [tickerIdx, setTickerIdx] = useState(0);
 
   const jobsHour = useCountUp(liveStats?.jobs_last_hour ?? 0, step === 1 && !liveLoading);
-  const scamsHour = useCountUp(liveStats?.scams_per_hour ?? 0, step === 1 && !liveLoading);
+  const scamsDay = useCountUp(liveStats?.scams_last_24h ?? 0, step === 1 && !liveLoading);
   const totalPool = useCountUp(liveStats?.total_jobs ?? 0, step === 1 && !liveLoading);
 
   const VECTOR_AXES = [
@@ -261,8 +261,8 @@ export default function StartPage() {
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold leading-tight">jobs / hour</p>
                 </div>
                 <div className="rounded-2xl bg-gradient-to-br from-kawaii-coral/10 to-kawaii-pink/10 p-3">
-                  <p className="text-2xl font-extrabold text-kawaii-coral dark:text-kawaii-pink tabular-nums">{scamsHour}</p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold leading-tight">scams caught / hr</p>
+                  <p className="text-2xl font-extrabold text-kawaii-coral dark:text-kawaii-pink tabular-nums">{scamsDay}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold leading-tight">scams flagged today</p>
                 </div>
                 <div className="rounded-2xl bg-gradient-to-br from-kawaii-mint/10 to-kawaii-purple/10 p-3">
                   <p className="text-2xl font-extrabold text-slate-700 dark:text-slate-100 tabular-nums">{totalPool}</p>
