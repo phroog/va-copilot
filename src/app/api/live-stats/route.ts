@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { scamScore } from "@/lib/jobs/scam-score";
 
 export const runtime = "nodejs";
@@ -7,9 +7,9 @@ export const runtime = "nodejs";
 /* GET /api/live-stats
  * Real, live numbers for the onboarding "wow" moment: how many jobs we
  * scanned in the last hour/day, how many scams we flagged, and a few of the
- * newest jobs to show as a live feed. */
+ * newest jobs to show as a live feed. Public aggregate data (no user data). */
 export async function GET() {
-  const supabase = createClient();
+  const supabase = createServiceRoleClient();
   const now = Date.now();
   const hourAgo = new Date(now - 3600 * 1000).toISOString();
   const dayAgo = new Date(now - 86400 * 1000).toISOString();
