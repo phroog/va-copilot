@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/components/meta-pixel";
 import { classifyJobVector } from "@/lib/jobs/profile-vector";
 import { daysLeft, formatPeso, coffeeCompare } from "@/lib/sale";
+import { PASSES, type PassKey } from "@/lib/payments";
 
 /* ⚡ Sari Start — fast onboarding built around ONE goal: show the user their
    first real matches in under a minute. Account → skills → goal → matches. */
@@ -77,6 +78,7 @@ export default function StartPage() {
 
   const [showPaywall, setShowPaywall] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
+  const [payMode, setPayMode] = useState<"sub" | "pass">("sub");
 
   const jobsHour = useCountUp(liveStats?.jobs_last_hour ?? 0, step === 1 && !liveLoading);
   const scamsDay = useCountUp(liveStats?.scams_last_24h ?? 0, step === 1 && !liveLoading);
@@ -214,6 +216,22 @@ export default function StartPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data?.error || "Checkout failed");
+      if (data.url) window.location.href = data.url;
+    } catch (e: any) {
+      setCheckoutPlan(null);
+    }
+  };
+
+  const startPass = async (passKey: PassKey) => {
+    setCheckoutPlan(passKey);
+    try {
+      const r = await fetch("/api/create-pass-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pass: passKey }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || "Checkout failed");
@@ -572,50 +590,98 @@ export default function StartPage() {
               👋 <b>2,000+ VAs</b> are already landing clients with Sari.
             </p>
 
-            {/* Plans */}
-            <div className="mt-4 space-y-3">
-              <button
-                onClick={() => startPlan("basic")}
-                disabled={checkoutPlan != null}
-                className="w-full rounded-2xl border-2 border-kawaii-purple/40 bg-white dark:bg-dark-surface p-4 text-left transition-all hover:border-kawaii-purple squishy disabled:opacity-60"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-slate-800 dark:text-slate-100">🌸 Sari Bloom</span>
-                  <span className="text-right">
-                    <span className="block text-lg font-extrabold text-kawaii-purple dark:text-kawaii-lavender">$4.99</span>
-                    <span className="block text-xs text-slate-400 line-through">$9.99</span>
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  100 jobs/day · 50 AI credits · {formatPeso(4.99)}/mo ({coffeeCompare(4.99)})
-                </p>
+            {/* Pay mode toggle */}
+            <div className="mt-4 grid grid-cols-2 gap-1 p-1 rounded-2xl bg-kawaii-lavender/15 dark:bg-dark-surface/40">
+              <button onClick={() => setPayMode("sub")} className={`h-9 rounded-xl text-xs font-extrabold transition-all ${payMode === "sub" ? "bg-white dark:bg-dark-card text-kawaii-purple shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
+                🔄 Monthly
               </button>
-
-              <button
-                onClick={() => startPlan("pro")}
-                disabled={checkoutPlan != null}
-                className="w-full rounded-2xl border-2 border-kawaii-purple bg-gradient-to-r from-kawaii-purple/10 to-kawaii-pink/10 dark:from-kawaii-purple/15 dark:to-kawaii-pink/10 p-4 text-left relative transition-all hover:border-kawaii-purple squishy disabled:opacity-60"
-              >
-                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-kawaii-purple text-white whitespace-nowrap">
-                  ⭐ Most Popular
-                </span>
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-slate-800 dark:text-slate-100">👑 Sari Money Club</span>
-                  <span className="text-right">
-                    <span className="block text-lg font-extrabold text-kawaii-purple dark:text-kawaii-lavender">$9.99</span>
-                    <span className="block text-xs text-slate-400 line-through">$19.99</span>
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Unlimited jobs · 200 AI credits · unlimited swaps · {formatPeso(9.99)}/mo
-                </p>
+              <button onClick={() => setPayMode("pass")} className={`h-9 rounded-xl text-xs font-extrabold transition-all ${payMode === "pass" ? "bg-white dark:bg-dark-card text-kawaii-purple shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
+                🎟️ One-time · PayPal ✓
               </button>
             </div>
+
+            {/* Plans */}
+            {payMode === "sub" ? (
+              <div className="mt-4 space-y-3">
+                <button
+                  onClick={() => startPlan("basic")}
+                  disabled={checkoutPlan != null}
+                  className="w-full rounded-2xl border-2 border-kawaii-purple/40 bg-white dark:bg-dark-surface p-4 text-left transition-all hover:border-kawaii-purple squishy disabled:opacity-60"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-slate-800 dark:text-slate-100">🌸 Sari Bloom</span>
+                    <span className="text-right">
+                      <span className="block text-lg font-extrabold text-kawaii-purple dark:text-kawaii-lavender">$4.99</span>
+                      <span className="block text-xs text-slate-400 line-through">$9.99</span>
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    100 jobs/day · 50 AI credits · {formatPeso(4.99)}/mo ({coffeeCompare(4.99)})
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => startPlan("pro")}
+                  disabled={checkoutPlan != null}
+                  className="w-full rounded-2xl border-2 border-kawaii-purple bg-gradient-to-r from-kawaii-purple/10 to-kawaii-pink/10 dark:from-kawaii-purple/15 dark:to-kawaii-pink/10 p-4 text-left relative transition-all hover:border-kawaii-purple squishy disabled:opacity-60"
+                >
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-kawaii-purple text-white whitespace-nowrap">
+                    ⭐ Most Popular
+                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-slate-800 dark:text-slate-100">👑 Sari Money Club</span>
+                    <span className="text-right">
+                      <span className="block text-lg font-extrabold text-kawaii-purple dark:text-kawaii-lavender">$9.99</span>
+                      <span className="block text-xs text-slate-400 line-through">$19.99</span>
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Unlimited jobs · 200 AI credits · unlimited swaps · {formatPeso(9.99)}/mo
+                  </p>
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <div className="rounded-2xl border-2 border-kawaii-purple/40 bg-white dark:bg-dark-surface p-3">
+                  <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100">🌸 Sari Bloom — one-time</p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <button onClick={() => startPass("basic_1m")} disabled={checkoutPlan != null} className="rounded-xl bg-kawaii-lavender/20 dark:bg-dark-surface/40 py-2.5 text-center hover:bg-kawaii-lavender/30 disabled:opacity-60 squishy">
+                      <span className="block text-sm font-extrabold text-slate-800 dark:text-slate-100">1 month</span>
+                      <span className="block text-xs text-kawaii-purple dark:text-kawaii-lavender font-bold">$4.99</span>
+                    </button>
+                    <button onClick={() => startPass("basic_3m")} disabled={checkoutPlan != null} className="rounded-xl bg-kawaii-lavender/20 dark:bg-dark-surface/40 py-2.5 text-center hover:bg-kawaii-lavender/30 disabled:opacity-60 squishy">
+                      <span className="block text-sm font-extrabold text-slate-800 dark:text-slate-100">3 months</span>
+                      <span className="block text-xs text-kawaii-purple dark:text-kawaii-lavender font-bold">$11.99 <s className="text-slate-400">$14.97</s></span>
+                    </button>
+                  </div>
+                </div>
+                <div className="rounded-2xl border-2 border-kawaii-purple bg-gradient-to-r from-kawaii-purple/10 to-kawaii-pink/10 dark:from-kawaii-purple/15 dark:to-kawaii-pink/10 p-3 relative">
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-kawaii-purple text-white whitespace-nowrap">
+                    ⭐ Best value
+                  </span>
+                  <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100">👑 Sari Money Club — one-time</p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <button onClick={() => startPass("pro_1m")} disabled={checkoutPlan != null} className="rounded-xl bg-kawaii-lavender/20 dark:bg-dark-surface/40 py-2.5 text-center hover:bg-kawaii-lavender/30 disabled:opacity-60 squishy">
+                      <span className="block text-sm font-extrabold text-slate-800 dark:text-slate-100">1 month</span>
+                      <span className="block text-xs text-kawaii-purple dark:text-kawaii-lavender font-bold">$9.99</span>
+                    </button>
+                    <button onClick={() => startPass("pro_3m")} disabled={checkoutPlan != null} className="rounded-xl bg-kawaii-lavender/20 dark:bg-dark-surface/40 py-2.5 text-center hover:bg-kawaii-lavender/30 disabled:opacity-60 squishy">
+                      <span className="block text-sm font-extrabold text-slate-800 dark:text-slate-100">3 months</span>
+                      <span className="block text-xs text-kawaii-purple dark:text-kawaii-lavender font-bold">$23.99 <s className="text-slate-400">$29.97</s></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {checkoutPlan && <p className="text-center text-xs text-slate-400 mt-3 animate-pulse">Opening secure checkout…</p>}
 
             {/* Risk reversal + skip */}
-            <p className="text-center text-[11px] text-slate-400 mt-4">🛡️ Cancel anytime · No hidden fees · Keep access until the period ends</p>
+            <p className="text-center text-[11px] text-slate-400 mt-4">
+              {payMode === "sub"
+                ? "🛡️ Cancel anytime · No hidden fees · Keep access until the period ends"
+                : "🛡️ One-time payment · No auto-renewal · No subscription"}
+            </p>
             <button
               onClick={finish}
               disabled={checkoutPlan != null}
