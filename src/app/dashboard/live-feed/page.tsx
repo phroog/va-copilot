@@ -492,7 +492,7 @@ const openSwap = async (job: FeedJob) => {
           <div>
             <p className="font-bold text-kawaii-purple dark:text-kawaii-lavender">Daily limit reached — high matches are now locked 🔒</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Tap <b>Swap</b> on any available job to trade it for one of the locked high matches, or upgrade for unlimited.
+              Tap <b>Swap</b> on any available job to trade it for one of the locked high matches, or unlock more — Bloom gives you <b>100 jobs/day from $4.99</b>.
             </p>
             <p className="text-xs italic text-slate-400 dark:text-slate-500 mt-1">“{limitSlogan}”</p>
           </div>
@@ -927,7 +927,7 @@ function FeedJobCard({
           </div>
           {locked ? (
             <Link href="/pricing">
-              <Button size="sm" variant="primary" className="whitespace-nowrap">🔒 Unlock with Money Club</Button>
+              <Button size="sm" variant="primary" className="whitespace-nowrap">🔒 Unlock this job</Button>
             </Link>
           ) : null}
           <div className="flex flex-wrap gap-2 md:flex-col md:items-stretch">

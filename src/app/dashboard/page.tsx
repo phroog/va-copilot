@@ -243,6 +243,26 @@ export default function DashboardHome() {
         ))}
       </div>
 
+      {/* Limit-reached upsell — the moment of pain, offer the cheap Bloom tier */}
+      {plan !== "pro" && quota.limit != null && (quota.used ?? 0) >= quota.limit * 0.75 && (
+        <div className="rounded-3xl border-2 border-kawaii-coral/40 dark:border-kawaii-pink/30 bg-gradient-to-r from-kawaii-coral/10 to-kawaii-pink/10 dark:from-kawaii-pink/10 dark:to-kawaii-purple/10 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🚨</span>
+            <div>
+              <p className="font-extrabold text-slate-800 dark:text-slate-100">
+                {(quota.used ?? 0) >= (quota.limit ?? 0) ? `You've seen all ${quota.limit} jobs today` : `${quota.used ?? 0} of ${quota.limit} jobs seen — almost at your daily cap`}
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                The best jobs are still out there. Bloom unlocks <b>100 jobs/day</b> from just <b>$4.99</b>.
+              </p>
+            </div>
+          </div>
+          <Link href="/pricing" className="shrink-0">
+            <Button variant="primary">🌸 Unlock more jobs →</Button>
+          </Link>
+        </div>
+      )}
+
       {/* Quota + Timer */}
       <ProfileReminder />
       <StreakCard />

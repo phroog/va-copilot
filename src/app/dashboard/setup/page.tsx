@@ -235,7 +235,7 @@ export default function SetupPage() {
                 </div>
                 <div className="mt-5">
                   <Link href="/pricing">
-                    <Button variant="outline" className="w-full">👑 Upgrade to Money Club for the full bot →</Button>
+                    <Button variant="outline" className="w-full">✨ Unlock the full bot →</Button>
                   </Link>
                 </div>
               </CardContent>

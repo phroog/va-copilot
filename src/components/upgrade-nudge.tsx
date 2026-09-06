@@ -47,7 +47,7 @@ export default function UpgradeNudge() {
         <span className="text-xs font-semibold leading-snug text-slate-700 dark:text-slate-200">
           {UPGRADE_SLOGANS[idx]}
           <span className="block text-[10px] font-bold text-kawaii-purple dark:text-kawaii-lavender mt-0.5">
-            Join the Money Club →
+            {plan === "free" ? "Upgrade from $4.99 →" : "Go unlimited →"}
           </span>
         </span>
       </Link>

@@ -144,7 +144,7 @@ export default function TelegramSettings() {
                     <span className="text-sm text-slate-600 dark:text-slate-300">🎯 Live job matches</span>
                   </label>
                   <p className="text-xs text-slate-400">
-                    ⭐ Upgrade to <b>Money Club</b> for follow-up, invoice &amp; scam alerts — and /stats, /invoices &amp; timer controls in the bot.
+                    ⭐ Upgrade for follow-up, invoice &amp; scam alerts — and /stats, /invoices &amp; timer controls in the bot.
                   </p>
                 </>
               )}

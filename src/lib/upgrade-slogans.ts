@@ -3,11 +3,11 @@
 
 export const UPGRADE_SLOGANS: string[] = [
   "Why waste time? Start earning money.",
-  "Why wait for wonders? Join the Money Club.",
+  "Why wait? Unlock more jobs from $4.99.",
   "Still scrolling? The winners already upgraded.",
-  "Your rent won't pay itself. Go unlimited.",
+  "Your rent won't pay itself. Unlock more jobs.",
   "Broke is a choice. Unlock unlimited jobs.",
-  "The best jobs go to Money Club first.",
+  "The best jobs go to paid members first.",
   "Time is money — stop losing both.",
   "Dream bigger. It costs less than a coffee a day.",
   "Fortune favors the one who upgraded.",
