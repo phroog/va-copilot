@@ -9,7 +9,7 @@ import { LanguageDropdown } from "@/components/language-dropdown";
 import { useLocale } from "@/lib/i18n/context";
 import { UPGRADE_SLOGANS } from "@/lib/upgrade-slogans";
 import { daysLeft, formatPeso, coffeeCompare } from "@/lib/sale";
-import { PASSES, type PassKey } from "@/lib/payments";
+import { PASSES, DAILY_PASS_POINTS, type PassKey, type DailyPassKey } from "@/lib/payments";
 
 export default function PricingPage() {
   const { t } = useLocale();
@@ -22,6 +22,7 @@ export default function PricingPage() {
   const [accessUntil, setAccessUntil] = useState<string | null>(null);
   const [isPass, setIsPass] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [dailyIdx, setDailyIdx] = useState(2);
   const [sloganIdx, setSloganIdx] = useState(() => Math.floor(Math.random() * UPGRADE_SLOGANS.length));
 
   useEffect(() => {
@@ -117,7 +118,7 @@ export default function PricingPage() {
     } finally { setLoadingPlan(null); }
   };
 
-  const startPass = async (passKey: PassKey) => {
+  const startPass = async (passKey: PassKey | DailyPassKey) => {
     setLoadingPlan(passKey);
     setMsg("");
     try {
@@ -206,15 +207,42 @@ export default function PricingPage() {
               </div>
             </div>
             <div className="rounded-2xl border-2 border-kawaii-purple dark:border-kawaii-lavender bg-white/70 dark:bg-dark-card/70 p-5 text-center">
-              <p className="text-sm font-bold uppercase tracking-wider text-kawaii-purple dark:text-kawaii-lavender">Sari Money Club Pass</p>
-              <div className="mt-4 space-y-2">
-                <button onClick={() => startPass("pro_1m")} disabled={loadingPlan === "pro_1m"} className="w-full h-11 rounded-xl bg-white text-kawaii-purple border border-kawaii-purple/40 hover:bg-kawaii-lavender/20 dark:bg-dark-surface font-bold text-sm squishy">
-                  1 month — $9.99
-                </button>
-                <button onClick={() => startPass("pro_3m")} disabled={loadingPlan === "pro_3m"} className="w-full h-11 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-bold text-sm squishy">
-                  3 months — $23.99 <span className="opacity-80 line-through">$29.97</span>
-                </button>
-                <p className="text-xs text-slate-400">{formatPeso(23.99)} for 3 months · {coffeeCompare(23.99)}</p>
+              <p className="text-sm font-bold uppercase tracking-wider text-kawaii-purple dark:text-kawaii-lavender">Sari Money Club Daily Pass</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">More days = cheaper per day. No subscription.</p>
+              <div className="mt-4">
+                <input
+                  type="range"
+                  min={0}
+                  max={4}
+                  step={1}
+                  value={dailyIdx}
+                  onChange={(e) => setDailyIdx(Number(e.target.value))}
+                  className="w-full h-2 accent-kawaii-purple"
+                />
+                <div className="flex justify-between text-[10px] font-semibold text-slate-400 mt-1 px-0.5">
+                  <span>1d</span><span>3d</span><span>7d</span><span>14d</span><span>30d</span>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between gap-3 text-left">
+                  <div>
+                    <p className="text-2xl font-extrabold text-kawaii-purple dark:text-kawaii-lavender tabular-nums">
+                      ${DAILY_PASS_POINTS[dailyIdx].amountUsd.toFixed(2)}
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      {DAILY_PASS_POINTS[dailyIdx].days} days · ${DAILY_PASS_POINTS[dailyIdx].perDay.toFixed(2)}/day
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => startPass(DAILY_PASS_POINTS[dailyIdx].key)}
+                    disabled={loadingPlan === DAILY_PASS_POINTS[dailyIdx].key}
+                    className="shrink-0 px-4 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white text-sm font-extrabold squishy disabled:opacity-60"
+                  >
+                    Get {DAILY_PASS_POINTS[dailyIdx].days} days
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400 mt-2">
+                  {formatPeso(DAILY_PASS_POINTS[dailyIdx].amountUsd)} total · {coffeeCompare(DAILY_PASS_POINTS[dailyIdx].amountUsd)}
+                </p>
               </div>
             </div>
           </div>
