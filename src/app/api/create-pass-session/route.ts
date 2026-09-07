@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     line_items: [{ price: pass.priceId, quantity: 1 }],
     client_reference_id: user.id,
     metadata: { pass: passKey, plan: pass.plan, months: String(pass.months) },
-    success_url: `${appUrl}/dashboard?upgrade=pass`,
+    success_url: `${appUrl}/dashboard?upgrade=success&amount=${Math.round(pass.amountUsd * 100)}`,
     cancel_url: `${appUrl}/pricing`,
     payment_method_types: ["card", "paypal"],
     payment_method_options: { paypal: { preferred_locale: "en-US" } },

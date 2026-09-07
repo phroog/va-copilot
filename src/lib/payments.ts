@@ -3,9 +3,9 @@ import Stripe from "stripe";
 /* Central plan configuration — swap the payment provider here later without
    touching the plan/limit logic. */
 export const PLANS = {
-  free: { dailyJobLimit: 20, monthlyCredits: 5, label: "Sari Sprout", priceId: null as string | null },
-  basic: { dailyJobLimit: 100, monthlyCredits: 50, label: "Sari Bloom", priceId: (process.env.STRIPE_PRICE_BASIC || "") as string },
-  pro: { dailyJobLimit: null, monthlyCredits: 200, label: "Sari Money Club", priceId: (process.env.STRIPE_PRICE_PRO || "") as string },
+  free: { dailyJobLimit: 20, monthlyCredits: 5, label: "Sari Sprout", priceId: null as string | null, priceUsd: 0 },
+  basic: { dailyJobLimit: 100, monthlyCredits: 50, label: "Sari Bloom", priceId: (process.env.STRIPE_PRICE_BASIC || "") as string, priceUsd: 4.99 },
+  pro: { dailyJobLimit: null, monthlyCredits: 200, label: "Sari Money Club", priceId: (process.env.STRIPE_PRICE_PRO || "") as string, priceUsd: 9.99 },
 } as const;
 
 export type PlanKey = keyof typeof PLANS;

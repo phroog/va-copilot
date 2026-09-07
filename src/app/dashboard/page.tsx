@@ -72,11 +72,12 @@ export default function DashboardHome() {
   const [todayHours, setTodayHours] = useState(0);
   const [todayEarnings, setTodayEarnings] = useState(0);
 
-  // Meta Pixel: fire Purchase once when returning from the Stripe checkout.
+  // Meta Pixel: fire Purchase with the real amount when returning from checkout.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("upgrade") === "success") {
-      trackEvent("Purchase", { currency: "USD", value: 1 });
+      const amount = Number(params.get("amount")) || 0;
+      trackEvent("Purchase", { currency: "USD", value: amount / 100, content_type: "product" });
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);

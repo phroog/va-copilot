@@ -131,6 +131,13 @@ export default function StartPage() {
     return () => clearInterval(iv);
   }, [step, liveStats]);
 
+  // Fire Meta InitiateCheckout the moment the paywall opens.
+  useEffect(() => {
+    if (showPaywall) {
+      trackEvent("InitiateCheckout", { currency: "USD", value: 4.99, content_type: "product" });
+    }
+  }, [showPaywall]);
+
   const toggleSkill = (s: string) => {
     setSkills((prev) => {
       const next = prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s];
@@ -210,6 +217,7 @@ export default function StartPage() {
   };
 
   const startPlan = async (plan: string) => {
+    trackEvent("AddPaymentInfo", { currency: "USD", value: plan === "pro" ? 9.99 : 4.99, content_type: "product" });
     setCheckoutPlan(plan);
     try {
       const r = await fetch("/api/create-checkout-session", {
@@ -226,6 +234,7 @@ export default function StartPage() {
   };
 
   const startPass = async (passKey: PassKey) => {
+    trackEvent("AddPaymentInfo", { currency: "USD", value: PASSES[passKey].amountUsd, content_type: "product" });
     setCheckoutPlan(passKey);
     try {
       const r = await fetch("/api/create-pass-session", {

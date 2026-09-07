@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     line_items: [{ price: priceId, quantity: 1 }],
     client_reference_id: user.id,
     metadata: { plan, freeMonth: freeMonth ? "1" : "0" },
-    success_url: `${appUrl}/dashboard?upgrade=success`,
+    success_url: `${appUrl}/dashboard?upgrade=success&amount=${Math.round(PLANS[plan].priceUsd * 100)}`,
     cancel_url: `${appUrl}/pricing`,
     subscription_data: { metadata: { plan } },
     // Let buyers enter promo/session codes at checkout for instant closes.
