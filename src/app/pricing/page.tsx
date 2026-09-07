@@ -10,6 +10,7 @@ import { useLocale } from "@/lib/i18n/context";
 import { UPGRADE_SLOGANS } from "@/lib/upgrade-slogans";
 import { daysLeft, formatPeso, coffeeCompare } from "@/lib/sale";
 import { PASSES, DAILY_PASS_POINTS, type PassKey, type DailyPassKey } from "@/lib/payments";
+import { trackEvent } from "@/components/meta-pixel";
 
 export default function PricingPage() {
   const { t } = useLocale();
@@ -100,6 +101,7 @@ export default function PricingPage() {
 
   const startPlan = async (plan: string) => {
     if (plan === "free") { router.push("/auth/signup"); return; }
+    trackEvent("AddPaymentInfo", { currency: "USD", value: plan === "pro" ? 9.99 : 4.99, content_type: "product" });
     setLoadingPlan(plan);
     setMsg("");
     try {
@@ -119,6 +121,8 @@ export default function PricingPage() {
   };
 
   const startPass = async (passKey: PassKey | DailyPassKey) => {
+    const amt = PASSES[passKey as PassKey]?.amountUsd ?? DAILY_PASS_POINTS.find((p) => p.key === passKey)?.amountUsd ?? 0;
+    trackEvent("AddPaymentInfo", { currency: "USD", value: amt, content_type: "product" });
     setLoadingPlan(passKey);
     setMsg("");
     try {
