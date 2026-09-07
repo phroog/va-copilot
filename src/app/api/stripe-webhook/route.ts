@@ -51,7 +51,7 @@ async function applyPass(userId: string, passKey: PassKey | DailyPassKey) {
   until.setDate(until.getDate() + pass.days);
   const untilIso = until.toISOString();
 
-  await supabase().from("subscriptions").upsert({
+  const { error: subErr } = await supabase().from("subscriptions").upsert({
     user_id: userId,
     plan: pass.plan,
     status: "pass",
@@ -59,6 +59,10 @@ async function applyPass(userId: string, passKey: PassKey | DailyPassKey) {
     current_period_end: untilIso,
     access_until: untilIso,
   }, { onConflict: "user_id" });
+  if (subErr) {
+    console.error("applyPass: subscriptions upsert failed:", subErr.message);
+    return;
+  }
 
   const limit = PLANS[pass.plan].dailyJobLimit ?? 20;
   await supabase().from("profiles").update({
