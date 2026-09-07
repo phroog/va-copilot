@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/components/meta-pixel";
 import { classifyJobVector } from "@/lib/jobs/profile-vector";
 import { daysLeft, formatPeso, coffeeCompare } from "@/lib/sale";
-import { PASSES, type PassKey } from "@/lib/payments";
+import { PASSES, DAILY_PASS_POINTS, type PassKey, type DailyPassKey } from "@/lib/payments";
 
 /* ⚡ Sari Start — fast onboarding built around ONE goal: show the user their
    first real matches in under a minute. Account → skills → goal → matches. */
@@ -79,6 +79,7 @@ export default function StartPage() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
   const [payMode, setPayMode] = useState<"sub" | "pass">("sub");
+  const [dailyIdx, setDailyIdx] = useState(2);
 
   const jobsHour = useCountUp(liveStats?.jobs_last_hour ?? 0, step === 1 && !liveLoading);
   const scamsDay = useCountUp(liveStats?.scams_last_24h ?? 0, step === 1 && !liveLoading);
@@ -233,8 +234,9 @@ export default function StartPage() {
     }
   };
 
-  const startPass = async (passKey: PassKey) => {
-    trackEvent("AddPaymentInfo", { currency: "USD", value: PASSES[passKey].amountUsd, content_type: "product" });
+  const startPass = async (passKey: PassKey | DailyPassKey) => {
+    const amt = PASSES[passKey as PassKey]?.amountUsd ?? DAILY_PASS_POINTS.find((p) => p.key === passKey)?.amountUsd ?? 0;
+    trackEvent("AddPaymentInfo", { currency: "USD", value: amt, content_type: "product" });
     setCheckoutPlan(passKey);
     try {
       const r = await fetch("/api/create-pass-session", {
@@ -664,19 +666,43 @@ export default function StartPage() {
                     </button>
                   </div>
                 </div>
-                <div className="rounded-2xl border-2 border-kawaii-purple bg-gradient-to-r from-kawaii-purple/10 to-kawaii-pink/10 dark:from-kawaii-purple/15 dark:to-kawaii-pink/10 p-3 relative">
+                <div className="rounded-2xl border-2 border-kawaii-purple bg-gradient-to-r from-kawaii-purple/10 to-kawaii-pink/10 dark:from-kawaii-purple/15 dark:to-kawaii-pink/10 p-4 relative">
                   <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-kawaii-purple text-white whitespace-nowrap">
-                    ⭐ Best value
+                    ⭐ Daily Pass
                   </span>
-                  <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100">👑 Sari Money Club — one-time</p>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <button onClick={() => startPass("pro_1m")} disabled={checkoutPlan != null} className="rounded-xl bg-kawaii-lavender/20 dark:bg-dark-surface/40 py-2.5 text-center hover:bg-kawaii-lavender/30 disabled:opacity-60 squishy">
-                      <span className="block text-sm font-extrabold text-slate-800 dark:text-slate-100">1 month</span>
-                      <span className="block text-xs text-kawaii-purple dark:text-kawaii-lavender font-bold">$9.99</span>
-                    </button>
-                    <button onClick={() => startPass("pro_3m")} disabled={checkoutPlan != null} className="rounded-xl bg-kawaii-lavender/20 dark:bg-dark-surface/40 py-2.5 text-center hover:bg-kawaii-lavender/30 disabled:opacity-60 squishy">
-                      <span className="block text-sm font-extrabold text-slate-800 dark:text-slate-100">3 months</span>
-                      <span className="block text-xs text-kawaii-purple dark:text-kawaii-lavender font-bold">$23.99 <s className="text-slate-400">$29.97</s></span>
+                  <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100">👑 Money Club — pay by the day</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    More days = cheaper per day. No subscription, PayPal-friendly.
+                  </p>
+
+                  <input
+                    type="range"
+                    min={0}
+                    max={4}
+                    step={1}
+                    value={dailyIdx}
+                    onChange={(e) => setDailyIdx(Number(e.target.value))}
+                    className="w-full mt-4 h-2 accent-kawaii-purple"
+                  />
+                  <div className="flex justify-between text-[10px] font-semibold text-slate-400 mt-1 px-0.5">
+                    <span>1d</span><span>3d</span><span>7d</span><span>14d</span><span>30d</span>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <div className="text-left">
+                      <p className="text-2xl font-extrabold text-kawaii-purple dark:text-kawaii-lavender tabular-nums">
+                        ${DAILY_PASS_POINTS[dailyIdx].amountUsd.toFixed(2)}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {DAILY_PASS_POINTS[dailyIdx].days} days · ${DAILY_PASS_POINTS[dailyIdx].perDay.toFixed(2)}/day
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => startPass(DAILY_PASS_POINTS[dailyIdx].key)}
+                      disabled={checkoutPlan != null}
+                      className="shrink-0 px-4 py-2.5 rounded-xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white text-sm font-extrabold squishy disabled:opacity-60"
+                    >
+                      Get {DAILY_PASS_POINTS[dailyIdx].days} days
                     </button>
                   </div>
                 </div>

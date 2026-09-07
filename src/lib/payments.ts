@@ -17,18 +17,38 @@ export type PassKey = "basic_1m" | "basic_3m" | "pro_1m" | "pro_3m";
 
 export interface Pass {
   plan: PlanKey;
-  months: number;
+  days: number;
   priceId: string;
   amountUsd: number;
   label: string;
 }
 
 export const PASSES: Record<PassKey, Pass> = {
-  basic_1m: { plan: "basic", months: 1, priceId: "price_1UCcmfQtDRGVAHQg7eKX3NRE", amountUsd: 4.99, label: "Sari Bloom · 1 month" },
-  basic_3m: { plan: "basic", months: 3, priceId: "price_1UCcmfQtDRGVAHQgjVNBkLbh", amountUsd: 11.99, label: "Sari Bloom · 3 months" },
-  pro_1m: { plan: "pro", months: 1, priceId: "price_1UCcmfQtDRGVAHQgHs4wWCdE", amountUsd: 9.99, label: "Sari Money Club · 1 month" },
-  pro_3m: { plan: "pro", months: 3, priceId: "price_1UCcmgQtDRGVAHQg5r1wizsT", amountUsd: 23.99, label: "Sari Money Club · 3 months" },
+  basic_1m: { plan: "basic", days: 30, priceId: "price_1UCcmfQtDRGVAHQg7eKX3NRE", amountUsd: 4.99, label: "Sari Bloom · 1 month" },
+  basic_3m: { plan: "basic", days: 90, priceId: "price_1UCcmfQtDRGVAHQgjVNBkLbh", amountUsd: 11.99, label: "Sari Bloom · 3 months" },
+  pro_1m: { plan: "pro", days: 30, priceId: "price_1UCcmfQtDRGVAHQgHs4wWCdE", amountUsd: 9.99, label: "Sari Money Club · 1 month" },
+  pro_3m: { plan: "pro", days: 90, priceId: "price_1UCcmgQtDRGVAHQg5r1wizsT", amountUsd: 23.99, label: "Sari Money Club · 3 months" },
 };
+
+/* Daily pass for Money Club — a slider where more days = cheaper per day. */
+export type DailyPassKey = "pro_1d" | "pro_3d" | "pro_7d" | "pro_14d" | "pro_30d";
+
+export const DAILY_PASS: Record<DailyPassKey, Pass> = {
+  pro_1d: { plan: "pro", days: 1, priceId: "price_1UCwIpQtDRGVAHQgT5Hga0Kn", amountUsd: 0.99, label: "1 day" },
+  pro_3d: { plan: "pro", days: 3, priceId: "price_1UCwIpQtDRGVAHQgSMppkkBp", amountUsd: 2.49, label: "3 days" },
+  pro_7d: { plan: "pro", days: 7, priceId: "price_1UCwIqQtDRGVAHQg5L2Zcjac", amountUsd: 4.99, label: "7 days" },
+  pro_14d: { plan: "pro", days: 14, priceId: "price_1UCwIqQtDRGVAHQgamMouubK", amountUsd: 7.99, label: "14 days" },
+  pro_30d: { plan: "pro", days: 30, priceId: "price_1UCwIqQtDRGVAHQgw1nXyWBY", amountUsd: 9.99, label: "30 days" },
+};
+
+/* Ordered slider points (shortest → longest) with the per-day price shown. */
+export const DAILY_PASS_POINTS: { key: DailyPassKey; days: number; amountUsd: number; perDay: number }[] = [
+  { key: "pro_1d", days: 1, amountUsd: 0.99, perDay: 0.99 },
+  { key: "pro_3d", days: 3, amountUsd: 2.49, perDay: 0.83 },
+  { key: "pro_7d", days: 7, amountUsd: 4.99, perDay: 0.71 },
+  { key: "pro_14d", days: 14, amountUsd: 7.99, perDay: 0.57 },
+  { key: "pro_30d", days: 30, amountUsd: 9.99, perDay: 0.33 },
+];
 
 /* Grace period after a subscription ends before the user drops back to free. */
 export const GRACE_DAYS = 2;

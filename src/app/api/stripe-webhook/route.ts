@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { getStripe, PLANS, GRACE_DAYS, planFromPriceId, PASSES, type PlanKey, type PassKey } from "@/lib/payments";
+import { getStripe, PLANS, GRACE_DAYS, planFromPriceId, PASSES, DAILY_PASS, type PlanKey, type PassKey, type DailyPassKey } from "@/lib/payments";
 import { sendEmail, layoutEmail } from "@/lib/email";
 import { metaPurchase } from "@/lib/meta-capi";
 
@@ -43,12 +43,12 @@ async function awardCredits(userId: string, plan: PlanKey) {
   await supabase().from("ai_credits").upsert({ user_id: userId, balance, total_used: 0 }, { onConflict: "user_id" });
 }
 
-/* One-time pass purchase: grant access for N months (no recurring billing). */
-async function applyPass(userId: string, passKey: PassKey) {
-  const pass = PASSES[passKey];
+/* One-time pass purchase: grant access for N days (no recurring billing). */
+async function applyPass(userId: string, passKey: PassKey | DailyPassKey) {
+  const pass = PASSES[passKey as PassKey] || DAILY_PASS[passKey as DailyPassKey];
   if (!pass) return;
   const until = new Date();
-  until.setMonth(until.getMonth() + pass.months);
+  until.setDate(until.getDate() + pass.days);
   const untilIso = until.toISOString();
 
   await supabase().from("subscriptions").upsert({
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
 
         // One-time pass checkout (supports PayPal).
         if (s.mode === "payment" && s.metadata?.pass) {
-          await applyPass(userId, s.metadata.pass as PassKey);
+          await applyPass(userId, s.metadata.pass as PassKey | DailyPassKey);
           const { data: passUser } = await supabase().auth.admin.getUserById(userId);
           const passEmail = passUser?.user?.email || null;
           const passAmount = s.amount_total ? s.amount_total / 100 : undefined;
