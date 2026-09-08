@@ -94,6 +94,7 @@ export default function StartPage() {
   ];
 
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -177,6 +178,14 @@ export default function StartPage() {
       body: JSON.stringify({ email }),
     }).catch(() => {});
     fetch("/api/emails/welcome", { method: "POST" }).catch(() => {});
+    // Speed-to-lead: message them on WhatsApp the second they sign up.
+    if (phone.trim()) {
+      fetch("/api/whatsapp/welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phone.trim() }),
+      }).catch(() => {});
+    }
     // Kick off the "wow" step: load live scan numbers right away.
     setStep(1);
     setLiveLoading(true);
@@ -545,6 +554,17 @@ export default function StartPage() {
                     placeholder="you@example.com"
                     className="mt-1 w-full h-12 px-4 rounded-2xl border-2 border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200 focus:border-kawaii-purple focus:outline-none"
                   />
+                </div>
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">WhatsApp number</label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+63 912 345 6789"
+                    className="mt-1 w-full h-12 px-4 rounded-2xl border-2 border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200 focus:border-kawaii-purple focus:outline-none"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">We'll send your job matches straight to WhatsApp.</p>
                 </div>
                 {authError && <p className="text-sm text-red-500">{authError}</p>}
                 <button
