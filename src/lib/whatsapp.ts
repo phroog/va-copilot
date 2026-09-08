@@ -48,6 +48,6 @@ export function whatsappWelcomeMessage(firstName?: string): string {
   const name = firstName ? `, ${firstName}` : "";
   return (
     `Hey${name}! 👋 Welcome to Sari 🍠 — I just found jobs that match your profile.\n\n` +
-    `Wanna see them? Just reply "yes" and I'll send your top 3 matches right here.`
+    `Reply "yes" and I'll send your top 3 matches right here in WhatsApp.`
   );
 }
