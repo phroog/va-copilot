@@ -68,7 +68,7 @@ export async function sendWhatsAppTemplate(to: string, templateName: string, par
         type: "template",
         template: {
           name: templateName,
-          language: { code: "en" },
+          language: { code: process.env.WHATSAPP_TEMPLATE_LANG || "en_US" },
           ...(components ? { components } : {}),
         },
       }),
