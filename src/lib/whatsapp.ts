@@ -12,7 +12,6 @@ const GRAPH = "https://graph.facebook.com/v18.0";
 export function whatsappConfigured(): boolean {
   return !!process.env.WHATSAPP_TOKEN && !!process.env.WHATSAPP_PHONE_NUMBER_ID;
 }
-
 /* Normalize a user-entered phone number to WhatsApp's international format
    (digits only, no leading +). Accepts +49..., 0049..., 49..., etc. */
 export function normalizePhone(input: string): string {
@@ -37,8 +36,14 @@ export async function sendWhatsApp(to: string, body: string): Promise<boolean> {
         text: { body },
       }),
     });
-    return res.ok;
-  } catch {
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      console.error("[whatsapp:send] failed:", res.status, detail.slice(0, 500));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[whatsapp:send] error:", String(err));
     return false;
   }
 }
