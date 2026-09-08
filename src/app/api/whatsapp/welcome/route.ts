@@ -24,6 +24,8 @@ export async function POST(request: Request) {
   let sent = false;
   if (whatsappConfigured()) {
     sent = await sendWhatsApp(phone, whatsappWelcomeMessage());
+  } else {
+    console.log("[whatsapp:welcome] not configured (missing WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID)");
   }
 
   return NextResponse.json({ sent, configured: whatsappConfigured() });
