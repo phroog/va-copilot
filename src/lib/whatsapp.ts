@@ -48,6 +48,43 @@ export async function sendWhatsApp(to: string, body: string): Promise<boolean> {
   }
 }
 
+/* Send a WhatsApp template message — the only way to message a user who has
+   NOT messaged the business first (no open 24h window). The template must be
+   approved in the Meta WhatsApp manager. */
+export async function sendWhatsAppTemplate(to: string, templateName: string, params?: string[]): Promise<boolean> {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneId || !to || !templateName) return false;
+  const components = params?.length
+    ? [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }]
+    : undefined;
+  try {
+    const res = await fetch(`${GRAPH}/${phoneId}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to,
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: "en" },
+          ...(components ? { components } : {}),
+        },
+      }),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      console.error("[whatsapp:template] failed:", res.status, detail.slice(0, 500));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[whatsapp:template] error:", String(err));
+    return false;
+  }
+}
+
 /* The first touch — sent instantly on signup. Short, warm, gets a reply. */
 export function whatsappWelcomeMessage(firstName?: string): string {
   const name = firstName ? `, ${firstName}` : "";

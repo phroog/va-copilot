@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { sendWhatsApp, whatsappWelcomeMessage, normalizePhone, whatsappConfigured } from "@/lib/whatsapp";
+import { sendWhatsApp, sendWhatsAppTemplate, whatsappWelcomeMessage, normalizePhone, whatsappConfigured } from "@/lib/whatsapp";
 
 export const runtime = "nodejs";
 
@@ -23,7 +23,12 @@ export async function POST(request: Request) {
 
   let sent = false;
   if (whatsappConfigured()) {
-    sent = await sendWhatsApp(phone, whatsappWelcomeMessage());
+    // A template message reaches cold numbers (no open 24h window). Free-form
+    // text only works if the user already messaged the business.
+    const templateName = process.env.WHATSAPP_TEMPLATE_NAME || "";
+    sent = templateName
+      ? await sendWhatsAppTemplate(phone, templateName)
+      : await sendWhatsApp(phone, whatsappWelcomeMessage());
   } else {
     console.log("[whatsapp:welcome] not configured (missing WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID)");
   }
