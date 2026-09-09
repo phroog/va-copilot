@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 interface HqData {
   generated_at: string;
   counts: { signups: number; purchases: number; letters: number; scams: number };
-  signups: { user_id: string; name: string | null; email: string | null; created_at: string }[];
+  signups: { user_id: string; name: string | null; email: string | null; created_at: string; phone: string | null; skills: string[] | null; goal: string | null; job_vector: number[] | null }[];
   purchases: { id: string; email: string | null; plan: string; status: string; current_period_end: string | null; created_at: string }[];
   letters: { id: string; email: string | null; category: string; urgency: string; message: string; status: string; created_at: string }[];
   scams: { id: string; domain: string; company_name: string; risk: string; status: string; reporter: string | null; created_at: string }[];
@@ -75,12 +75,39 @@ export default function AdminHq() {
         <CardHeader><CardTitle className="text-lg">👥 Signups ({data.counts.signups})</CardTitle></CardHeader>
         <CardContent className="space-y-2 max-h-[24rem] overflow-y-auto">
           {data.signups.length === 0 ? <p className="text-slate-400 text-sm">No signups yet.</p> : data.signups.map((s, i) => (
-            <div key={i} className="flex items-center justify-between p-2.5 rounded-xl border border-kawaii-lavender/20 dark:border-dark-surface">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold truncate">{s.email || s.name || "Unknown"}</p>
-                {s.name && <p className="text-xs text-slate-400">{s.name}</p>}
+            <div key={i} className="p-3 rounded-xl border border-kawaii-lavender/20 dark:border-dark-surface">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{s.email || s.name || "Unknown"}</p>
+                  {s.name && <p className="text-xs text-slate-400">{s.name}</p>}
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  {s.phone ? (
+                    <a
+                      href={`https://wa.me/${s.phone}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-bold text-green-600 dark:text-green-400 hover:underline"
+                      title="Open WhatsApp chat"
+                    >
+                      💬 +{s.phone}
+                    </a>
+                  ) : (
+                    <span className="text-xs text-slate-300 dark:text-slate-600">no #</span>
+                  )}
+                  <span className="text-xs text-slate-400">{fmt(s.created_at)}</span>
+                </div>
               </div>
-              <span className="text-xs text-slate-400 shrink-0">{fmt(s.created_at)}</span>
+              {(s.goal || (s.skills?.length ?? 0) > 0) && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                  {s.goal && (
+                    <span className="px-2 py-0.5 rounded-full bg-kawaii-purple/10 text-kawaii-purple dark:text-kawaii-lavender font-semibold">{s.goal}</span>
+                  )}
+                  {(s.skills || []).map((sk) => (
+                    <span key={sk} className="px-2 py-0.5 rounded-full bg-kawaii-lavender/20 dark:bg-dark-surface/50 text-slate-500 dark:text-slate-400">{sk}</span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </CardContent>

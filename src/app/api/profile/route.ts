@@ -52,9 +52,9 @@ export async function PUT(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id, public_id, skills, experience_level, job_categories, job_vector, base_currency } = await request.json();
+  const { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id, public_id, skills, experience_level, job_categories, job_vector, base_currency, goal } = await request.json();
 
-  const update: Record<string, any> = { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id, skills, experience_level, job_categories, base_currency };
+  const update: Record<string, any> = { full_name, desired_rate, bio, business_name, business_address, business_email, bank_account, tax_id, skills, experience_level, job_categories, base_currency, goal };
 
 // Always carry the required NOT NULL fields so the upsert works for BOTH a
 // fresh INSERT (no row yet) and an update — never leave public_id/alias out.

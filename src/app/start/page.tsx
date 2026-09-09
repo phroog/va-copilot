@@ -200,11 +200,11 @@ export default function StartPage() {
      the "aha" moment. Auto-grants the top matches into My Matches so the
      dashboard is never empty. */
   const goToMatches = async () => {
-    if (skills.length > 0) {
+    if (skills.length > 0 || goal) {
       await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ skills, job_vector: jobVector }),
+        body: JSON.stringify({ skills, job_vector: jobVector, goal }),
       }).catch(() => {});
     }
     setStep(4);

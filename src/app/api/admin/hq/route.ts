@@ -43,28 +43,42 @@ export async function GET() {
   }
   const emailFor = (id?: string | null) => (id ? emailById.get(id) ?? null : null);
 
-  const [subs, letterRows, scamRows, profiles] = await Promise.all([
+  const [subs, letterRows, scamRows, profiles, settingsRows] = await Promise.all([
     supabase.from("subscriptions").select("*").order("created_at", { ascending: false }).limit(200),
     supabase.from("support_letters").select("*").order("created_at", { ascending: false }).limit(200),
     supabase.from("scam_registry").select("*").order("created_at", { ascending: false }).limit(200),
-    supabase.from("profiles").select("user_id, full_name").limit(2000),
+    supabase.from("profiles").select("user_id, full_name, skills, job_vector, goal, desired_rate").limit(2000),
+    supabase.from("user_settings").select("user_id, phone").limit(2000),
   ]);
 
   // Signups: from auth.users directly (every signup, even if onboarding was
   // never completed), sorted by created_at desc.
   const nameById = new Map<string, string>();
+  const profileById = new Map<string, any>();
+  const phoneById = new Map<string, string>();
   for (const p of profiles.data ?? []) {
     if (p.user_id && p.full_name) nameById.set(p.user_id, p.full_name);
+    profileById.set(p.user_id, p);
+  }
+  for (const s of settingsRows.data ?? []) {
+    if (s.user_id && s.phone) phoneById.set(s.user_id, s.phone);
   }
   const signups = allUsers
     .filter((u) => u.created_at)
     .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
-    .map((u) => ({
-      user_id: u.id,
-      name: u.name || nameById.get(u.id) || null,
-      email: u.email,
-      created_at: u.created_at,
-    }))
+    .map((u) => {
+      const prof = profileById.get(u.id);
+      return {
+        user_id: u.id,
+        name: u.name || nameById.get(u.id) || null,
+        email: u.email,
+        created_at: u.created_at,
+        phone: phoneById.get(u.id) || null,
+        skills: prof?.skills || null,
+        goal: prof?.goal || null,
+        job_vector: prof?.job_vector || null,
+      };
+    })
     .slice(0, 200);
 
   const purchases = (subs.data ?? []).map((s: any) => ({
