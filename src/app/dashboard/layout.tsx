@@ -79,7 +79,7 @@ const sidebarGroups = [
     defaultOpen: false,
     links: [
       { href: "/dashboard/interview", labelKey: "interview", icon: Mic },
-      { href: "/academy", labelKey: "academy", icon: BookOpen },
+      { href: "/learn", labelKey: "academy", icon: BookOpen },
     ],
   },
   {
