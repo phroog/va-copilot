@@ -28,16 +28,30 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const parentId = entry?.parent_id ?? node.parent_id;
   const depth = entry?.depth ?? node.depth;
 
-  const [subRes, profileRes, parentProgressRes] = await Promise.all([
+  const [subRes, profileRes] = await Promise.all([
     supabase.from("subscriptions").select("plan,status,access_until").eq("user_id", user.id).maybeSingle(),
     supabase.from("profiles").select("xp,streak_count").eq("user_id", user.id).maybeSingle(),
-    parentId
-      ? supabase.from("learn_progress").select("status").eq("user_id", user.id).eq("node_id", parentId)
-      : Promise.resolve(null),
   ]);
 
   const paid = isPaidUser(subRes.data);
-  const parentDone = !parentId || (parentProgressRes?.data?.length ?? 0) > 0;
+
+  // Parent is "done" when ALL of its levels are completed — computed the same
+  // way the tree marks a node completed (by level_id, not node_id, so stale or
+  // inconsistent node_id rows can't lock a legitimately-unlocked level).
+  let parentDone = true;
+  if (parentId) {
+    const { data: parentLevels } = await supabase.from("learn_levels").select("id").eq("node_id", parentId);
+    const parentLevelIds = (parentLevels ?? []).map((l) => l.id);
+    if (parentLevelIds.length > 0) {
+      const { data: parentProg } = await supabase
+        .from("learn_progress")
+        .select("level_id")
+        .eq("user_id", user.id)
+        .eq("status", "completed")
+        .in("level_id", parentLevelIds);
+      parentDone = (parentProg ?? []).length === parentLevelIds.length;
+    }
+  }
 
   // Gate: parent must be done, and paid-gated depths need a subscription.
   if (!parentDone) {

@@ -199,6 +199,83 @@ export default function LearnHome() {
         );
       })()}
 
+      {/* Choose what to learn */}
+      {activePath && (() => {
+        const sorted = sortNodes(activePath.nodes);
+        const ready = sorted.filter((n) => n.status === "available");
+        const mastered = sorted.filter((n) => n.status === "completed");
+        return (
+          <div className="mt-4">
+            <h3 className="text-sm font-extrabold text-slate-700 dark:text-slate-200">🎯 Choose what to learn</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pick any ready mission and play it right now.</p>
+
+            {ready.length === 0 ? (
+              <Card className="mt-3 border-kawaii-lavender/25 dark:border-dark-surface bg-white/70 dark:bg-dark-card/70">
+                <CardContent className="p-4 flex flex-col items-center text-center gap-2">
+                  <span className="text-2xl">🌱</span>
+                  <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Everything unlocked is mastered!</p>
+                  <p className="text-xs text-slate-400">Grow your tree to unlock new missions.</p>
+                  <Link href="/learn/tree">
+                    <Button variant="primary" size="sm" className="mt-1">Open your tree →</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="mt-2 space-y-2">
+                {ready.map((n) => {
+                  const lvl = n.levels[0];
+                  if (!lvl) return null;
+                  return (
+                    <Link key={n.id} href={`/learn/play/${lvl.id}`} className="block group">
+                      <Card className="border-kawaii-purple/30 dark:border-dark-surface bg-white/80 dark:bg-dark-card/80 hover:border-kawaii-purple/70 hover:shadow-sari transition-all">
+                        <CardContent className="p-3.5 flex items-center gap-3">
+                          <span className={cn("w-11 h-11 rounded-2xl bg-gradient-to-br flex items-center justify-center text-xl shrink-0 shadow-sari-sm", activePath.color)}>
+                            {n.emoji}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-extrabold text-slate-800 dark:text-slate-100 text-sm leading-tight">{n.title}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{n.subtitle}</p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-kawaii-lavender/20 dark:bg-dark-surface text-kawaii-purple dark:text-kawaii-lavender">
+                              +{lvl.xp_reward} XP
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-kawaii-purple dark:text-kawaii-lavender group-hover:translate-x-0.5 transition-transform">
+                              <Play className="w-3.5 h-3.5" /> Play
+                            </span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+
+            {mastered.length > 0 && (
+              <div className="mt-3">
+                <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Mastered — practice again</h4>
+                <div className="mt-1.5 flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                  {mastered.map((n) => {
+                    const lvl = n.levels[0];
+                    if (!lvl) return null;
+                    return (
+                      <Link
+                        key={n.id}
+                        href={`/learn/play/${lvl.id}`}
+                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-kawaii-mint/50 bg-kawaii-mint/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-kawaii-mint/20 transition-all squishy"
+                      >
+                        <Check className="w-3.5 h-3.5" /> {n.title}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* streak + stats */}
       {user && (
         <div className="mt-3 grid grid-cols-2 gap-3">
