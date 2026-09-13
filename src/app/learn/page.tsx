@@ -5,15 +5,37 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RankHud, type HudUser } from "@/components/learn/rank-hud";
-import { SkillTree } from "@/components/learn/skill-tree";
-import type { PathWithNodes } from "@/lib/learn/types";
-import { Trophy, Lock } from "lucide-react";
+import { sortNodes } from "@/lib/learn/gate";
+import type { PathWithNodes, NodeWithStatus } from "@/lib/learn/types";
+import { Check, Play, Lock, Crown, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+function PathBead({ node }: { node: NodeWithStatus }) {
+  const level = node.levels[0];
+  const clickable = (node.status === "available" || node.status === "completed") && !!level;
+  const href = clickable && level ? `/learn/play/${level.id}` : "/learn/tree";
+
+  return (
+    <Link href={href} className="flex flex-col items-center gap-2 group">
+      <span
+        className={cn(
+          "relative w-11 h-11 rounded-full border-2 flex items-center justify-center text-lg transition-all squishy",
+          node.status === "completed" && "bg-gradient-to-br from-kawaii-mint to-emerald-400 text-white border-white/70",
+          node.status === "available" && "bg-gradient-to-br from-kawaii-purple to-kawaii-pink text-white border-white/80 animate-glow-pulse group-hover:scale-110",
+          node.status === "locked" && (node.requiresPaid ? "bg-slate-200 dark:bg-dark-surface text-slate-400 border-kawaii-coral/30" : "bg-kawaii-lavender/25 dark:bg-dark-surface text-slate-400 border-kawaii-lavender/20")
+        )}
+      >
+        {node.status === "completed" ? <Check className="w-5 h-5" /> : node.status === "available" ? <Play className="w-4 h-4 ml-0.5" /> : node.emoji}
+      </span>
+      <span className="text-[9px] font-bold text-slate-400 max-w-[72px] text-center leading-tight">{node.title}</span>
+      <span className="w-px h-4 bg-kawaii-lavender/40 dark:bg-dark-surface" />
+    </Link>
+  );
+}
 
 export default function LearnHome() {
   const [paths, setPaths] = useState<PathWithNodes[]>([]);
   const [user, setUser] = useState<HudUser | null>(null);
-  const [paid, setPaid] = useState(false);
   const [activePathId, setActivePathId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [chosen, setChosen] = useState(false);
@@ -29,7 +51,6 @@ export default function LearnHome() {
       const data = await res.json();
       setPaths(data.paths ?? []);
       setUser(data.user ?? null);
-      setPaid(data.paid ?? false);
       const active = data.activePathId ?? data.paths?.[0]?.id ?? null;
       setActivePathId(active);
       setChosen(!!data.activePathId);
@@ -64,47 +85,42 @@ export default function LearnHome() {
   if (loading) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
-        <p className="text-slate-400 animate-pulse">Loading your skill tree…</p>
+        <p className="text-slate-400 animate-pulse">Loading your adventure…</p>
       </div>
     );
   }
 
-  const activePath = paths.find((p) => p.id === activePathId) ?? null;
-
-  // ── First visit: "What do you want to become?" ──
+  // ── First visit: pick your dream ──
   if (!chosen) {
     return (
-      <div className="py-10 px-2">
-        <div className="text-center max-w-xl mx-auto mb-10">
-          <div className="text-5xl mb-3">🪪</div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold leading-tight text-slate-800 dark:text-slate-100">
+      <div className="py-8 px-3">
+        <div className="text-center mb-8">
+          <div className="text-5xl mb-3 animate-float">🎮</div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold leading-tight text-slate-800 dark:text-slate-100">
             What do you want to <span className="bg-gradient-to-r from-kawaii-purple to-kawaii-pink bg-clip-text text-transparent">become</span>?
           </h1>
-          <p className="mt-3 text-lg text-slate-500 dark:text-slate-400">
-            Pick your dream. We'll build your skill tree and take you from zero to job-ready — one quick mission at a time.
-          </p>
+          <p className="mt-2 text-slate-500 dark:text-slate-400">Pick your dream. Your skill tree grows from there — one quick mission at a time.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-3">
           {paths.map((p, i) => (
             <button
               key={p.id}
               onClick={() => choosePath(p.id)}
               disabled={switching !== null}
-              className="text-left group animate-fade-in"
-              style={{ animationDelay: `${i * 0.06}s` }}
+              className="w-full text-left group animate-fade-in"
+              style={{ animationDelay: `${i * 0.05}s` }}
             >
-              <Card className="h-full border-kawaii-lavender/30 dark:border-dark-surface bg-white/80 dark:bg-dark-card/80 hover:shadow-sari-lg hover:-translate-y-1 transition-all">
-                <CardContent className="p-5 flex flex-col h-full">
-                  <div className={cn("w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center text-2xl mb-3", p.color)}>
+              <Card className="border-kawaii-lavender/30 dark:border-dark-surface bg-white/85 dark:bg-dark-card/85 hover:shadow-sari-lg hover:-translate-y-0.5 transition-all">
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className={cn("w-14 h-14 rounded-2xl bg-gradient-to-br flex items-center justify-center text-2xl shrink-0 shadow-sari-sm", p.color)}>
                     {p.emoji}
                   </div>
-                  <h3 className="font-extrabold text-slate-800 dark:text-slate-100">{p.title}</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{p.subtitle}</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 flex-1">{p.description}</p>
-                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-kawaii-purple dark:text-kawaii-lavender group-hover:gap-2 transition-all">
-                    Choose this path →
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-extrabold text-slate-800 dark:text-slate-100">{p.title}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{p.subtitle}</p>
+                  </div>
+                  <span className="text-kawaii-purple dark:text-kawaii-lavender font-extrabold group-hover:translate-x-1 transition-transform">→</span>
                 </CardContent>
               </Card>
             </button>
@@ -114,20 +130,21 @@ export default function LearnHome() {
     );
   }
 
-  // ── Active path: skill tree ──
+  const activePath = paths.find((p) => p.id === activePathId) ?? null;
+
   return (
-    <div className="py-6 px-2">
-      {/* Path tabs */}
-      <div className="flex flex-wrap justify-center gap-2 mb-6">
+    <div className="py-6 px-3">
+      {/* Path switcher */}
+      <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-3 px-3 mb-4" style={{ scrollbarWidth: "none" }}>
         {paths.map((p) => (
           <button
             key={p.id}
             onClick={() => choosePath(p.id)}
             className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all squishy border-2",
+              "shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold transition-all squishy border-2",
               p.id === activePathId
                 ? "border-kawaii-purple bg-kawaii-lavender/30 text-kawaii-purple dark:text-kawaii-lavender"
-                : "border-kawaii-lavender/30 dark:border-dark-surface text-slate-500 hover:border-kawaii-purple/50"
+                : "border-kawaii-lavender/25 dark:border-dark-surface text-slate-500 hover:border-kawaii-purple/50"
             )}
           >
             <span>{p.emoji}</span>
@@ -136,64 +153,101 @@ export default function LearnHome() {
         ))}
       </div>
 
-      {user && <RankHud user={user} />}
+      {/* HUD */}
+      {user && <RankHud user={user} compact />}
 
-      {activePath && (
-        <div className="mt-6">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-slate-100">
-              {activePath.emoji} {activePath.title}
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">{activePath.subtitle}</p>
-            <div className="mt-3 inline-flex items-center gap-2">
-              <div className="h-2 w-40 rounded-full bg-kawaii-lavender/20 dark:bg-dark-surface overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-kawaii-purple to-kawaii-pink transition-all duration-500"
-                  style={{ width: `${activePath.totalNodes ? (activePath.completedNodes / activePath.totalNodes) * 100 : 0}%` }}
-                />
+      {/* Continue card */}
+      {activePath && (() => {
+        const sorted = sortNodes(activePath.nodes);
+        const next = sorted.find((n) => n.status === "available") ?? null;
+        const nextLevel = next?.levels[0] ?? null;
+        return (
+          <Card className="mt-4 border-kawaii-purple/40 dark:border-dark-surface bg-gradient-to-br from-kawaii-lavender/15 via-white/80 to-kawaii-pink/15 dark:from-dark-surface/60 dark:via-dark-card/80 dark:to-dark-surface/60 overflow-hidden">
+            <CardContent className="p-5 flex items-center gap-4">
+              <Link
+                href={nextLevel ? `/learn/play/${nextLevel.id}` : "/learn/tree"}
+                className={cn(
+                  "w-20 h-20 rounded-full shrink-0 flex items-center justify-center text-3xl shadow-lg transition-all squishy",
+                  nextLevel
+                    ? "bg-gradient-to-br from-kawaii-purple to-kawaii-pink text-white shadow-kawaii-purple/40 animate-glow-pulse hover:scale-105"
+                    : "bg-kawaii-lavender/40 text-slate-400"
+                )}
+              >
+                {nextLevel ? <Play className="w-8 h-8 ml-1" /> : <Lock className="w-7 h-7" />}
+              </Link>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-kawaii-purple dark:text-kawaii-lavender">
+                  {activePath.emoji} {activePath.title}
+                </p>
+                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
+                  {nextLevel ? next?.title : "All done for now!"}
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {nextLevel ? `+${nextLevel.xp_reward} XP · ${next?.subtitle}` : "You mastered every unlocked skill. Keep climbing! 🌱"}
+                </p>
+                {nextLevel && (
+                  <Link href={`/learn/play/${nextLevel.id}`}>
+                    <Button variant="primary" size="sm" className="mt-2">
+                      Continue →
+                    </Button>
+                  </Link>
+                )}
               </div>
-              <span className="text-xs font-bold text-slate-500">{activePath.completedNodes}/{activePath.totalNodes} skills</span>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
-          <SkillTree path={activePath} />
+      {/* streak + stats */}
+      {user && (
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <Card className="border-kawaii-lavender/25 dark:border-dark-surface bg-white/80 dark:bg-dark-card/80">
+            <CardContent className="p-3 flex items-center gap-2">
+              <span className="w-9 h-9 rounded-xl bg-kawaii-coral/15 flex items-center justify-center text-lg shrink-0"><Flame className="w-5 h-5 text-kawaii-coral" /></span>
+              <div>
+                <p className="text-base font-extrabold text-slate-800 dark:text-slate-100">{user.streak} day{user.streak === 1 ? "" : "s"}</p>
+                <p className="text-[10px] font-bold text-slate-400">daily streak</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Link href="/learn/leaderboard">
+            <Card className="border-kawaii-lavender/25 dark:border-dark-surface bg-white/80 dark:bg-dark-card/80 hover:shadow-sari-sm transition-shadow h-full">
+              <CardContent className="p-3 flex items-center gap-2">
+                <span className="w-9 h-9 rounded-xl bg-kawaii-purple/15 flex items-center justify-center text-lg shrink-0">🏆</span>
+                <div>
+                  <p className="text-base font-extrabold text-slate-800 dark:text-slate-100">{user.xp} XP</p>
+                  <p className="text-[10px] font-bold text-slate-400">tap to see ranks</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       )}
 
-      {/* Rank + upsell strip */}
-      <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link href="/learn/leaderboard" className="group">
-          <Card className="h-full border-kawaii-lavender/30 dark:border-dark-surface bg-white/80 dark:bg-dark-card/80 hover:shadow-sari transition-all">
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-kawaii-purple to-kawaii-pink flex items-center justify-center text-2xl">
-                <Trophy className="w-6 h-6 text-white" />
+      {/* Your path (mini tree, bottom-up) */}
+      {activePath && (
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-extrabold text-slate-700 dark:text-slate-200">Your skill tree</h3>
+            <Link href="/learn/tree" className="text-xs font-bold text-kawaii-purple dark:text-kawaii-lavender">
+              Open full tree 🌳 →
+            </Link>
+          </div>
+          <Card className="border-kawaii-lavender/25 dark:border-dark-surface bg-white/70 dark:bg-dark-card/70">
+            <CardContent className="p-4 flex flex-col items-center">
+              <div className="flex flex-col items-center">
+                {[...sortNodes(activePath.nodes)].reverse().map((node) => (
+                  <PathBead key={node.id} node={node} />
+                ))}
+                <span className="w-3 h-3 rounded-full bg-gradient-to-br from-kawaii-purple to-kawaii-pink shadow-sari-sm" />
               </div>
-              <div className="flex-1">
-                <h3 className="font-extrabold text-slate-800 dark:text-slate-100">Climb the ranks</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Beat the bots. Top VAs get reviewed by agencies monthly.</p>
-              </div>
-              <span className="text-kawaii-purple group-hover:translate-x-1 transition-transform">→</span>
+              <p className="mt-3 text-[10px] font-bold text-slate-400 text-center">
+                {activePath.completedNodes}/{activePath.totalNodes} skills mastered
+              </p>
             </CardContent>
           </Card>
-        </Link>
-
-        {!paid && (
-          <Card className="h-full border-kawaii-coral/40 dark:border-dark-surface bg-gradient-to-br from-kawaii-pink/10 to-kawaii-lavender/10">
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-kawaii-coral to-kawaii-pink flex items-center justify-center text-2xl">
-                <Lock className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-extrabold text-slate-800 dark:text-slate-100">Unlock the full tree</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">The first skills are free. Go pro to master the rest.</p>
-              </div>
-              <Link href="/pricing">
-                <Button variant="primary" size="sm">Upgrade</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

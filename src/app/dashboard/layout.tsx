@@ -159,6 +159,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
 
+          {/* Learn = the main hub */}
+          <div className="px-4 pt-4">
+            <Link
+              href="/learn"
+              onClick={() => setSidebarOpen(false)}
+              className="block rounded-2xl bg-gradient-to-br from-kawaii-purple to-kawaii-pink p-3.5 text-white shadow-sari-sm hover:shadow-sari transition-shadow squishy"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🎮</span>
+                <div className="flex-1">
+                  <p className="text-sm font-extrabold leading-tight">Learn</p>
+                  <p className="text-[10px] opacity-80">Skill tree & missions</p>
+                </div>
+                <span className="text-lg">→</span>
+              </div>
+            </Link>
+          </div>
+
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             {sidebarGroups.map((group) => {
               if (group.labelKey === "agency" && !agencyEnabled) return null;

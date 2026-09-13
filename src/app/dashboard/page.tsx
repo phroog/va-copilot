@@ -225,6 +225,20 @@ export default function DashboardHome() {
         </Link>
       </div>
 
+      {/* Continue Learning — the main piece lives in /learn */}
+      <Link href="/learn" className="block group">
+        <div className="rounded-3xl bg-gradient-to-r from-kawaii-purple via-kawaii-lavender to-kawaii-pink p-5 text-white shadow-sari-lg hover:shadow-sari transition-shadow">
+          <div className="flex items-center gap-4">
+            <span className="text-4xl animate-float">🎮</span>
+            <div className="flex-1">
+              <p className="text-lg font-extrabold leading-tight">Continue your VA journey</p>
+              <p className="text-sm opacity-90">Level up on the skill tree, earn XP and climb the ranks — your tools are here when you need them.</p>
+            </div>
+            <span className="text-2xl group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </div>
+      </Link>
+
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((s) => (

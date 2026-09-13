@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LessonPlayer } from "@/components/learn/lesson-player";
+import { modeForLevel } from "@/lib/learn/modes";
 import { RankHud, type HudUser } from "@/components/learn/rank-hud";
 import type { LessonContent } from "@/lib/learn/types";
 import { Lock, Crown } from "lucide-react";
@@ -200,7 +201,7 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
         <h1 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">{title}</h1>
       </div>
       {submitting && <p className="text-center text-sm text-slate-400 animate-pulse">Saving your XP…</p>}
-      <LessonPlayer content={content} xpReward={xpReward} onComplete={handleComplete} />
+      <LessonPlayer content={content} xpReward={xpReward} mode={modeForLevel(params.levelId)} onComplete={handleComplete} />
     </div>
   );
 }
