@@ -9,11 +9,11 @@ import type { PathWithNodes, NodeWithStatus } from "@/lib/learn/types";
 import { cn } from "@/lib/utils";
 
 const NODE = 70;
-const STEP = 92;
+const STEP = 122;
 const CENTER = 240;
-const OFFSET = 46;
+const OFFSET = 50;
 const CHUNK = 4;
-const DIVIDER_H = 76;
+const DIVIDER_H = 88;
 
 const MODE_ICON: Record<string, string> = { story: "📖", rapid: "⭐", chat: "💬" };
 const CHAPTER_TITLES = ["Foundations", "Core Skills", "Growth", "Mastery", "Expertise", "Legendary"];
@@ -103,7 +103,7 @@ export default function LearnHome() {
         list.push({ kind: "node", row, y });
         y += STEP;
       });
-      y += 26;
+      y += 16;
     });
     return { items: list, containerH: y + 80, currentChapter: cur };
   }, [rows]);
@@ -214,7 +214,7 @@ export default function LearnHome() {
         {items.map((it, i) => {
           if (it.kind === "divider") {
             return (
-              <div key={`d${i}`} className="absolute left-0 right-0 flex items-center gap-3 px-6" style={{ top: it.y + 24 }}>
+              <div key={`d${i}`} className="absolute left-0 right-0 flex items-center gap-3 px-6" style={{ top: it.y + 34 }}>
                 <span className="flex-1 h-px bg-white/15" />
                 <span className="text-[13px] font-extrabold text-white/50 whitespace-nowrap">{it.title}</span>
                 <span className="flex-1 h-px bg-white/15" />
