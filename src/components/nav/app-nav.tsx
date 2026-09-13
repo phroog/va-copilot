@@ -1,0 +1,288 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { Mochi } from "@/components/learn/mochi";
+import { useSoundSettings } from "@/lib/sounds";
+import { useLocale } from "@/lib/i18n/context";
+import { TOOL_GROUPS } from "./sidebar-groups";
+import { cn } from "@/lib/utils";
+
+const TABS = [
+  { href: "/learn", label: "Learn", icon: "🏠", match: (p: string) => p.startsWith("/learn") && !p.startsWith("/learn/play") },
+  { href: "/dashboard", label: "Tools", icon: "🔧", match: (p: string) => p.startsWith("/dashboard") },
+  { href: "/learn/leaderboard", label: "Ranks", icon: "🏆", match: (p: string) => p.startsWith("/learn/leaderboard") },
+  { href: "/dashboard/credits", label: "Shop", icon: "🛍️", match: (p: string) => p.startsWith("/dashboard/credits") },
+  { href: "/dashboard/settings", label: "Profile", icon: "👤", match: (p: string) => p.startsWith("/dashboard/settings") },
+];
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const { t } = useLocale();
+  const { settings, toggleSound, toggleHaptic } = useSoundSettings();
+  const [streak, setStreak] = useState(0);
+  const [xp, setXp] = useState(0);
+  const [gems, setGems] = useState<number | null>(null);
+  const [courseEmoji, setCourseEmoji] = useState("🍠");
+
+  const inLesson = pathname.startsWith("/learn/play");
+  const isTools = pathname.startsWith("/dashboard");
+
+  useEffect(() => {
+    fetch("/api/learn/tree")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.user) {
+          setStreak(d.user.streak ?? 0);
+          setXp(d.user.xp ?? 0);
+        }
+        const active = (d?.paths ?? []).find((p: any) => p.id === d?.activePathId) ?? d?.paths?.[0];
+        if (active?.emoji) setCourseEmoji(active.emoji);
+      })
+      .catch(() => {});
+    fetch("/api/ai/credits")
+      .then((r) => r.json())
+      .then((d) => setGems(d.balance ?? 0))
+      .catch(() => {});
+  }, []);
+
+  return (
+    <div className="dark min-h-screen text-white" style={{ background: "linear-gradient(180deg, #0a0a1a 0%, #131628 100%)" }}>
+      {/* Desktop sidebar */}
+      {!inLesson && (
+        <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 flex-col bg-[#1f2233] border-r border-white/5">
+          <Link href="/learn" className="flex items-center gap-2 px-5 py-5">
+            <span className="text-[28px] leading-none">🍠</span>
+            <span className="text-xl font-extrabold text-white">Sari</span>
+          </Link>
+          <nav className="flex-1 overflow-y-auto px-3 pb-4 space-y-1">
+            {TABS.map((tab) => {
+              const active = tab.match(pathname);
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-2xl text-[15px] font-bold transition-all squishy",
+                    active ? "bg-dl-purple text-white shadow-btn-purple" : "text-white/60 hover:bg-white/5 hover:text-white"
+                  )}
+                >
+                  <span className="text-2xl leading-none">{tab.icon}</span>
+                  {tab.label}
+                </Link>
+              );
+            })}
+            {isTools && (
+              <div className="mt-3 border-t border-white/5 pt-3">
+                <p className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-white/40">Tools</p>
+                <ToolsSidebarNav />
+              </div>
+            )}
+          </nav>
+        </aside>
+      )}
+
+      <div className={cn("min-w-0", !inLesson && "lg:pl-64")}>
+        {/* Top HUD */}
+        {!inLesson && (
+          <header className="sticky top-0 z-50">
+            <div className="h-14 px-3 flex items-center justify-between bg-[#131628]/80 backdrop-blur border-b border-white/5">
+              <div className="flex items-center gap-3.5">
+                <Link
+                  href="/learn/courses"
+                  className="w-9 h-9 rounded-xl bg-[#1f2233] border border-white/10 flex items-center justify-center text-[22px] leading-none hover:border-dl-purple/60 transition-colors"
+                  title="Switch course"
+                >
+                  {courseEmoji}
+                </Link>
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span className={cn("text-[22px] leading-none", streak >= 7 && "animate-flame")}>🔥</span>
+                  <span className="text-base font-extrabold text-white tabular-nums">{streak}</span>
+                </span>
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[22px] leading-none">💎</span>
+                  <span className="text-base font-extrabold text-white tabular-nums">{gems ?? "…"}</span>
+                </span>
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[22px] leading-none">⚡</span>
+                  <span className="text-base font-extrabold text-white tabular-nums">{xp}</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={toggleSound}
+                  className="w-9 h-9 rounded-xl bg-[#1f2233] border border-white/10 flex items-center justify-center text-lg leading-none hover:border-white/30 transition-colors"
+                  title={settings.sound ? "Mute sounds" : "Unmute sounds"}
+                >
+                  {settings.sound ? "🔊" : "🔇"}
+                </button>
+                <button
+                  onClick={toggleHaptic}
+                  className="w-9 h-9 rounded-xl bg-[#1f2233] border border-white/10 flex items-center justify-center text-lg leading-none hover:border-white/30 transition-colors"
+                  title={settings.haptic ? "Disable vibration" : "Enable vibration"}
+                >
+                  {settings.haptic ? "📳" : "🔕"}
+                </button>
+                <Link href="/learn" className="flex items-center gap-2">
+                  <span className="text-[24px] leading-none">🍠</span>
+                  <span className="text-lg font-extrabold text-white hidden sm:inline">Sari</span>
+                </Link>
+              </div>
+            </div>
+          </header>
+        )}
+
+        {/* Tools sub-nav (mobile) */}
+        {isTools && !inLesson && <ToolsMobileNav />}
+
+        <main className={cn(!inLesson && "pb-24 lg:pb-10")}>{children}</main>
+      </div>
+
+      {/* Mobile bottom nav */}
+      {!inLesson && (
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50">
+          <div
+            className="mx-3 mb-2 rounded-3xl border border-white/10 bg-[#1f2233] flex items-center justify-around py-2 px-1"
+            style={{ boxShadow: "0 -6px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+          >
+            {TABS.map((tab) => {
+              const active = tab.match(pathname);
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-2xl transition-all",
+                    active ? "bg-dl-purple/20" : "hover:bg-white/5"
+                  )}
+                >
+                  <span className={cn("text-[26px] leading-none", active ? "drop-shadow-[0_2px_6px_rgba(165,96,240,0.6)]" : "grayscale opacity-70")}>
+                    {tab.icon}
+                  </span>
+                  <span className={cn("text-[10px] font-extrabold", active ? "text-dl-purpleLight" : "text-white/40")}>
+                    {tab.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
+
+      <Mochi />
+    </div>
+  );
+}
+
+// Desktop: tools as accordion sub-nav inside the sidebar.
+function ToolsSidebarNav() {
+  const { t } = useLocale();
+  const pathname = usePathname();
+  const [open, setOpen] = useState<Record<string, boolean>>(() => {
+    const saved: Record<string, boolean> = {};
+    TOOL_GROUPS.forEach((g) => {
+      const active = g.links.some((l) => l.href === pathname);
+      saved[g.labelKey] = g.defaultOpen || active;
+    });
+    return saved;
+  });
+
+  return (
+    <div className="space-y-1">
+      {TOOL_GROUPS.map((group) => {
+        const isOpen = open[group.labelKey];
+        const hasActive = group.links.some((l) => l.href === pathname);
+        return (
+          <div key={group.labelKey}>
+            <button
+              onClick={() => setOpen((prev) => ({ ...prev, [group.labelKey]: !prev[group.labelKey] }))}
+              className={cn(
+                "flex items-center gap-2 w-full px-3 py-2 rounded-2xl text-xs font-extrabold uppercase tracking-wider transition-all",
+                hasActive ? "text-dl-purpleLight" : "text-white/40 hover:bg-white/5"
+              )}
+            >
+              <span className="text-base leading-none">{group.emoji}</span>
+              <span className="flex-1 text-left">{t(group.labelKey)}</span>
+              {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            </button>
+            {isOpen && (
+              <div className="ml-2 space-y-0.5 mt-0.5">
+                {group.links.map((link) => {
+                  const active = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-2 rounded-2xl text-sm font-bold transition-all squishy",
+                        active ? "bg-dl-purple text-white shadow-btn-purple" : "text-white/60 hover:bg-white/5 hover:text-white"
+                      )}
+                    >
+                      <link.icon className="w-4 h-4" />
+                      <span className="flex-1">{t(link.labelKey)}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Mobile: tools as expandable pill sub-nav under the HUD.
+function ToolsMobileNav() {
+  const { t } = useLocale();
+  const pathname = usePathname();
+  const activeGroup = TOOL_GROUPS.find((g) => g.links.some((l) => l.href === pathname));
+  const [openGroup, setOpenGroup] = useState<string | null>(activeGroup?.labelKey ?? TOOL_GROUPS[0]?.labelKey ?? null);
+
+  return (
+    <div className="lg:hidden sticky top-14 z-30 bg-[#131628]/90 backdrop-blur border-b border-white/5 px-2 py-2">
+      <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+        {TOOL_GROUPS.map((g) => {
+          const active = g.labelKey === activeGroup?.labelKey;
+          return (
+            <button
+              key={g.labelKey}
+              onClick={() => setOpenGroup(openGroup === g.labelKey ? null : g.labelKey)}
+              className={cn(
+                "shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-extrabold border transition-all",
+                active || openGroup === g.labelKey
+                  ? "bg-dl-purple text-white border-dl-purpleDark"
+                  : "bg-[#1f2233] text-white/50 border-white/10 hover:text-white"
+              )}
+            >
+              <span className="text-sm leading-none">{g.emoji}</span>
+              {t(g.labelKey)}
+            </button>
+          );
+        })}
+      </div>
+      {openGroup && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {TOOL_GROUPS.find((g) => g.labelKey === openGroup)?.links.map((link) => {
+            const active = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all squishy",
+                  active ? "bg-dl-purple text-white shadow-btn-purple" : "bg-[#1f2233] text-white/70 border border-white/10 hover:text-white"
+                )}
+              >
+                <link.icon className="w-3.5 h-3.5" />
+                {t(link.labelKey)}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
