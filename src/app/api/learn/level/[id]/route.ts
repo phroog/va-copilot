@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeXp } from "@/lib/learn/ranks";
-import { isPaidUser, nodeRequiresPaid } from "@/lib/learn/gate";
-import { getUserTree } from "@/lib/learn/user-tree";
+import { isPaidUser, nodeRequiresPaid, sortNodes } from "@/lib/learn/gate";
 import { getOrGenerateLevel } from "@/lib/learn/level-gen";
 import type { LearnLevel, SkillNode, VaPath } from "@/lib/learn/types";
 
@@ -21,12 +20,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
   const { data: path } = await supabase.from("va_paths").select("*").eq("id", node.path_id).maybeSingle();
 
-  // The node's position/parent comes from THIS user's unique tree.
-  const { data: pathNodes } = await supabase.from("skill_nodes").select("*").eq("path_id", node.path_id);
-  const tree = await getUserTree(supabase, user.id, path as VaPath, (pathNodes ?? []) as SkillNode[]);
-  const entry = tree.find((e) => e.node_id === node.id);
-  const parentId = entry?.parent_id ?? node.parent_id;
-  const depth = entry?.depth ?? node.depth;
+  // Linear position in the path → freemium gate (first FREE_LEVELS are free).
+  const { data: siblings } = await supabase.from("skill_nodes").select("id,depth,order_index").eq("path_id", node.path_id);
+  const sorted = sortNodes(siblings ?? []);
+  const pathIndex = sorted.findIndex((s) => s.id === node.id);
 
   const [subRes, profileRes] = await Promise.all([
     supabase.from("subscriptions").select("plan,status,access_until").eq("user_id", user.id).maybeSingle(),
@@ -36,10 +33,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const paid = isPaidUser(subRes.data);
 
   // Progression order is enforced visually by the path (locked nodes are not
-  // clickable). We deliberately do NOT hard-block on the parent here — stale
-  // or inconsistent per-user tree data must never lock a level the UI offers.
-  // Only the paid-depth gate remains.
-  if (nodeRequiresPaid(depth) && !paid) {
+  // clickable). Only the paid-depth gate is enforced server-side.
+  if (nodeRequiresPaid(pathIndex) && !paid) {
     return NextResponse.json({ locked: true, reason: "paid", requiresPaid: true }, { status: 402 });
   }
 
@@ -47,7 +42,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
   return NextResponse.json({
     level: { ...level, content },
-    node: { ...node, parent_id: parentId, depth },
+    node,
     path,
     user: { ...summarizeXp(profileRes.data?.xp ?? 0), streak: profileRes.data?.streak_count ?? 0 },
     paid,

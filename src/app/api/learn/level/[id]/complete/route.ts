@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeXp } from "@/lib/learn/ranks";
 import { ensureProfile } from "@/lib/learn/profile";
-import { getUserTree } from "@/lib/learn/user-tree";
-import type { SkillNode, VaPath } from "@/lib/learn/types";
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), hi);
@@ -76,17 +74,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
       ? { from: before.rankTitle, to: after.rankTitle, levelBefore: before.level, levelAfter: after.level }
       : null;
 
-  // Nodes newly unlocked: children of this node in THIS user's unique tree.
+  // Nodes newly unlocked: children of this node in the global skill tree.
   let unlockedNodes: { id: string; title: string; emoji: string }[] = [];
   if (node && firstCompletion) {
-    const { data: path } = await supabase.from("va_paths").select("*").eq("id", node.path_id).maybeSingle();
-    const { data: pathNodes } = await supabase.from("skill_nodes").select("*").eq("path_id", node.path_id);
-    const tree = await getUserTree(supabase, user.id, path as VaPath, (pathNodes ?? []) as SkillNode[]);
-    const childIds = tree.filter((e) => e.parent_id === node.id).map((e) => e.node_id);
-    if (childIds.length > 0) {
-      const { data: children } = await supabase.from("skill_nodes").select("id,title,emoji").in("id", childIds);
-      unlockedNodes = (children ?? []) as { id: string; title: string; emoji: string }[];
-    }
+    const { data: children } = await supabase
+      .from("skill_nodes")
+      .select("id,title,emoji")
+      .eq("parent_id", node.id);
+    unlockedNodes = (children ?? []) as { id: string; title: string; emoji: string }[];
   }
 
   return NextResponse.json({

@@ -80,6 +80,8 @@ function StoryMode({
   const blocks = content.blocks;
   const interactiveCount = blocks.filter((b) => INTERACTIVE.includes(b.type as any)).length;
   const block = blocks[idx];
+  const isPassive = block?.type === "text" || block?.type === "tip";
+  const canContinue = answered || isPassive;
 
   const shuffledOrder = useMemo(() => {
     if (block?.type === "order") return shuffle(block.items.map((text, originalIndex) => ({ text, originalIndex })));
@@ -137,7 +139,7 @@ function StoryMode({
         <div className="h-2 flex-1 rounded-full bg-[#2a2d3f] overflow-hidden mr-4">
           <div
             className="h-full rounded-full bg-dl-purple transition-all duration-300"
-            style={{ width: `${((idx + (answered ? 1 : 0)) / blocks.length) * 100}%` }}
+            style={{ width: `${((idx + (canContinue ? 1 : 0)) / blocks.length) * 100}%` }}
           />
         </div>
         <div className="flex items-center gap-3">
@@ -174,7 +176,7 @@ function StoryMode({
         </div>
       )}
 
-      {answered && (
+      {canContinue && (
         <div className="mt-6 flex justify-end">
           <button onClick={next} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-dl-green text-white shadow-btn-green hover:brightness-105 active:translate-y-1 active:shadow-none transition-all squishy">
             {idx + 1 >= blocks.length ? "See my result" : "Continue"} <ArrowRight className="w-4 h-4" />

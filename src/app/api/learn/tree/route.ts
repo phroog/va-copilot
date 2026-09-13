@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeXp } from "@/lib/learn/ranks";
-import { isPaidUser, nodeRequiresPaid } from "@/lib/learn/gate";
-import { ensureUserTrees } from "@/lib/learn/user-tree";
+import { isPaidUser, nodeRequiresPaid, sortNodes } from "@/lib/learn/gate";
 import { fingerprintId } from "@/lib/learn/tree-gen";
 import type { PathWithNodes, NodeWithStatus, SkillNode, LearnLevel, UserProgressRow, VaPath } from "@/lib/learn/types";
 
@@ -27,10 +26,7 @@ export async function GET() {
   const paid = isPaidUser(subRes.data);
   const xp = profileRes.data?.xp ?? 0;
 
-  // Per-user unique trees (fingerprint growth).
-  const trees = await ensureUserTrees(supabase, user.id, paths, allNodes);
   const nodesById = new Map(allNodes.map((n) => [n.id, n]));
-
   const progressByLevel = new Map(progress.map((p) => [p.level_id, p]));
   const levelsByNode = new Map<string, LearnLevel[]>();
   for (const l of levels) {
@@ -39,20 +35,18 @@ export async function GET() {
   }
 
   const result: PathWithNodes[] = paths.map((path) => {
-    const tree = trees.get(path.id) ?? [];
+    const pathNodes = sortNodes(allNodes.filter((n) => n.path_id === path.id));
     const completedNodeIds = new Set<string>();
 
-    const withStatus: NodeWithStatus[] = tree
-      .map((entry): NodeWithStatus | null => {
-        const node = nodesById.get(entry.node_id);
-        if (!node) return null;
-        const built: SkillNode = { ...node, parent_id: entry.parent_id, depth: entry.depth, order_index: entry.order_index };
+    const withStatus: NodeWithStatus[] = pathNodes
+      .map((node, pathIndex): NodeWithStatus => {
+        const built: SkillNode = node;
         const nodeLevels = (levelsByNode.get(node.id) ?? []).sort((a, b) => a.order_index - b.order_index);
         const completedLevels = nodeLevels.filter((l) => progressByLevel.get(l.id)?.status === "completed");
         const nodeCompleted = nodeLevels.length > 0 && completedLevels.length === nodeLevels.length;
 
         const parentDone = !built.parent_id || completedNodeIds.has(built.parent_id);
-        const requiresPaid = nodeRequiresPaid(built.depth) && !paid;
+        const requiresPaid = nodeRequiresPaid(pathIndex) && !paid;
 
         let status: NodeWithStatus["status"] = "locked";
         if (nodeCompleted) status = "completed";
@@ -74,8 +68,7 @@ export async function GET() {
           lessonTotal: nodeLevels.length,
           nextLevelId: nextLevel?.id ?? null,
         };
-      })
-      .filter((n): n is NodeWithStatus => n !== null);
+      });
 
     return {
       ...path,

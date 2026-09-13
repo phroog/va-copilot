@@ -12,7 +12,7 @@ const NODE = 70;
 const STEP = 122;
 const CENTER = 240;
 const OFFSET = 50;
-const CHUNK = 4;
+const CHUNK = 9;
 const DIVIDER_H = 88;
 
 const MODE_ICON: Record<string, string> = { story: "📖", rapid: "⭐", chat: "💬" };
