@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SkillTreeCanvas } from "@/components/learn/skill-tree-canvas";
+import { TreeFingerprint } from "@/components/learn/tree-fingerprint";
+import { fingerprintId } from "@/lib/learn/tree-gen";
 import type { PathWithNodes } from "@/lib/learn/types";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +33,9 @@ export default function TreePage() {
 
   const activePath = paths.find((p) => p.id === activePathId) ?? null;
 
+  // A tree's "fingerprint" id — unique per user + path, computed from structure.
+  const fpId = useMemo(() => (activePath ? fingerprintId(activePath.nodes) : ""), [activePath]);
+
   const select = (id: string) => {
     setActivePathId(id);
     fetch("/api/learn/select-path", {
@@ -50,13 +55,8 @@ export default function TreePage() {
 
   return (
     <div className="py-5 px-3">
-      <div className="text-center mb-3">
-        <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100">🌳 Skill Tree</h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400">Drag to explore · zoom to see the whole tree</p>
-      </div>
-
       {/* path switcher */}
-      <div className="flex gap-1.5 overflow-x-auto pb-3 mb-3 -mx-3 px-3" style={{ scrollbarWidth: "none" }}>
+      <div className="flex gap-1.5 overflow-x-auto pb-3 mb-2 -mx-3 px-3" style={{ scrollbarWidth: "none" }}>
         {paths.map((p) => (
           <button
             key={p.id}
@@ -73,6 +73,33 @@ export default function TreePage() {
           </button>
         ))}
       </div>
+
+      {/* fingerprint card */}
+      {activePath && (
+        <div className="mb-3 rounded-3xl bg-white/80 dark:bg-dark-card/80 border border-kawaii-lavender/30 dark:border-dark-surface p-4 flex items-center gap-4">
+          <div className="w-[76px] h-[76px] rounded-2xl bg-[#F3EEFF] dark:bg-dark-surface/60 flex items-center justify-center shrink-0">
+            <TreeFingerprint nodes={activePath.nodes} size={64} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-kawaii-purple dark:text-kawaii-lavender">
+              Your unique tree
+            </p>
+            <p className="text-lg font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
+              {activePath.emoji} {activePath.title}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Fingerprint <span className="font-extrabold text-kawaii-purple dark:text-kawaii-lavender">{fpId}</span> ·{" "}
+              {activePath.totalNodes} skills · <b>{activePath.completedNodes}</b> grown
+            </p>
+            <div className="mt-2 h-2 rounded-full bg-kawaii-lavender/20 dark:bg-dark-surface overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-kawaii-purple to-kawaii-pink transition-all duration-500"
+                style={{ width: `${activePath.totalNodes ? (activePath.completedNodes / activePath.totalNodes) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {activePath ? (
         <SkillTreeCanvas path={activePath} />

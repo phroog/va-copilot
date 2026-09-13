@@ -1,10 +1,11 @@
-// Freemium gating for the skill tree. The first FREE_NODES_PER_PATH nodes of a
-// path are free; everything deeper requires a paid plan (the paywall). Mirrors
-// the existing plan system so the same subscription unlocks the whole product.
+// Freemium gating for the skill tree. Depth 0 (root) and depth 1 (first
+// branches) are free; everything deeper requires a paid plan (the paywall).
+// Depth-based so it works for any per-user tree structure. Mirrors the
+// existing plan system so the same subscription unlocks the whole product.
 import { effectivePlan, type PlanKey } from "@/lib/payments";
 
-// First 3 nodes (root + both depth-1 branches) are free per path.
-export const FREE_NODES_PER_PATH = 3;
+// Depth 0 + 1 are free; depth >= 2 is paid.
+export const FREE_MAX_DEPTH = 1;
 
 export interface SubLike {
   plan?: string | null;
@@ -21,8 +22,7 @@ export function sortNodes<T extends { depth: number; order_index: number }>(node
   return [...nodes].sort((a, b) => (a.depth - b.depth) || (a.order_index - b.order_index));
 }
 
-// Given the unlock order (sorted nodes), returns true if the node at that index
-// is behind the paywall.
-export function nodeRequiresPaid(sortedIndex: number): boolean {
-  return sortedIndex >= FREE_NODES_PER_PATH;
+// Given a node's depth in the user's tree, is it behind the paywall?
+export function nodeRequiresPaid(depth: number): boolean {
+  return depth > FREE_MAX_DEPTH;
 }

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeXp } from "@/lib/learn/ranks";
-import { isPaidUser, sortNodes, nodeRequiresPaid } from "@/lib/learn/gate";
-import type { PathWithNodes, NodeWithStatus, SkillNode, LearnLevel, UserProgressRow } from "@/lib/learn/types";
+import { isPaidUser, nodeRequiresPaid } from "@/lib/learn/gate";
+import { ensureUserTrees } from "@/lib/learn/user-tree";
+import { fingerprintId } from "@/lib/learn/tree-gen";
+import type { PathWithNodes, NodeWithStatus, SkillNode, LearnLevel, UserProgressRow, VaPath } from "@/lib/learn/types";
 
 export async function GET() {
   const supabase = createClient();
@@ -18,12 +20,16 @@ export async function GET() {
     supabase.from("subscriptions").select("plan,status,access_until").eq("user_id", user.id).maybeSingle(),
   ]);
 
-  const paths = pathsRes.data ?? [];
-  const nodes = (nodesRes.data ?? []) as SkillNode[];
+  const paths = (pathsRes.data ?? []) as VaPath[];
+  const allNodes = (nodesRes.data ?? []) as SkillNode[];
   const levels = (levelsRes.data ?? []) as LearnLevel[];
   const progress = (progressRes.data ?? []) as UserProgressRow[];
   const paid = isPaidUser(subRes.data);
   const xp = profileRes.data?.xp ?? 0;
+
+  // Per-user unique trees (fingerprint growth).
+  const trees = await ensureUserTrees(supabase, user.id, paths, allNodes);
+  const nodesById = new Map(allNodes.map((n) => [n.id, n]));
 
   const progressByLevel = new Map(progress.map((p) => [p.level_id, p]));
   const levelsByNode = new Map<string, LearnLevel[]>();
@@ -33,40 +39,46 @@ export async function GET() {
   }
 
   const result: PathWithNodes[] = paths.map((path) => {
-    const pathNodes = sortNodes(nodes.filter((n) => n.path_id === path.id));
+    const tree = trees.get(path.id) ?? [];
     const completedNodeIds = new Set<string>();
 
-    const withStatus: NodeWithStatus[] = pathNodes.map((node, idx) => {
-      const nodeLevels = (levelsByNode.get(node.id) ?? []).sort((a, b) => a.order_index - b.order_index);
-      const completedLevels = nodeLevels.filter((l) => progressByLevel.get(l.id)?.status === "completed");
-      const nodeCompleted = nodeLevels.length > 0 && completedLevels.length === nodeLevels.length;
+    const withStatus: NodeWithStatus[] = tree
+      .map((entry): NodeWithStatus | null => {
+        const node = nodesById.get(entry.node_id);
+        if (!node) return null;
+        const built: SkillNode = { ...node, parent_id: entry.parent_id, depth: entry.depth, order_index: entry.order_index };
+        const nodeLevels = (levelsByNode.get(node.id) ?? []).sort((a, b) => a.order_index - b.order_index);
+        const completedLevels = nodeLevels.filter((l) => progressByLevel.get(l.id)?.status === "completed");
+        const nodeCompleted = nodeLevels.length > 0 && completedLevels.length === nodeLevels.length;
 
-      const parentDone = !node.parent_id || completedNodeIds.has(node.parent_id);
-      const requiresPaid = nodeRequiresPaid(idx) && !paid;
+        const parentDone = !built.parent_id || completedNodeIds.has(built.parent_id);
+        const requiresPaid = nodeRequiresPaid(built.depth) && !paid;
 
-      let status: NodeWithStatus["status"] = "locked";
-      if (nodeCompleted) status = "completed";
-      else if (parentDone && !requiresPaid) status = "available";
+        let status: NodeWithStatus["status"] = "locked";
+        if (nodeCompleted) status = "completed";
+        else if (parentDone && !requiresPaid) status = "available";
 
-      if (nodeCompleted) completedNodeIds.add(node.id);
+        if (nodeCompleted) completedNodeIds.add(node.id);
 
-      const xp_earned = nodeLevels.reduce((s, l) => s + (progressByLevel.get(l.id)?.xp_earned ?? 0), 0);
-      const stars = nodeLevels.reduce((s, l) => s + (progressByLevel.get(l.id)?.stars ?? 0), 0);
+        const xp_earned = nodeLevels.reduce((s, l) => s + (progressByLevel.get(l.id)?.xp_earned ?? 0), 0);
+        const stars = nodeLevels.reduce((s, l) => s + (progressByLevel.get(l.id)?.stars ?? 0), 0);
 
-      return {
-        ...node,
-        status,
-        requiresPaid: requiresPaid && !nodeCompleted,
-        progress: { stars, xp_earned, completed: nodeCompleted },
-        levels: nodeLevels,
-      };
-    });
+        return {
+          ...built,
+          status,
+          requiresPaid: requiresPaid && !nodeCompleted,
+          progress: { stars, xp_earned, completed: nodeCompleted },
+          levels: nodeLevels,
+        };
+      })
+      .filter((n): n is NodeWithStatus => n !== null);
 
     return {
       ...path,
       nodes: withStatus,
       completedNodes: withStatus.filter((n) => n.status === "completed").length,
       totalNodes: withStatus.length,
+      fingerprint: fingerprintId(withStatus),
     };
   });
 

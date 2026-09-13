@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RankHud, type HudUser } from "@/components/learn/rank-hud";
 import { sortNodes } from "@/lib/learn/gate";
+import { fingerprintId } from "@/lib/learn/tree-gen";
 import type { PathWithNodes, NodeWithStatus } from "@/lib/learn/types";
 import { Check, Play, Lock, Crown, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -243,6 +244,9 @@ export default function LearnHome() {
               </div>
               <p className="mt-3 text-[10px] font-bold text-slate-400 text-center">
                 {activePath.completedNodes}/{activePath.totalNodes} skills mastered
+              </p>
+              <p className="mt-0.5 text-[10px] font-bold text-kawaii-purple dark:text-kawaii-lavender text-center">
+                🧬 your fingerprint: {fingerprintId(activePath.nodes)}
               </p>
             </CardContent>
           </Card>

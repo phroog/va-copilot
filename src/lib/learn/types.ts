@@ -51,6 +51,7 @@ export interface PathWithNodes extends VaPath {
   nodes: NodeWithStatus[];
   completedNodes: number;
   totalNodes: number;
+  fingerprint: string;
 }
 
 // ── Lesson content schema (rendered by the lesson player) ──
