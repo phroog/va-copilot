@@ -35,22 +35,31 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
   const paid = isPaidUser(subRes.data);
 
-  // Parent is "done" when ALL of its levels are completed — computed the same
-  // way the tree marks a node completed (by level_id, not node_id, so stale or
-  // inconsistent node_id rows can't lock a legitimately-unlocked level).
+  // Compute the parent's completion EXACTLY like the tree does: a node is done
+  // when ALL of its levels are completed. We also accept a completed progress
+  // row that references the parent node directly, so stale/inconsistent data
+  // can never lock a node the tree shows as unlocked.
+  const nodeIds = (pathNodes ?? []).map((n) => n.id);
+  const [levelsRes, progRes] = await Promise.all([
+    nodeIds.length ? supabase.from("learn_levels").select("id,node_id").in("node_id", nodeIds) : Promise.resolve({ data: [] as any[] }),
+    supabase.from("learn_progress").select("level_id,node_id,status").eq("user_id", user.id),
+  ]);
+  const completedLevelIds = new Set((progRes.data ?? []).filter((p: any) => p.status === "completed").map((p: any) => p.level_id));
+  const levelsByNode = new Map<string, string[]>();
+  for (const l of (levelsRes.data ?? []) as { id: string; node_id: string }[]) {
+    if (!levelsByNode.has(l.node_id)) levelsByNode.set(l.node_id, []);
+    levelsByNode.get(l.node_id)!.push(l.id);
+  }
+  const isNodeCompleted = (id: string) => {
+    const ls = levelsByNode.get(id) ?? [];
+    return ls.length > 0 && ls.every((lid) => completedLevelIds.has(lid));
+  };
+
   let parentDone = true;
   if (parentId) {
-    const { data: parentLevels } = await supabase.from("learn_levels").select("id").eq("node_id", parentId);
-    const parentLevelIds = (parentLevels ?? []).map((l) => l.id);
-    if (parentLevelIds.length > 0) {
-      const { data: parentProg } = await supabase
-        .from("learn_progress")
-        .select("level_id")
-        .eq("user_id", user.id)
-        .eq("status", "completed")
-        .in("level_id", parentLevelIds);
-      parentDone = (parentProg ?? []).length === parentLevelIds.length;
-    }
+    const viaLevels = isNodeCompleted(parentId);
+    const viaRow = (progRes.data ?? []).some((p: any) => p.status === "completed" && p.node_id === parentId);
+    parentDone = viaLevels || viaRow;
   }
 
   // Gate: parent must be done, and paid-gated depths need a subscription.

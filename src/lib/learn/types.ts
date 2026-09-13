@@ -45,6 +45,9 @@ export interface NodeWithStatus extends SkillNode {
   requiresPaid: boolean;
   progress: { stars: number; xp_earned: number; completed: boolean } | null;
   levels: LearnLevel[];
+  lessonDone: number;
+  lessonTotal: number;
+  nextLevelId: string | null;
 }
 
 export interface PathWithNodes extends VaPath {

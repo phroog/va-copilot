@@ -62,6 +62,7 @@ export async function GET() {
 
         const xp_earned = nodeLevels.reduce((s, l) => s + (progressByLevel.get(l.id)?.xp_earned ?? 0), 0);
         const stars = nodeLevels.reduce((s, l) => s + (progressByLevel.get(l.id)?.stars ?? 0), 0);
+        const nextLevel = nodeLevels.find((l) => progressByLevel.get(l.id)?.status !== "completed") ?? nodeLevels[0] ?? null;
 
         return {
           ...built,
@@ -69,6 +70,9 @@ export async function GET() {
           requiresPaid: requiresPaid && !nodeCompleted,
           progress: { stars, xp_earned, completed: nodeCompleted },
           levels: nodeLevels,
+          lessonDone: completedLevels.length,
+          lessonTotal: nodeLevels.length,
+          nextLevelId: nextLevel?.id ?? null,
         };
       })
       .filter((n): n is NodeWithStatus => n !== null);

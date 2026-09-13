@@ -12,8 +12,11 @@ const NODE = 70;
 const STEP = 92;
 const CENTER = 240;
 const OFFSET = 46;
+const CHUNK = 4;
+const DIVIDER_H = 76;
 
 const MODE_ICON: Record<string, string> = { story: "📖", rapid: "⭐", chat: "💬" };
+const CHAPTER_TITLES = ["Foundations", "Core Skills", "Growth", "Mastery", "Expertise", "Legendary"];
 
 interface PathRow {
   node: NodeWithStatus;
@@ -22,6 +25,10 @@ interface PathRow {
   isTrophy: boolean;
   isChest: boolean;
 }
+
+type Item =
+  | { kind: "divider"; title: string; y: number; chapter: number }
+  | { kind: "node"; row: PathRow; y: number };
 
 export default function LearnHome() {
   const [paths, setPaths] = useState<PathWithNodes[]>([]);
@@ -82,7 +89,26 @@ export default function LearnHome() {
     }));
   }, [activePath]);
 
-  const containerH = rows.length * STEP + 120;
+  const { items, containerH, currentChapter } = useMemo(() => {
+    const chapters: PathRow[][] = [];
+    for (let i = 0; i < rows.length; i += CHUNK) chapters.push(rows.slice(i, i + CHUNK));
+    const list: Item[] = [];
+    let y = 0;
+    let cur = 0;
+    chapters.forEach((chunk, ci) => {
+      list.push({ kind: "divider", title: CHAPTER_TITLES[ci % CHAPTER_TITLES.length], y, chapter: ci });
+      y += DIVIDER_H;
+      chunk.forEach((row) => {
+        if (row.isCurrent) cur = ci;
+        list.push({ kind: "node", row, y });
+        y += STEP;
+      });
+      y += 26;
+    });
+    return { items: list, containerH: y + 80, currentChapter: cur };
+  }, [rows]);
+
+  const currentTitle = rows.find((r) => r.isCurrent)?.node.title ?? activePath?.title ?? "";
 
   if (loading) {
     return (
@@ -92,7 +118,6 @@ export default function LearnHome() {
     );
   }
 
-  // ── First visit: pick your dream ──
   if (!chosen) {
     return (
       <div className="py-10 px-4 max-w-[480px] mx-auto">
@@ -147,16 +172,14 @@ export default function LearnHome() {
       {/* green progress header */}
       {activePath && (
         <div className="max-w-[480px] mx-auto px-4">
-          <div
-            className="rounded-t-3xl bg-dl-green px-5 py-4 flex items-center justify-between shadow-[0_4px_0_0_#46a302]"
-          >
-            <div>
+          <div className="rounded-t-3xl bg-dl-green px-5 py-4 flex items-center justify-between shadow-[0_4px_0_0_#46a302]">
+            <div className="min-w-0">
               <p className="text-[10px] font-extrabold uppercase tracking-widest text-white/80">
-                Level 1 · Section 1
+                Level 1 · Section {currentChapter + 1}
               </p>
-              <p className="text-lg font-extrabold text-white leading-tight">{activePath.title}</p>
+              <p className="text-lg font-extrabold text-white leading-tight truncate">{currentTitle}</p>
             </div>
-            <span className="flex items-center gap-3">
+            <span className="flex items-center gap-3 shrink-0">
               <span className="w-px h-9 bg-white/25" />
               <span className="text-2xl">📋</span>
             </span>
@@ -164,21 +187,21 @@ export default function LearnHome() {
         </div>
       )}
 
-      {/* serpentine path */}
+      {/* serpentine path with chapters */}
       <div className="relative max-w-[480px] mx-auto" style={{ height: containerH }}>
         <svg className="absolute inset-0 pointer-events-none" width={480} height={containerH}>
-          {rows.slice(0, -1).map((row, i) => {
-            const next = rows[i + 1];
-            const x1 = CENTER + (row.index % 2 === 0 ? OFFSET : -OFFSET);
-            const y1 = row.index * STEP + 40;
-            const x2 = CENTER + (next.index % 2 === 0 ? OFFSET : -OFFSET);
-            const y2 = next.index * STEP + 40;
-            const mx = CENTER;
-            const my = (y1 + y2) / 2;
+          {items.map((it, i) => {
+            if (it.kind !== "node") return null;
+            const next = items.slice(i + 1).find((x) => x.kind === "node") as Extract<Item, { kind: "node" }> | undefined;
+            if (!next) return null;
+            const x1 = CENTER + (it.row.index % 2 === 0 ? OFFSET : -OFFSET);
+            const x2 = CENTER + (next.row.index % 2 === 0 ? OFFSET : -OFFSET);
+            const y1 = it.y + 40;
+            const y2 = next.y + 40;
             return (
               <path
                 key={i}
-                d={`M ${x1} ${y1} Q ${mx} ${my} ${x2} ${y2}`}
+                d={`M ${x1} ${y1} Q ${CENTER} ${(y1 + y2) / 2} ${x2} ${y2}`}
                 fill="none"
                 stroke="rgba(255,255,255,0.1)"
                 strokeWidth={4}
@@ -188,17 +211,24 @@ export default function LearnHome() {
           })}
         </svg>
 
-        {rows.map((row) => (
-          <div key={row.node.id}>
-            <PathNode row={row} />
-            {row.isCurrent && (
-              <RewardTile
-                x={CENTER - (row.index % 2 === 0 ? OFFSET : -OFFSET)}
-                y={row.index * STEP + 6}
-              />
-            )}
-          </div>
-        ))}
+        {items.map((it, i) => {
+          if (it.kind === "divider") {
+            return (
+              <div key={`d${i}`} className="absolute left-0 right-0 flex items-center gap-3 px-6" style={{ top: it.y + 24 }}>
+                <span className="flex-1 h-px bg-white/15" />
+                <span className="text-[13px] font-extrabold text-white/50 whitespace-nowrap">{it.title}</span>
+                <span className="flex-1 h-px bg-white/15" />
+              </div>
+            );
+          }
+          const x = CENTER + (it.row.index % 2 === 0 ? OFFSET : -OFFSET);
+          return (
+            <div key={it.row.node.id}>
+              <PathNode row={it.row} x={x} y={it.y} />
+              {it.row.isCurrent && <RewardTile x={CENTER - (it.row.index % 2 === 0 ? OFFSET : -OFFSET)} y={it.y + 6} />}
+            </div>
+          );
+        })}
       </div>
 
       {/* practice mastered */}
@@ -213,7 +243,7 @@ export default function LearnHome() {
                 const lvl = n.levels[0];
                 if (!lvl) return null;
                 return (
-                  <Link key={n.id} href={`/learn/play/${lvl.id}`} className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-[#1f2233] border border-dl-green/40 text-white/80 text-xs font-bold hover:border-dl-green transition-colors">
+                  <Link key={n.id} href={`/learn/play/${n.nextLevelId ?? lvl.id}`} className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-[#1f2233] border border-dl-green/40 text-white/80 text-xs font-bold hover:border-dl-green transition-colors">
                     <span className="text-dl-green font-extrabold">✓</span> {n.title}
                   </Link>
                 );
@@ -226,12 +256,9 @@ export default function LearnHome() {
   );
 }
 
-function PathNode({ row }: { row: PathRow }) {
-  const { node, index, isCurrent, isTrophy, isChest } = row;
+function PathNode({ row, x, y }: { row: PathRow; x: number; y: number }) {
+  const { node, isCurrent, isTrophy, isChest } = row;
   const level = node.levels[0];
-  const offset = index % 2 === 0 ? OFFSET : -OFFSET;
-  const left = CENTER + offset;
-  const top = index * STEP;
   const size = isTrophy ? 92 : NODE;
   const locked = node.status === "locked";
   const mode = level ? modeForLevel(level.id) : "story";
@@ -259,7 +286,8 @@ function PathNode({ row }: { row: PathRow }) {
   const ringD = size + 16;
   const ringR = ringD / 2 - 3;
   const circ = 2 * Math.PI * ringR;
-  const ringPct = 0.62;
+  const ringPct = node.lessonTotal ? Math.max(0.06, node.lessonDone / node.lessonTotal) : 0.62;
+  const nextLevelId = node.nextLevelId ?? level?.id ?? null;
 
   const inner = (
     <div className="flex flex-col items-center" style={{ width: size + 8 }}>
@@ -267,16 +295,7 @@ function PathNode({ row }: { row: PathRow }) {
         {isCurrent && (
           <svg className="absolute inset-0 -rotate-90" width={ringD} height={ringD}>
             <circle cx={ringD / 2} cy={ringD / 2} r={ringR} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth={5} />
-            <circle
-              cx={ringD / 2}
-              cy={ringD / 2}
-              r={ringR}
-              fill="none"
-              stroke="#58cc02"
-              strokeWidth={5}
-              strokeLinecap="round"
-              strokeDasharray={`${circ * ringPct} ${circ}`}
-            />
+            <circle cx={ringD / 2} cy={ringD / 2} r={ringR} fill="none" stroke="#58cc02" strokeWidth={5} strokeLinecap="round" strokeDasharray={`${circ * ringPct} ${circ}`} />
           </svg>
         )}
         <motion.button
@@ -300,14 +319,19 @@ function PathNode({ row }: { row: PathRow }) {
       <span className={cn("mt-2 text-[12px] font-bold text-center leading-tight max-w-[110px]", locked ? "text-white/30" : "text-white")}>
         {node.title}
       </span>
+      {isCurrent && node.lessonTotal > 1 && (
+        <span className="text-[10px] font-bold text-white/50">
+          Lesson {Math.min(node.lessonDone + 1, node.lessonTotal)} of {node.lessonTotal}
+        </span>
+      )}
     </div>
   );
 
   if (locked) {
-    return <div className="absolute" style={{ left: left - size / 2, top }}>{inner}</div>;
+    return <div className="absolute" style={{ left: x - size / 2, top: y }}>{inner}</div>;
   }
   return (
-    <Link href={level ? `/learn/play/${level.id}` : "/learn/tree"} className="absolute" style={{ left: left - size / 2, top }}>
+    <Link href={nextLevelId ? `/learn/play/${nextLevelId}` : "/learn/tree"} className="absolute" style={{ left: x - size / 2, top: y }}>
       {inner}
     </Link>
   );

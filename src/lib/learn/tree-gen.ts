@@ -47,7 +47,10 @@ function shuffle<T>(arr: T[], rand: () => number): T[] {
  */
 export function generateTree(nodes: SkillNode[], seed: string): TreeEntry[] {
   const rand = mulberry32(hashStr(seed));
-  const shuffled = shuffle(nodes, rand);
+  // Sort by id first so the tree is deterministic regardless of the DB row
+  // order — the same tree is produced even if it isn't persisted.
+  const ordered = [...nodes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const shuffled = shuffle(ordered, rand);
   const [root, ...rest] = shuffled;
   const total = rest.length;
   if (!root) return [];
