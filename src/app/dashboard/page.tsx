@@ -227,7 +227,7 @@ export default function DashboardHome() {
 
       {/* Continue Learning — the main piece lives in /learn */}
       <Link href="/learn" className="block group">
-        <div className="rounded-3xl bg-gradient-to-r from-kawaii-purple via-kawaii-lavender to-kawaii-pink p-5 text-white shadow-sari-lg hover:shadow-sari transition-shadow">
+        <div className="rounded-3xl bg-gradient-to-r from-dl-purple via-dl-purpleLight to-[#ff8ba7] p-5 text-white shadow-btn-purple hover:brightness-105 transition-all">
           <div className="flex items-center gap-4">
             <span className="text-4xl animate-float">🎮</span>
             <div className="flex-1">

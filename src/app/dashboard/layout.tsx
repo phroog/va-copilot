@@ -138,22 +138,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <FocusTimerProvider>
     <ToastProvider>
-    <div className="flex h-screen bg-[#FFF0F5] dark:bg-dark-bg">
+    <div className="dark flex h-screen text-white" style={{ background: "linear-gradient(180deg, #0a0a1a 0%, #131628 100%)" }}>
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out bg-white/90 dark:bg-dark-card border-r border-kawaii-lavender/30 dark:border-dark-surface backdrop-blur-md lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out bg-[#1f2233] border-r border-white/5 backdrop-blur-md lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex flex-col h-full">
-          <div className="p-5 border-b border-kawaii-lavender/30 dark:border-dark-surface">
+          <div className="p-5 border-b border-white/5">
             <div className="flex items-center justify-between">
               <Link href={userEmail ? "/dashboard" : "/"} className="flex items-center gap-2">
                 <span className="text-2xl">🍠</span>
-                <span className="text-xl font-extrabold bg-gradient-to-r from-sari-ube to-sari-coral bg-clip-text text-transparent">
-                  Sari
-                </span>
+                <span className="text-xl font-extrabold text-white">Sari</span>
               </Link>
-              <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400">
+              <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-white/50">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -164,7 +162,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link
               href="/learn"
               onClick={() => setSidebarOpen(false)}
-              className="block rounded-2xl bg-gradient-to-br from-kawaii-purple to-kawaii-pink p-3.5 text-white shadow-sari-sm hover:shadow-sari transition-shadow squishy"
+              className="block rounded-2xl bg-gradient-to-r from-dl-purple to-[#ff8ba7] p-3.5 text-white shadow-btn-purple hover:brightness-105 transition-all squishy"
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🎮</span>
@@ -185,14 +183,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div key={group.labelKey}>
                   <button
                     onClick={() => setOpenGroups((prev) => ({ ...prev, [group.labelKey]: !prev[group.labelKey] }))}
-                    className="flex items-center gap-2 w-full px-3 py-2 rounded-2xl text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider hover:bg-kawaii-lavender/10 dark:hover:bg-dark-surface/30 transition-all"
+                    className="flex items-center gap-2 w-full px-3 py-2 rounded-2xl text-xs font-bold text-white/40 uppercase tracking-wider hover:bg-white/5 transition-all"
                   >
                     <span className="text-base leading-none">{group.emoji}</span>
                     <span className="flex-1 text-left">{t(group.labelKey)}</span>
                     {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                   </button>
                   {group.descKey && (
-                    <p className="px-3 pb-1 -mt-0.5 text-[10px] text-slate-400 dark:text-slate-500 not-uppercase">{t(group.descKey)}</p>
+                    <p className="px-3 pb-1 -mt-0.5 text-[10px] text-white/30 not-uppercase">{t(group.descKey)}</p>
                   )}
                   {isOpen && (
                     <div className="ml-1 space-y-0.5 mt-0.5">
@@ -203,10 +201,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             key={link.href}
                             href={link.href}
                             onClick={() => setSidebarOpen(false)}
-                            className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-medium transition-all squishy ${
+                            className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all squishy ${
                               isActive
-                                ? "bg-kawaii-lavender/40 dark:bg-dark-surface text-kawaii-purple dark:text-kawaii-lavender"
-                                : "text-slate-600 dark:text-slate-300 hover:bg-kawaii-lavender/20 dark:hover:bg-dark-surface/50"
+                                ? "bg-dl-purple text-white shadow-btn-purple"
+                                : "text-white/60 hover:bg-white/5 hover:text-white"
                             }`}
                           >
                             <link.icon className="w-4 h-4" />
@@ -221,8 +219,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             })}
           </nav>
 
-          <div className="p-4 border-t border-kawaii-lavender/30 dark:border-dark-surface">
-            <Button variant="ghost" className="w-full justify-start text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleLogout}>
+          <div className="p-4 border-t border-white/5">
+            <Button variant="ghost" className="w-full justify-start text-dl-red hover:bg-white/5" onClick={handleLogout}>
               <LogOut className="w-5 h-5 mr-2" />
               {t("logout")}
             </Button>
@@ -231,25 +229,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-30 bg-white/70 dark:bg-dark-bg/70 backdrop-blur-md border-b border-kawaii-lavender/30 dark:border-dark-surface">
+        <header className="sticky top-0 z-30 bg-[#131628]/80 backdrop-blur-md border-b border-white/5">
           <div className="flex items-center justify-between px-4 lg:px-6 h-16">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-500">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-white/60">
               <Menu className="w-6 h-6" />
             </button>
-            <div className="hidden lg:block" />
-              <div className="flex items-center gap-3">
-                <LanguageDropdown />
-                <ThemeToggle />
-                <Link href="/dashboard/credits" className="flex items-center gap-1 px-2 py-1 rounded-xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 text-kawaii-purple dark:text-kawaii-lavender text-xs font-bold hover:bg-kawaii-lavender/30 transition-all">
-                  <Coins className="w-3.5 h-3.5" />
-                  <span>{creditsBalance ?? "..."}</span>
-                </Link>
-                <div className="flex items-center gap-2 pl-3 border-l border-kawaii-lavender/30 dark:border-dark-surface">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-kawaii-purple to-kawaii-pink flex items-center justify-center text-white text-xs font-bold">
+            <div className="hidden lg:flex items-center gap-2 text-sm font-bold text-white/60">
+              <span>🧰 Tools</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <LanguageDropdown />
+              <ThemeToggle />
+              <Link href="/dashboard/credits" className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#1f2233] border border-white/10 text-white font-bold text-sm hover:border-dl-blue transition-colors">
+                <span className="text-[16px]">💎</span>
+                <span>{creditsBalance ?? "…"}</span>
+              </Link>
+              <div className="flex items-center gap-2 pl-3 border-l border-white/10">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-dl-purple to-[#ff8ba7] flex items-center justify-center text-white text-xs font-extrabold">
                   {(userName || userEmail)?.charAt(0).toUpperCase() ?? "U"}
                 </div>
                 {userName && (
-                  <span className="hidden sm:block text-sm font-medium text-slate-600 dark:text-slate-300 truncate max-w-[150px]">
+                  <span className="hidden sm:block text-sm font-bold text-white/80 truncate max-w-[150px]">
                     {userName}
                   </span>
                 )}
@@ -259,8 +259,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-6 relative">
-          <div className="blob w-72 h-72 bg-kawaii-pink top-[-5%] left-[-10%] -z-0" />
-          <div className="blob w-64 h-64 bg-kawaii-lavender bottom-[-5%] right-[-10%] -z-0" />
+          <div className="blob w-72 h-72 bg-dl-purple top-[-5%] left-[-10%] -z-0 opacity-10" />
+          <div className="blob w-64 h-64 bg-[#ff8ba7] bottom-[-5%] right-[-10%] -z-0 opacity-10" />
           <div className="relative z-10">{children}</div>
         </main>
       </div>
