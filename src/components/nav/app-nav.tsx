@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Mochi } from "@/components/learn/mochi";
+import { CourseSheet } from "@/components/learn/course-sheet";
 import { useSoundSettings } from "@/lib/sounds";
 import { useLocale } from "@/lib/i18n/context";
 import { TOOL_GROUPS } from "./sidebar-groups";
@@ -26,11 +27,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [xp, setXp] = useState(0);
   const [gems, setGems] = useState<number | null>(null);
   const [courseEmoji, setCourseEmoji] = useState("🍠");
+  const [coursesOpen, setCoursesOpen] = useState(false);
 
   const inLesson = pathname.startsWith("/learn/play");
   const isTools = pathname.startsWith("/dashboard");
 
-  useEffect(() => {
+  const loadHud = () => {
     fetch("/api/learn/tree")
       .then((r) => r.json())
       .then((d) => {
@@ -46,6 +48,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .then((r) => r.json())
       .then((d) => setGems(d.balance ?? 0))
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadHud();
   }, []);
 
   return (
@@ -90,13 +96,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <header className="sticky top-0 z-50">
             <div className="h-14 px-3 flex items-center justify-between bg-[#131628]/80 backdrop-blur border-b border-white/5">
               <div className="flex items-center gap-3.5">
-                <Link
-                  href="/learn/courses"
+                <button
+                  onClick={() => setCoursesOpen(true)}
                   className="w-9 h-9 rounded-xl bg-[#1f2233] border border-white/10 flex items-center justify-center text-[22px] leading-none hover:border-dl-purple/60 transition-colors"
                   title="Switch course"
                 >
                   {courseEmoji}
-                </Link>
+                </button>
                 <span className="flex items-center gap-1.5 min-w-0">
                   <span className={cn("text-[22px] leading-none", streak >= 7 && "animate-flame")}>🔥</span>
                   <span className="text-base font-extrabold text-white tabular-nums">{streak}</span>
@@ -172,6 +178,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <Mochi />
+
+      <CourseSheet open={coursesOpen} onClose={() => setCoursesOpen(false)} onCourseChanged={loadHud} />
     </div>
   );
 }
