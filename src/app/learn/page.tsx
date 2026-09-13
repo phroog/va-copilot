@@ -18,6 +18,7 @@ const DIVIDER_H = 88;
 
 const MODE_ICON: Record<string, string> = { story: "📖", rapid: "⭐", chat: "💬" };
 const CHAPTER_TITLES = ["Foundations", "Core Skills", "Growth", "Mastery", "Expertise", "Legendary"];
+const DECOS = ["✨", "🌸", "🏮", "🌱", "⭐", "🎀", "🎋", "⛩️"];
 
 function NearMissBanner({ user }: { user: { xp: number; level: number; xpIntoLevel: number; xpForNextLevel: number; streak: number; lastActive?: string | null } | null }) {
   if (!user) return null;
@@ -236,6 +237,25 @@ export default function LearnHome() {
 
       {/* serpentine path with chapters */}
       <div className="relative max-w-[480px] mx-auto" style={{ height: containerH }}>
+        {/* decorative background */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
+          <div className="absolute left-1/2 top-[18%] -translate-x-1/2 w-[440px] h-[440px] rounded-full bg-dl-purple/10 blur-3xl" />
+          <div className="absolute left-1/2 bottom-[4%] -translate-x-1/2 w-[380px] h-[380px] rounded-full bg-[#ff8ba7]/10 blur-3xl" />
+          <div
+            className="absolute inset-0"
+            style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.35) 1px, transparent 1px)", backgroundSize: "26px 26px", opacity: 0.12 }}
+          />
+          <span className="absolute text-2xl animate-drift" style={{ left: 18, top: 110, opacity: 0.5 }}>✨</span>
+          <span className="absolute text-3xl animate-drift" style={{ right: 16, top: 230, opacity: 0.45, animationDelay: "1.1s" }}>🌱</span>
+          <span className="absolute text-2xl animate-drift" style={{ left: 26, bottom: 130, opacity: 0.5, animationDelay: "2s" }}>🏮</span>
+          <span className="absolute text-3xl animate-drift" style={{ right: 28, bottom: 60, opacity: 0.4, animationDelay: "0.6s" }}>🌸</span>
+          <span className="absolute w-20 h-20 rounded-full border border-dl-purple/15" style={{ left: 30, top: 180 }} />
+          <span className="absolute w-14 h-14 rounded-full border border-[#ff8ba7]/15" style={{ right: 34, top: 320 }} />
+        </div>
+
+        {/* goal marker at top */}
+        <div className="absolute left-1/2 top-1 -translate-x-1/2 text-2xl text-white/40 animate-float">🏮</div>
+
         <svg className="absolute inset-0 pointer-events-none" width={480} height={containerH}>
           {items.map((it, i) => {
             if (it.kind !== "node") return null;
@@ -261,21 +281,38 @@ export default function LearnHome() {
         {items.map((it, i) => {
           if (it.kind === "divider") {
             return (
-              <div key={`d${i}`} className="absolute left-0 right-0 flex items-center gap-3 px-6" style={{ top: it.y + 34 }}>
+              <div key={`d${i}`} className="absolute left-0 right-0 flex items-center gap-2.5 px-5" style={{ top: it.y + 34 }}>
                 <span className="flex-1 h-px bg-white/15" />
+                <span className="text-[11px] opacity-70">🌸</span>
                 <span className="text-[13px] font-extrabold text-white/50 whitespace-nowrap">{it.title}</span>
+                <span className="text-[11px] opacity-70">🌸</span>
                 <span className="flex-1 h-px bg-white/15" />
               </div>
             );
           }
           const x = CENTER + (it.row.index % 2 === 0 ? OFFSET : -OFFSET);
+          const side = it.row.index % 3;
+          const deco = DECOS[it.row.index % DECOS.length];
           return (
             <div key={it.row.node.id}>
+              {side === 1 && (
+                <span className="absolute pointer-events-none text-xl animate-float opacity-50" style={{ left: 10, top: it.y + 14, animationDelay: `${(it.row.index % 5) * 0.6}s` }}>
+                  {deco}
+                </span>
+              )}
+              {side === 2 && (
+                <span className="absolute pointer-events-none text-xl animate-float opacity-50" style={{ right: 10, top: it.y + 14, animationDelay: `${(it.row.index % 5) * 0.6}s` }}>
+                  {deco}
+                </span>
+              )}
               <PathNode row={it.row} x={x} y={it.y} />
               {it.row.isCurrent && <RewardTile x={CENTER - (it.row.index % 2 === 0 ? OFFSET : -OFFSET)} y={it.y + 6} />}
             </div>
           );
         })}
+
+        {/* start marker at bottom */}
+        <div className="absolute left-1/2 -bottom-1 -translate-x-1/2 text-2xl text-white/35 animate-float">⛩️</div>
       </div>
 
       {/* practice mastered */}
@@ -339,6 +376,11 @@ function PathNode({ row, x, y }: { row: PathRow; x: number; y: number }) {
   const inner = (
     <div className="flex flex-col items-center" style={{ width: size + 8 }}>
       <div className="relative" style={{ width: ringD, height: ringD }}>
+        {/* auras */}
+        {isCurrent && <span className="absolute -inset-3 rounded-full bg-dl-green/25 blur-lg pointer-events-none" />}
+        {isChest && node.status !== "completed" && !isCurrent && <span className="absolute -inset-2 rounded-full bg-dl-gold/20 blur-md pointer-events-none" />}
+        {node.status === "completed" && <span className="absolute -inset-2 rounded-full bg-dl-green/15 blur-sm pointer-events-none" />}
+
         {isCurrent && (
           <svg className="absolute inset-0 -rotate-90" width={ringD} height={ringD}>
             <circle cx={ringD / 2} cy={ringD / 2} r={ringR} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth={5} />
@@ -361,6 +403,16 @@ function PathNode({ row, x, y }: { row: PathRow; x: number; y: number }) {
           <span className={cn("font-extrabold leading-none", isTrophy ? "text-[40px]" : "text-[30px]", locked && "opacity-40")}>
             {icon}
           </span>
+          {node.status === "completed" && (
+            <motion.span
+              className="absolute -top-3 -right-2 text-sm pointer-events-none animate-twinkle"
+              initial={{ scale: 0, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 12, delay: 0.1 }}
+            >
+              ✨
+            </motion.span>
+          )}
         </motion.button>
       </div>
       <span className={cn("mt-2 text-[12px] font-bold text-center leading-tight max-w-[110px]", locked ? "text-white/30" : "text-white")}>

@@ -92,6 +92,8 @@ const config: Config = {
         "dl-pulse": "dlPulse 2s ease-in-out infinite",
         "flame": "flameFlicker 1.4s ease-in-out infinite",
         "slide-in-right": "slideInRight 0.28s ease-out both",
+        "twinkle": "twinkle 3s ease-in-out infinite",
+        "drift": "drift 6s ease-in-out infinite",
       },
       keyframes: {
         blob: {
@@ -146,6 +148,14 @@ const config: Config = {
         slideInRight: {
           "0%": { transform: "translateX(40px)", opacity: "0" },
           "100%": { transform: "translateX(0)", opacity: "1" },
+        },
+        twinkle: {
+          "0%, 100%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: "0.3", transform: "scale(0.85)" },
+        },
+        drift: {
+          "0%, 100%": { transform: "translate(0, 0) rotate(0deg)" },
+          "50%": { transform: "translate(6px, -10px) rotate(6deg)" },
         },
       },
     },
