@@ -2,9 +2,12 @@ import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { playSound } from "@/lib/sounds";
+import { haptic, HAPTIC } from "@/lib/haptics";
 
 // Duolingo-style 3D buttons: solid colour + a 4px darker bottom "ledge".
-// On press the button drops 4px and the ledge disappears — feels physical.
+// On press the button drops 4px, the ledge disappears, and it plays a tap
+// sound + light haptic — feels physical.
 const buttonVariants = cva(
   "inline-flex items-center justify-center whitespace-nowrap text-[15px] font-extrabold select-none rounded-2xl transition-all duration-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40",
   {
@@ -34,24 +37,35 @@ const buttonVariants = cva(
   }
 );
 
-export interface ButtonProps
+export interface Button3DProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /** Skip the tap sound/haptic (e.g. for rapid-fire taps). */
+  quiet?: boolean;
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+const Button3D = React.forwardRef<HTMLButtonElement, Button3DProps>(
+  ({ className, variant, size, asChild = false, quiet, onClick, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+          if (!props.disabled && !quiet) {
+            playSound("tap");
+            haptic(HAPTIC.TAP);
+          }
+          onClick?.(e);
+        }}
         {...props}
       />
     );
   }
 );
-Button.displayName = "Button";
+Button3D.displayName = "Button3D";
 
-export { Button, buttonVariants };
+export { Button3D, buttonVariants };
+// Backwards-compatible alias so every existing <Button> gets the juice.
+export const Button = Button3D;

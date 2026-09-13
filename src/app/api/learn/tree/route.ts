@@ -15,7 +15,7 @@ export async function GET() {
     supabase.from("skill_nodes").select("*"),
     supabase.from("learn_levels").select("id,node_id,title,subtitle,order_index,xp_reward,duration_minutes,status"),
     supabase.from("learn_progress").select("level_id,node_id,status,stars,xp_earned,attempts,completed_at").eq("user_id", user.id),
-    supabase.from("profiles").select("xp,active_path_id,streak_count").eq("user_id", user.id).maybeSingle(),
+    supabase.from("profiles").select("xp,active_path_id,streak_count,last_active_date").eq("user_id", user.id).maybeSingle(),
     supabase.from("subscriptions").select("plan,status,access_until").eq("user_id", user.id).maybeSingle(),
   ]);
 
@@ -82,7 +82,7 @@ export async function GET() {
   return NextResponse.json({
     paths: result,
     activePathId: profileRes.data?.active_path_id ?? null,
-    user: { ...summarizeXp(xp), streak: profileRes.data?.streak_count ?? 0 },
+    user: { ...summarizeXp(xp), streak: profileRes.data?.streak_count ?? 0, lastActive: profileRes.data?.last_active_date ?? null },
     paid,
   });
 }

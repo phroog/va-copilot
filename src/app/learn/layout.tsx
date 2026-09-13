@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Mochi } from "@/components/learn/mochi";
+import { useSoundSettings } from "@/lib/sounds";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -20,6 +22,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
   const [xp, setXp] = useState(0);
   const [gems, setGems] = useState<number | null>(null);
   const [courseEmoji, setCourseEmoji] = useState("🍠");
+  const { settings, toggleSound, toggleHaptic } = useSoundSettings();
 
   useEffect(() => {
     fetch("/api/learn/tree")
@@ -39,9 +42,9 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
       .catch(() => {});
   }, []);
 
-  const HudItem = ({ icon, value, color }: { icon: string; value: number | string; color: string }) => (
+  const HudItem = ({ icon, value, flicker }: { icon: string; value: number | string; flicker?: boolean }) => (
     <span className="flex items-center gap-1.5 min-w-0">
-      <span className={cn("text-[22px] leading-none", color === "flame" && "animate-flame")}>{icon}</span>
+      <span className={cn("text-[22px] leading-none", flicker && "animate-flame")}>{icon}</span>
       <span className="text-base font-extrabold text-white tabular-nums">{value}</span>
     </span>
   );
@@ -63,14 +66,30 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
               >
                 {courseEmoji}
               </Link>
-              <HudItem icon="🔥" value={streak} color="flame" />
-              <HudItem icon="💎" value={gems ?? "…"} color="gem" />
-              <HudItem icon="⚡" value={xp} color="xp" />
+              <HudItem icon="🔥" value={streak} flicker={streak >= 7} />
+              <HudItem icon="💎" value={gems ?? "…"} />
+              <HudItem icon="⚡" value={xp} />
             </div>
-            <Link href="/learn" className="flex items-center gap-2">
-              <span className="text-[24px] leading-none">🍠</span>
-              <span className="text-lg font-extrabold text-white hidden sm:inline">Sari</span>
-            </Link>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={toggleSound}
+                className="w-9 h-9 rounded-xl bg-[#1f2233] border border-white/10 flex items-center justify-center text-lg leading-none hover:border-white/30 transition-colors"
+                title={settings.sound ? "Mute sounds" : "Unmute sounds"}
+              >
+                {settings.sound ? "🔊" : "🔇"}
+              </button>
+              <button
+                onClick={toggleHaptic}
+                className="w-9 h-9 rounded-xl bg-[#1f2233] border border-white/10 flex items-center justify-center text-lg leading-none hover:border-white/30 transition-colors"
+                title={settings.haptic ? "Disable vibration" : "Enable vibration"}
+              >
+                {settings.haptic ? "📳" : "🔕"}
+              </button>
+              <Link href="/learn" className="flex items-center gap-2">
+                <span className="text-[24px] leading-none">🍠</span>
+                <span className="text-lg font-extrabold text-white hidden sm:inline">Sari</span>
+              </Link>
+            </div>
           </div>
         </header>
       )}
@@ -135,6 +154,8 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           </div>
         </nav>
       )}
+
+      <Mochi />
     </div>
   );
 }

@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { Check, X, ArrowRight, Flame, Heart } from "lucide-react";
 import type { LessonContent, LessonBlock } from "@/lib/learn/types";
 import type { LevelMode } from "@/lib/learn/modes";
 import { cn } from "@/lib/utils";
+import { answerJuice, finishJuice } from "@/lib/juice";
+import { smallBurst } from "@/lib/confetti";
 
 const PRAISE = ["Nice!", "Nailed it!", "You're on fire!", "Boom!", "Client material!", "Too easy!", "That's the pro move!"];
 const GENTLE = ["Not quite — here's why.", "Almost! Check this out.", "Good try, learn this:"];
@@ -89,6 +92,7 @@ function StoryMode({
   }, [block]);
 
   const record = (correct: boolean, explanation: string) => {
+    answerJuice(correct);
     setAnswered(true);
     setIsCorrect(correct);
     setFeedback(explanation || (correct ? pick() : gentle()));
@@ -101,6 +105,7 @@ function StoryMode({
   const next = () => {
     if (idx + 1 >= blocks.length) {
       const accuracy = interactiveCount > 0 ? correctCount / interactiveCount : 1;
+      finishJuice();
       onComplete({ accuracy, stars: starsFor(accuracy) });
     } else {
       const ni = idx + 1;
@@ -170,7 +175,9 @@ function StoryMode({
       {answered && (
         <div className={cn("mt-4 p-4 rounded-xl border-2 flex items-start gap-3 animate-fade-in", isCorrect ? "border-dl-green bg-dl-green/15" : "border-dl-red bg-dl-red/15")}>
           <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0", isCorrect ? "bg-dl-green" : "bg-dl-red")}>
-            {isCorrect ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+            <motion.span initial={{ scale: 0 }} animate={{ scale: [0, 1.4, 1] }} transition={{ duration: 0.35, ease: "easeOut" }}>
+              {isCorrect ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+            </motion.span>
           </div>
           <p className="text-sm font-semibold text-white/90">{feedback}</p>
         </div>
@@ -227,6 +234,7 @@ function RapidMode({
   };
 
   const record = (correct: boolean, explanation: string) => {
+    answerJuice(correct);
     setAnswered(true);
     setIsCorrect(correct);
     setFeedback(explanation || (correct ? pick() : gentle()));
@@ -246,6 +254,7 @@ function RapidMode({
     }
     if (idx + 1 >= blocks.length) {
       const accuracy = correctCount / blocks.length;
+      finishJuice();
       onComplete({ accuracy, stars: starsFor(accuracy) });
       return;
     }
@@ -299,6 +308,7 @@ function RapidMode({
           <button
             onClick={() => {
               const a = Math.max(0.4, correctCount / blocks.length);
+              finishJuice();
               onComplete({ accuracy: a, stars: starsFor(a) });
             }}
             className="px-6 py-3 rounded-full border-2 border-kawaii-lavender/40 text-white/75 font-bold hover:bg-kawaii-lavender/10 transition-all squishy"
@@ -347,7 +357,9 @@ function RapidMode({
       {answered && (
         <div className={cn("mt-4 p-4 rounded-xl border-2 flex items-start gap-3 animate-fade-in", isCorrect ? "border-dl-green bg-dl-green/15" : "border-dl-red bg-dl-red/15")}>
           <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0", isCorrect ? "bg-dl-green" : "bg-dl-red")}>
-            {isCorrect ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+            <motion.span initial={{ scale: 0 }} animate={{ scale: [0, 1.4, 1] }} transition={{ duration: 0.35, ease: "easeOut" }}>
+              {isCorrect ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+            </motion.span>
           </div>
           <p className="text-sm font-semibold text-white/90">{feedback}</p>
         </div>
@@ -422,6 +434,7 @@ function ChatMode({
     if (answered) return;
     if (!block || (block.type !== "pick" && block.type !== "scenario")) return;
     const correct = i === block.correct;
+    answerJuice(correct);
     setSelected(i);
     setAnswered(true);
     push({ role: "you", text: block.options[i] });
@@ -436,6 +449,7 @@ function ChatMode({
   const next = () => {
     if (idx + 1 >= blocks.length) {
       const accuracy = correctCount / blocks.length;
+      finishJuice();
       onComplete({ accuracy, stars: starsFor(accuracy) });
       return;
     }
@@ -589,9 +603,11 @@ function BlockView(props: {
               <button
                 key={i}
                 disabled={props.answered}
-                onClick={() => {
+                onClick={(e) => {
                   props.setSelected(i);
-                  props.onAnswer(i === block.correct, block.explanation);
+                  const correct = i === block.correct;
+                  props.onAnswer(correct, block.explanation);
+                  if (correct) smallBurst(e.clientX / window.innerWidth, e.clientY / window.innerHeight);
                 }}
                 className={cn(
                   "w-full text-left rounded-2xl transition-all squishy font-extrabold",
@@ -625,6 +641,7 @@ function BlockView(props: {
             if (e.key === "Enter" && !props.answered && props.fillText.trim()) {
               const correct = block.answers.some((a) => a.toLowerCase().trim() === props.fillText.toLowerCase().trim());
               props.onAnswer(correct, block.explanation);
+              if (correct) smallBurst(window.innerWidth / 2, window.innerHeight / 2);
             }
           }}
           placeholder="Type your answer…"
@@ -632,10 +649,11 @@ function BlockView(props: {
         />
         {!props.answered && (
           <button
-            onClick={() => {
+            onClick={(e) => {
               if (props.fillText.trim()) {
                 const correct = block.answers.some((a) => a.toLowerCase().trim() === props.fillText.toLowerCase().trim());
                 props.onAnswer(correct, block.explanation);
+                if (correct) smallBurst(e.clientX / window.innerWidth, e.clientY / window.innerHeight);
               }
             }}
             className="mt-3 w-full py-2.5 rounded-full bg-kawaii-purple text-white font-bold hover:bg-purple-400 transition-all squishy"
@@ -674,12 +692,13 @@ function BlockView(props: {
             <button
               key={item.originalIndex}
               disabled={props.answered}
-              onClick={() => {
+              onClick={(e) => {
                 const na = [...props.orderAnswer, item];
                 props.setOrderAnswer(na);
                 if (na.length === block.items.length) {
                   const correct = na.every((it, i) => it.originalIndex === i);
                   props.onAnswer(correct, block.explanation);
+                  if (correct) smallBurst(e.clientX / window.innerWidth, e.clientY / window.innerHeight);
                 }
               }}
               className="px-4 py-2 rounded-xl border-2 border-kawaii-lavender/40 bg-white/60 dark:bg-dark-surface/40 font-semibold text-white/90 hover:border-kawaii-purple transition-all squishy"

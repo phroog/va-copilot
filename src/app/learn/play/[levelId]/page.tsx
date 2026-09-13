@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LessonPlayer } from "@/components/learn/lesson-player";
+import { RollingNumber } from "@/components/learn/rolling-number";
+import { levelUpJuice, nodeCompleteJuice } from "@/lib/juice";
 import { modeForLevel } from "@/lib/learn/modes";
 import { RankHud, type HudUser } from "@/components/learn/rank-hud";
 import type { LessonContent } from "@/lib/learn/types";
@@ -80,6 +82,14 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
     }
   };
 
+  // Level-up + node-complete juice when the result screen appears.
+  useEffect(() => {
+    if (!result) return;
+    if (result.rankUp) levelUpJuice();
+    else if (result.firstCompletion && result.unlockedNodes.length > 0) nodeCompleteJuice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result?.rankUp, result?.unlockedNodes]);
+
   if (loading) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
@@ -143,10 +153,11 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
 
         {result.firstCompletion && (
           <div className="max-w-md mx-auto space-y-3">
-            <Card className="border-kawaii-lavender/30 dark:border-dark-surface bg-white/80 dark:bg-dark-card/80">
+            <Card className="bg-[#1f2233] border-white/10">
               <CardContent className="p-4 flex items-center justify-center gap-3">
                 <span className="text-2xl">⚡</span>
-                <span className="text-2xl font-extrabold text-kawaii-purple dark:text-kawaii-lavender">+{result.xp_earned} XP</span>
+                <RollingNumber value={result.xp_earned} className="text-2xl font-extrabold text-dl-purpleLight" />
+                <span className="text-2xl font-extrabold text-dl-purpleLight">XP</span>
               </CardContent>
             </Card>
 

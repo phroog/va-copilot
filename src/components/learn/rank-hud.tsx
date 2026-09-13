@@ -13,6 +13,7 @@ export interface HudUser {
   nextRankEmoji: string | null;
   xpToNextRank: number | null;
   streak: number;
+  lastActive?: string | null;
 }
 
 export function RankHud({ user, compact = false }: { user: HudUser; compact?: boolean }) {

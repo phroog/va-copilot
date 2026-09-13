@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { sortNodes } from "@/lib/learn/gate";
 import { modeForLevel } from "@/lib/learn/modes";
 import type { PathWithNodes, NodeWithStatus } from "@/lib/learn/types";
+import type { HudUser } from "@/components/learn/rank-hud";
 import { cn } from "@/lib/utils";
 
 const NODE = 70;
@@ -17,6 +18,47 @@ const DIVIDER_H = 88;
 
 const MODE_ICON: Record<string, string> = { story: "📖", rapid: "⭐", chat: "💬" };
 const CHAPTER_TITLES = ["Foundations", "Core Skills", "Growth", "Mastery", "Expertise", "Legendary"];
+
+function NearMissBanner({ user }: { user: { xp: number; level: number; xpIntoLevel: number; xpForNextLevel: number; streak: number; lastActive?: string | null } | null }) {
+  if (!user) return null;
+  const xpToNext = Math.max(0, (user.xpForNextLevel ?? 0) - (user.xpIntoLevel ?? 0));
+  const nextLevel = (user.level ?? 1) + 1;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const streakAtRisk = user.streak > 0 && user.lastActive != null && user.lastActive !== today;
+
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  const ms = Math.max(0, midnight.getTime() - now.getTime());
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+
+  return (
+    <div className="max-w-[480px] mx-auto px-4 mt-3 space-y-2">
+      <div className="rounded-2xl bg-[#1f2233] border border-white/10 px-4 py-2.5 flex items-center justify-between">
+        <p className="text-[13px] font-bold text-white/85">
+          {xpToNext > 0 ? (
+            <>
+              <span className="text-dl-purpleLight font-extrabold">{xpToNext} XP</span> to Level {nextLevel}!
+            </>
+          ) : (
+            <>You've reached Level {user.level} — keep going!</>
+          )}
+        </p>
+        <span className="text-lg">⚡</span>
+      </div>
+      {streakAtRisk && (
+        <div className="rounded-2xl bg-dl-red/20 border border-dl-red/50 px-4 py-2.5 flex items-center justify-between animate-fade-in">
+          <p className="text-[13px] font-bold text-white/90">
+            🔥 {h}h {m}m left to save your streak!
+          </p>
+          <span className="text-dl-red font-extrabold text-sm">Play now</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface PathRow {
   node: NodeWithStatus;
@@ -33,6 +75,7 @@ type Item =
 export default function LearnHome() {
   const [paths, setPaths] = useState<PathWithNodes[]>([]);
   const [activePathId, setActivePathId] = useState<string | null>(null);
+  const [user, setUser] = useState<HudUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [chosen, setChosen] = useState(false);
 
@@ -45,6 +88,7 @@ export default function LearnHome() {
       }
       const data = await res.json();
       setPaths(data.paths ?? []);
+      setUser(data.user ?? null);
       const active = data.activePathId ?? data.paths?.[0]?.id ?? null;
       setActivePathId(active);
       setChosen(!!data.activePathId);
@@ -187,6 +231,9 @@ export default function LearnHome() {
         </div>
       )}
 
+      {/* near-miss banners */}
+      <NearMissBanner user={user} />
+
       {/* serpentine path with chapters */}
       <div className="relative max-w-[480px] mx-auto" style={{ height: containerH }}>
         <svg className="absolute inset-0 pointer-events-none" width={480} height={containerH}>
@@ -299,8 +346,8 @@ function PathNode({ row, x, y }: { row: PathRow; x: number; y: number }) {
           </svg>
         )}
         <motion.button
-          animate={isCurrent ? { scale: [1, 1.06, 1] } : {}}
-          transition={isCurrent ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : {}}
+          animate={isCurrent ? { scale: [1, 1.06, 1] } : node.status === "completed" ? { scale: [0.6, 1.12, 1] } : {}}
+          transition={isCurrent ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : node.status === "completed" ? { type: "spring", stiffness: 300, damping: 12 } : {}}
           disabled={locked}
           title={locked ? "Locked — keep going" : node.title}
           className={cn(
