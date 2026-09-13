@@ -1,11 +1,11 @@
 "use client";
 
-import { TreeOfMasters } from "@/components/learn/tree-of-masters";
+import { ProgressTree } from "@/components/learn/progress-tree";
 
 export default function TreePage() {
   return (
     <div className="py-4 px-2">
-      <TreeOfMasters />
+      <ProgressTree />
     </div>
   );
 }
