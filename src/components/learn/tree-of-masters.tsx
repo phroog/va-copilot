@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Minus, Maximize2 } from "lucide-react";
+import Link from "next/link";
+import { Plus, Minus, Maximize2, ChevronLeft } from "lucide-react";
 import {
   getTreeGraph,
   computeFrontier,
@@ -10,20 +11,23 @@ import {
   CENTER_ID,
   SPINE_DEPTH,
   R_SPACING,
+  XP_PER_POINT,
   type TreeNode,
 } from "@/lib/learn/tree-graph";
 import { cn } from "@/lib/utils";
 
-const MIN_SCALE = 0.28;
+const MIN_SCALE = 0.24;
 const MAX_SCALE = 2.0;
-const PAD = 180;
-
-// Temple / kungfu palette
+const PAD = 200;
 const GOLD = "#F5C451";
-const GOLD_SOFT = "#E8C06A";
 const AMBER = "#E8A33D";
-const EMBER = "#C24E3A";
-const PLUM_DIM = "#4A3560";
+
+const SECTOR_HUES = ["#F5C451", "#E8A33D", "#D98E4A", "#C24E3A", "#B07C9E", "#9C8AD9"];
+
+function sectorHue(sector: string | null): string {
+  const i = TREE_SECTORS.findIndex((s) => s.key === sector);
+  return sector ? SECTOR_HUES[i >= 0 ? i % SECTOR_HUES.length : 0] : GOLD;
+}
 
 interface MapState {
   activated: Set<string>;
@@ -33,21 +37,15 @@ interface MapState {
   xp: number;
 }
 
-function sectorColor(sectorKey: string | null): string {
-  const idx = TREE_SECTORS.findIndex((s) => s.key === sectorKey);
-  const hues = ["#F5C451", "#E8A33D", "#D98E4A", "#C24E3A", "#B07C9E", "#9C8AD9"];
-  return sectorKey ? hues[idx >= 0 ? idx % hues.length : 0] : GOLD;
-}
-
 export function TreeOfMasters() {
   const graph = useMemo(() => getTreeGraph(), []);
   const [state, setState] = useState<MapState | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-
+  const [scale, setScale] = useState(0.95);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(0.42);
+  const firstFocus = useRef(false);
 
   const bounds = useMemo(() => {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -55,9 +53,7 @@ export function TreeOfMasters() {
       minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x);
       minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
     }
-    const ox = -minX + PAD;
-    const oy = -minY + PAD;
-    return { ox, oy, width: maxX - minX + PAD * 2, height: maxY - minY + PAD * 2 };
+    return { ox: -minX + PAD, oy: -minY + PAD, width: maxX - minX + PAD * 2, height: maxY - minY + PAD * 2 };
   }, [graph]);
 
   const edges = useMemo(() => {
@@ -93,7 +89,6 @@ export function TreeOfMasters() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const effective = useMemo(() => {
@@ -108,26 +103,54 @@ export function TreeOfMasters() {
   const fitScale = () => {
     const el = scrollRef.current;
     if (!el) return;
-    const s = Math.min(el.clientWidth / bounds.width, el.clientHeight / bounds.height) * 0.94;
+    const s = Math.min(el.clientWidth / bounds.width, el.clientHeight / bounds.height) * 0.96;
     return Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
   };
 
-  const centerView = () => {
+  // Center the scroll view on a content point at a given scale.
+  const centerAt = (x: number, y: number, s: number) => {
     const el = scrollRef.current;
     if (!el) return;
-    requestAnimationFrame(() => {
-      el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
-      el.scrollTop = (el.scrollHeight - el.clientHeight) / 2;
-    });
+    const doScroll = () => {
+      el.scrollLeft = (x + bounds.ox) * s - el.clientWidth / 2;
+      el.scrollTop = (y + bounds.oy) * s - el.clientHeight / 2;
+    };
+    requestAnimationFrame(() => requestAnimationFrame(doScroll));
+  };
+
+  // Landing view: show the player's own neighborhood (activated path + next steps).
+  const focusPlayer = () => {
+    const ids = Array.from(effective);
+    const pts = ids
+      .map((id) => graph.byId.get(id))
+      .concat(suggested.map((id) => graph.byId.get(id)))
+      .filter((n): n is TreeNode => !!n);
+    const cx = pts.reduce((s, n) => s + n.x, 0) / pts.length;
+    const cy = pts.reduce((s, n) => s + n.y, 0) / pts.length;
+    setScale(1.0);
+    centerAt(cx, cy, 1.0);
+  };
+
+  const focusSector = (i: number) => {
+    const d = Math.min(SPINE_DEPTH, 14);
+    const n = graph.byId.get(`${TREE_SECTORS[i].key}:${d}`);
+    if (!n) return;
+    setScale(0.95);
+    centerAt(n.x, n.y, 0.95);
+  };
+
+  const fullMap = () => {
+    const s = fitScale() ?? 0.3;
+    setScale(s);
+    centerAt(0, 0, s);
   };
 
   useEffect(() => {
-    if (loading) return;
-    const s = fitScale();
-    if (s) setScale(s);
-    centerView();
+    if (loading || !state || firstFocus.current) return;
+    firstFocus.current = true;
+    requestAnimationFrame(() => focusPlayer());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, bounds]);
+  }, [loading, state]);
 
   const drag = useRef({ on: false, sx: 0, sy: 0, sl: 0, st: 0 });
 
@@ -154,7 +177,7 @@ export function TreeOfMasters() {
   const activate = async (id: string) => {
     if (busy) return;
     if ((state?.points ?? 0) <= 0) {
-      showToast("No skill points left — finish a lesson to earn XP.");
+      showToast("Out of skill points — finish a mission to earn XP.");
       return;
     }
     setBusy(id);
@@ -171,6 +194,7 @@ export function TreeOfMasters() {
         return;
       }
       setState({ activated: new Set(d.activated ?? []), points: d.points ?? 0, earnedPoints: d.earnedPoints ?? 0, activatedCount: d.activatedCount ?? 0, xp: d.xp ?? 0 });
+      requestAnimationFrame(() => focusPlayer());
     } catch {
       showToast("Something went wrong.");
     } finally {
@@ -179,20 +203,21 @@ export function TreeOfMasters() {
   };
 
   const onNodeClick = (n: TreeNode) => {
-    if (n.id === CENTER_ID) return;
+    if (n.id === CENTER_ID) {
+      showToast("Master Seal — the origin of your path.");
+      return;
+    }
     if (state?.activated.has(n.id)) {
       showToast(`${n.title} — mastered.`);
       return;
     }
-    if (frontier.includes(n.id)) {
-      activate(n.id);
-    } else {
-      showToast("Grow from your connected path to reach this node.");
-    }
+    if (frontier.includes(n.id)) activate(n.id);
+    else showToast("Grow from your connected path to reach this node.");
   };
 
-  const cx = bounds.width / 2;
-  const cy = bounds.height / 2;
+  const nextXp = Math.floor((state?.xp ?? 0) / XP_PER_POINT) * XP_PER_POINT + XP_PER_POINT;
+  const xpPct = Math.min(100, Math.round((((state?.xp ?? 0) % XP_PER_POINT) / XP_PER_POINT) * 100));
+  const showLabels = scale >= 0.55;
 
   if (loading || !state) {
     return (
@@ -203,24 +228,86 @@ export function TreeOfMasters() {
   }
 
   return (
-    <div className="relative">
-      {/* HUD */}
-      <div className="flex items-center justify-between gap-2 mb-2 px-1">
-        <div>
-          <h1 className="text-xl font-extrabold text-amber-100 tracking-wide">The Tree of Masters</h1>
-          <p className="text-[11px] text-amber-200/60">Choose your own path. Every node you light is a step you took.</p>
-        </div>
-        <div className="text-right shrink-0">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-300/10 border border-amber-400/40">
-            <span className="text-amber-300 font-extrabold text-lg leading-none">{state.points}</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-200/80">skill<br />points</span>
+    <div className="space-y-3">
+      {/* top bar */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Link href="/learn" className="w-8 h-8 rounded-full bg-black/30 border border-amber-400/30 text-amber-200 flex items-center justify-center shrink-0 hover:bg-black/50 transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+          </Link>
+          <div className="min-w-0">
+            <h1 className="text-lg font-extrabold text-amber-100 tracking-wide leading-tight truncate">The Tree of Masters</h1>
+            <p className="text-[10px] text-amber-200/60 truncate">Choose your own way. Lit nodes are your path.</p>
           </div>
-          <p className="text-[10px] text-amber-200/50 mt-1">{state.activatedCount} nodes lit · {state.xp} XP</p>
+        </div>
+        <div className="shrink-0 flex items-center gap-2">
+          <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/25 to-amber-300/10 border border-amber-400/40 text-center">
+            <p className="text-lg font-extrabold text-amber-300 leading-none">{state.points}</p>
+            <p className="text-[8px] font-bold uppercase tracking-wider text-amber-200/70">points</p>
+          </div>
+          <div className="px-3 py-1.5 rounded-full bg-black/30 border border-amber-400/25 text-center">
+            <p className="text-lg font-extrabold text-amber-100 leading-none">{state.activatedCount}</p>
+            <p className="text-[8px] font-bold uppercase tracking-wider text-amber-200/60">lit</p>
+          </div>
         </div>
       </div>
 
-      {/* Canvas */}
-      <div className="relative rounded-3xl overflow-hidden border border-amber-500/25 h-[72vh] touch-pan-x touch-pan-y select-none"
+      {/* categories legend */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+        {TREE_SECTORS.map((s, i) => (
+          <button
+            key={s.key}
+            onClick={() => focusSector(i)}
+            className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-bold transition-all squishy"
+            style={{ borderColor: `${sectorHue(s.key)}66`, color: sectorHue(s.key), background: `${sectorHue(s.key)}14` }}
+          >
+            <span className="w-2 h-2 rounded-full" style={{ background: sectorHue(s.key) }} />
+            {s.title}
+          </button>
+        ))}
+      </div>
+
+      {/* earn XP banner */}
+      {state.points <= 0 && (
+        <div className="rounded-2xl border border-amber-400/40 bg-gradient-to-r from-amber-500/15 to-amber-300/5 p-3 flex items-center justify-between gap-3">
+          <p className="text-xs text-amber-100/90 font-semibold">
+            Out of skill points.<br className="sm:hidden" />
+            <span className="text-amber-200/60 font-normal"> Finish a mission to earn more.</span>
+          </p>
+          <Link href="/learn" className="shrink-0 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 text-xs font-extrabold hover:brightness-110 transition-all">
+            Earn XP →
+          </Link>
+        </div>
+      )}
+
+      {/* next steps */}
+      {suggested.length > 0 && (
+        <div className="rounded-2xl border border-amber-400/25 bg-black/25 p-2.5">
+          <p className="text-[10px] font-extrabold uppercase tracking-widest text-amber-200/60 mb-1.5 px-1">Suggested next steps</p>
+          <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            {suggested.map((id, i) => {
+              const n = graph.byId.get(id)!;
+              return (
+                <button
+                  key={id}
+                  onClick={() => activate(id)}
+                  disabled={busy !== null}
+                  className="shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border transition-all squishy"
+                  style={{ borderColor: `${AMBER}55`, background: "rgba(232,163,61,0.12)" }}
+                >
+                  <span className="w-5 h-5 rounded-full bg-amber-300 text-amber-950 text-[10px] font-extrabold flex items-center justify-center">{i + 1}</span>
+                  <span className="text-[11px] font-bold text-amber-100 max-w-[140px] truncate">{n.title || "Connector"}</span>
+                  <span className="text-amber-300 font-extrabold">+</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* canvas */}
+      <div
+        className="relative rounded-3xl overflow-hidden border border-amber-500/25 h-[62vh] lg:h-[68vh] touch-pan-x touch-pan-y select-none"
         style={{ background: "radial-gradient(circle at 50% 50%, #3a2540 0%, #241531 55%, #160d20 100%)" }}
       >
         <div
@@ -250,22 +337,16 @@ export function TreeOfMasters() {
           <div className="relative" style={{ width: bounds.width * scale, height: bounds.height * scale }}>
             <div className="relative" style={{ width: bounds.width, height: bounds.height, transform: `scale(${scale})`, transformOrigin: "top left" }}>
               <svg className="absolute inset-0 pointer-events-none" width={bounds.width} height={bounds.height}>
-                {/* mandala rings */}
-                {[0.33, 0.55, 0.78, 1.0].map((f) => (
-                  <circle key={f} cx={cx} cy={cy} r={SPINE_DEPTH * R_SPACING * f} fill="none" stroke="rgba(245,196,81,0.07)" strokeWidth={1.5} />
+                {[0.3, 0.55, 0.8, 1].map((f) => (
+                  <circle key={f} cx={bounds.width / 2} cy={bounds.height / 2} r={SPINE_DEPTH * R_SPACING * f} fill="none" stroke="rgba(245,196,81,0.06)" strokeWidth={1.5} />
                 ))}
-                {/* sector guide lines */}
                 {TREE_SECTORS.map((s, i) => {
                   const a = ((i * 60) - 90) * (Math.PI / 180);
-                  const R = SPINE_DEPTH * R_SPACING + 40;
-                  return <line key={s.key} x1={cx} y1={cy} x2={cx + Math.cos(a) * R} y2={cy + Math.sin(a) * R} stroke="rgba(245,196,81,0.05)" strokeWidth={1} />;
+                  const R = SPINE_DEPTH * R_SPACING + 30;
+                  return <line key={s.key} x1={bounds.width / 2} y1={bounds.height / 2} x2={bounds.width / 2 + Math.cos(a) * R} y2={bounds.height / 2 + Math.sin(a) * R} stroke="rgba(245,196,81,0.05)" strokeWidth={1} />;
                 })}
-                {/* threads */}
                 {edges.map(({ a, b }) => {
-                  const aOn = effective.has(a.id);
-                  const bOn = effective.has(b.id);
-                  const both = aOn && bOn;
-                  const one = aOn || bOn;
+                  const es = edgeStroke(a, b, effective, suggested);
                   return (
                     <line
                       key={`${a.id}|${b.id}`}
@@ -273,30 +354,28 @@ export function TreeOfMasters() {
                       y1={a.y + bounds.oy}
                       x2={b.x + bounds.ox}
                       y2={b.y + bounds.oy}
-                      stroke={both ? GOLD : one ? "rgba(232,163,61,0.35)" : "rgba(120,90,150,0.16)"}
-                      strokeWidth={both ? 2.2 : 1.2}
+                      stroke={es.stroke}
+                      strokeWidth={es.width}
                       strokeLinecap="round"
                     />
                   );
                 })}
               </svg>
 
-              {/* sector labels */}
               {TREE_SECTORS.map((s, i) => {
                 const a = ((i * 60) - 90) * (Math.PI / 180);
-                const R = SPINE_DEPTH * R_SPACING + 90;
+                const R = SPINE_DEPTH * R_SPACING + 78;
                 return (
                   <span
                     key={s.key}
-                    className="absolute text-[13px] font-extrabold uppercase tracking-widest whitespace-nowrap pointer-events-none"
-                    style={{ left: cx + Math.cos(a) * R + bounds.ox, top: cy + Math.sin(a) * R + bounds.oy, transform: "translate(-50%,-50%)", color: sectorColor(s.key), opacity: 0.55 }}
+                    className="absolute px-2 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-widest whitespace-nowrap pointer-events-none border"
+                    style={{ left: bounds.width / 2 + Math.cos(a) * R + bounds.ox, top: bounds.height / 2 + Math.sin(a) * R + bounds.oy, transform: "translate(-50%,-50%)", color: sectorHue(s.key), borderColor: `${sectorHue(s.key)}55`, background: `${sectorHue(s.key)}12` }}
                   >
                     {s.title}
                   </span>
                 );
               })}
 
-              {/* nodes */}
               {graph.nodes.map((n) => (
                 <MasterNode
                   key={n.id}
@@ -306,6 +385,7 @@ export function TreeOfMasters() {
                   activated={effective.has(n.id)}
                   step={suggested.includes(n.id) ? suggested.indexOf(n.id) + 1 : undefined}
                   available={frontier.includes(n.id)}
+                  showLabels={showLabels}
                   busy={busy === n.id}
                   onClick={() => onNodeClick(n)}
                 />
@@ -314,36 +394,54 @@ export function TreeOfMasters() {
           </div>
         </div>
 
-        {/* zoom controls */}
-        <div className="absolute bottom-4 right-4 flex flex-col gap-2">
+        {/* controls */}
+        <div className="absolute bottom-4 right-3 flex flex-col gap-2">
           {[
             { icon: <Plus className="w-5 h-5" />, fn: () => zoomAt(1.25) },
             { icon: <Minus className="w-5 h-5" />, fn: () => zoomAt(0.8) },
-            { icon: <Maximize2 className="w-5 h-5" />, fn: () => { setScale(fitScale() ?? 0.42); centerView(); } },
+            { icon: <Maximize2 className="w-5 h-5" />, fn: fullMap },
+            { icon: <span className="text-[10px] font-extrabold">ME</span>, fn: focusPlayer },
           ].map((b, i) => (
-            <button key={i} onClick={b.fn} className="w-10 h-10 rounded-full bg-black/40 border border-amber-400/40 text-amber-200 backdrop-blur flex items-center justify-center hover:bg-black/60 transition-colors">
+            <button key={i} onClick={b.fn} title={i === 3 ? "Back to my path" : undefined} className="w-9 h-9 rounded-full bg-black/45 border border-amber-400/40 text-amber-200 backdrop-blur flex items-center justify-center hover:bg-black/60 transition-colors">
               {b.icon}
             </button>
           ))}
         </div>
 
-        {/* hint */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/40 border border-amber-400/25 text-[11px] font-bold text-amber-100/80 backdrop-blur-sm whitespace-nowrap">
-          {suggested.length > 0 ? "Glowing nodes are your next steps — tap to grow" : "Master Seal is yours"}
-        </div>
-
         {toast && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-2xl bg-black/70 border border-amber-400/30 text-amber-100 text-sm font-semibold backdrop-blur animate-fade-in">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-2xl bg-black/75 border border-amber-400/30 text-amber-100 text-sm font-semibold backdrop-blur animate-fade-in">
             {toast}
           </div>
         )}
       </div>
 
-      <p className="text-center text-[11px] text-amber-200/50 mt-2">
-        Skill points come from XP — finish missions in <span className="font-bold text-amber-200/80">Learn</span> to keep growing.
-      </p>
+      {/* xp → next point */}
+      <div className="rounded-2xl border border-amber-400/20 bg-black/25 p-3">
+        <div className="flex items-center justify-between text-[11px] text-amber-200/70 mb-1">
+          <span>Next skill point</span>
+          <span>{state.xp % XP_PER_POINT}/{XP_PER_POINT} XP</span>
+        </div>
+        <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+          <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-all" style={{ width: `${xpPct}%` }} />
+        </div>
+      </div>
     </div>
   );
+}
+
+function edgeStroke(a: TreeNode, b: TreeNode, effective: Set<string>, suggested: string[]): { stroke: string; width: number } {
+  const aOn = effective.has(a.id);
+  const bOn = effective.has(b.id);
+  const aSug = suggested.includes(a.id);
+  const bSug = suggested.includes(b.id);
+  if (aOn && bOn) return { stroke: GOLD, width: 2.4 };
+  if ((aOn && bSug) || (bOn && aSug)) return { stroke: AMBER, width: 2.4 };
+  if (aOn || bOn) {
+    const hue = sectorHue(aOn ? a.sector : b.sector);
+    return { stroke: `${hue}66`, width: 1.6 };
+  }
+  if (a.sector && a.sector === b.sector) return { stroke: `${sectorHue(a.sector)}26`, width: 1.3 };
+  return { stroke: "rgba(120,90,150,0.14)", width: 1.2 };
 }
 
 function MasterNode({
@@ -353,6 +451,7 @@ function MasterNode({
   activated,
   step,
   available,
+  showLabels,
   busy,
   onClick,
 }: {
@@ -362,37 +461,35 @@ function MasterNode({
   activated: boolean;
   step?: number;
   available: boolean;
+  showLabels: boolean;
   busy: boolean;
   onClick: () => void;
 }) {
   const isCenter = node.kind === "center";
-  const r = isCenter ? 26 : node.kind === "skill" ? 14 : node.kind === "bridge" ? 7 : 10;
   const suggested = step !== undefined;
+  const r = isCenter ? 24 : node.kind === "skill" ? 13 : node.kind === "bridge" ? 6 : 9;
 
   let bg = "rgba(46,30,58,0.9)";
-  let border = "rgba(120,90,150,0.4)";
+  let border = node.sector ? `${sectorHue(node.sector)}40` : "rgba(120,90,150,0.4)";
   let glow = "none";
   if (activated) {
-    bg = isCenter ? "radial-gradient(circle at 35% 30%, #FFF3C4, #F5C451 60%, #C98A22)" : sectorColor(node.sector);
+    bg = isCenter ? "radial-gradient(circle at 35% 30%, #FFF3C4, #F5C451 60%, #C98A22)" : "#F5C451";
     border = "#FFE9A8";
-    glow = `0 0 ${isCenter ? 30 : 16}px rgba(245,196,81,0.75)`;
+    glow = `0 0 ${isCenter ? 26 : 14}px rgba(245,196,81,0.7)`;
   } else if (suggested) {
     bg = "radial-gradient(circle at 35% 30%, #FFE9A8, #E8A33D)";
     border = "#FFF3C4";
-    glow = "0 0 18px rgba(232,163,61,0.85)";
+    glow = "0 0 16px rgba(232,163,61,0.85)";
   } else if (available) {
-    bg = "rgba(232,163,61,0.35)";
-    border = "rgba(245,196,81,0.7)";
+    bg = "rgba(232,163,61,0.3)";
+    border = "rgba(245,196,81,0.6)";
   }
 
   const label = node.kind === "bridge" ? null : node.title;
-  const showLabel = label && (activated || suggested || isCenter || node.kind === "skill");
+  const showLabel = !!label && showLabels && (activated || suggested || isCenter || node.kind === "skill");
 
   return (
-    <div
-      className="absolute"
-      style={{ left: node.x + ox, top: node.y + oy, transform: "translate(-50%,-50%)" }}
-    >
+    <div className="absolute" style={{ left: node.x + ox, top: node.y + oy, transform: "translate(-50%,-50%)" }}>
       <button
         onClick={onClick}
         disabled={busy}
@@ -400,20 +497,17 @@ function MasterNode({
         className={cn("rounded-full border-2 transition-all", (suggested || available) && "cursor-pointer hover:scale-110", busy && "animate-pulse")}
         style={{ width: r * 2, height: r * 2, background: bg, borderColor: border, boxShadow: glow }}
       >
-        {isCenter && <span className="text-[9px] font-extrabold text-amber-900/80">道</span>}
+        {isCenter && <span className="text-[10px] font-extrabold text-amber-900/80">道</span>}
       </button>
       {step !== undefined && (
-        <span className="absolute left-1/2 -translate-x-1/2 -top-3 w-5 h-5 rounded-full bg-amber-300 text-amber-900 text-[10px] font-extrabold flex items-center justify-center border border-amber-100 shadow">
+        <span className="absolute left-1/2 -translate-x-1/2 -top-3 w-5 h-5 rounded-full bg-amber-300 text-amber-950 text-[10px] font-extrabold flex items-center justify-center border border-amber-100 shadow">
           {step}
         </span>
       )}
       {showLabel && (
         <span
-          className={cn(
-            "absolute left-1/2 -translate-x-1/2 top-full mt-0.5 text-[10px] leading-tight text-center whitespace-nowrap font-bold",
-            activated ? "text-amber-100" : suggested ? "text-amber-200" : "text-amber-200/45"
-          )}
-          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}
+          className="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-1.5 py-0.5 rounded-md text-[10px] leading-tight text-center whitespace-nowrap font-bold"
+          style={{ background: "rgba(0,0,0,0.55)", color: activated ? "#FFE9A8" : suggested ? "#F5C451" : "rgba(245,196,81,0.55)" }}
         >
           {label}
         </span>

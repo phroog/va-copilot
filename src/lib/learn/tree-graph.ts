@@ -23,8 +23,8 @@ export interface TreeGraph {
   center: string;
 }
 
-export const SPINE_DEPTH = 22;
-export const R_SPACING = 36;
+export const SPINE_DEPTH = 18;
+export const R_SPACING = 56;
 export const CENTER_ID = "c";
 export const XP_PER_POINT = 50;
 
