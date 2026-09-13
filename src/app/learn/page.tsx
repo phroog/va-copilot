@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { sortNodes } from "@/lib/learn/gate";
+import { modeForLevel } from "@/lib/learn/modes";
 import type { PathWithNodes, NodeWithStatus } from "@/lib/learn/types";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +12,8 @@ const NODE = 70;
 const STEP = 92;
 const CENTER = 240;
 const OFFSET = 46;
+
+const MODE_ICON: Record<string, string> = { story: "📖", rapid: "⭐", chat: "💬" };
 
 interface PathRow {
   node: NodeWithStatus;
@@ -153,7 +156,10 @@ export default function LearnHome() {
               </p>
               <p className="text-lg font-extrabold text-white leading-tight">{activePath.title}</p>
             </div>
-            <span className="text-2xl">📋</span>
+            <span className="flex items-center gap-3">
+              <span className="w-px h-9 bg-white/25" />
+              <span className="text-2xl">📋</span>
+            </span>
           </div>
         </div>
       )}
@@ -183,7 +189,15 @@ export default function LearnHome() {
         </svg>
 
         {rows.map((row) => (
-          <PathNode key={row.node.id} row={row} />
+          <div key={row.node.id}>
+            <PathNode row={row} />
+            {row.isCurrent && (
+              <RewardTile
+                x={CENTER - (row.index % 2 === 0 ? OFFSET : -OFFSET)}
+                y={row.index * STEP + 6}
+              />
+            )}
+          </div>
         ))}
       </div>
 
@@ -220,6 +234,7 @@ function PathNode({ row }: { row: PathRow }) {
   const top = index * STEP;
   const size = isTrophy ? 92 : NODE;
   const locked = node.status === "locked";
+  const mode = level ? modeForLevel(level.id) : "story";
 
   const style = isCurrent
     ? "bg-dl-green shadow-node-green"
@@ -231,34 +246,57 @@ function PathNode({ row }: { row: PathRow }) {
     ? "bg-dl-gold shadow-node-gold"
     : "bg-dl-greyDark shadow-node-grey";
 
+  const icon = isTrophy
+    ? "🏆"
+    : isChest && node.status !== "completed" && !isCurrent
+    ? "📦"
+    : node.status === "completed"
+    ? "✓"
+    : isCurrent
+    ? "⭐"
+    : MODE_ICON[mode] ?? "⭐";
+
+  const ringD = size + 16;
+  const ringR = ringD / 2 - 3;
+  const circ = 2 * Math.PI * ringR;
+  const ringPct = 0.62;
+
   const inner = (
     <div className="flex flex-col items-center" style={{ width: size + 8 }}>
-      <motion.button
-        animate={isCurrent ? { scale: [1, 1.08, 1] } : {}}
-        transition={isCurrent ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : {}}
-        disabled={locked}
-        title={locked ? "Locked — keep going" : node.title}
-        className={cn(
-          "relative rounded-full border-4 flex items-center justify-center transition-all",
-          style,
-          isCurrent && "border-white/30",
-          locked ? "cursor-not-allowed" : "cursor-pointer hover:brightness-110"
-        )}
-        style={{ width: size, height: size, borderColor: isCurrent ? "rgba(255,255,255,0.35)" : undefined }}
-      >
-        <span
-          className={cn(
-            "font-extrabold leading-none",
-            isTrophy ? "text-[40px]" : "text-[30px]",
-            locked && "opacity-40"
-          )}
-        >
-          {isTrophy ? "🏆" : isChest && !isCurrent ? "📦" : node.status === "completed" ? "✓" : isCurrent ? "⭐" : "☆"}
-        </span>
+      <div className="relative" style={{ width: ringD, height: ringD }}>
         {isCurrent && (
-          <span className="absolute -inset-2 rounded-full bg-dl-green/40 animate-ping" style={{ animationDuration: "2.2s" }} />
+          <svg className="absolute inset-0 -rotate-90" width={ringD} height={ringD}>
+            <circle cx={ringD / 2} cy={ringD / 2} r={ringR} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth={5} />
+            <circle
+              cx={ringD / 2}
+              cy={ringD / 2}
+              r={ringR}
+              fill="none"
+              stroke="#58cc02"
+              strokeWidth={5}
+              strokeLinecap="round"
+              strokeDasharray={`${circ * ringPct} ${circ}`}
+            />
+          </svg>
         )}
-      </motion.button>
+        <motion.button
+          animate={isCurrent ? { scale: [1, 1.06, 1] } : {}}
+          transition={isCurrent ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : {}}
+          disabled={locked}
+          title={locked ? "Locked — keep going" : node.title}
+          className={cn(
+            "absolute rounded-full border-4 flex items-center justify-center transition-all",
+            style,
+            isCurrent && "border-white/30",
+            locked ? "cursor-not-allowed" : "cursor-pointer hover:brightness-110"
+          )}
+          style={{ width: size, height: size, left: (ringD - size) / 2, top: (ringD - size) / 2 }}
+        >
+          <span className={cn("font-extrabold leading-none", isTrophy ? "text-[40px]" : "text-[30px]", locked && "opacity-40")}>
+            {icon}
+          </span>
+        </motion.button>
+      </div>
       <span className={cn("mt-2 text-[12px] font-bold text-center leading-tight max-w-[110px]", locked ? "text-white/30" : "text-white")}>
         {node.title}
       </span>
@@ -266,11 +304,22 @@ function PathNode({ row }: { row: PathRow }) {
   );
 
   if (locked) {
-    return <div className="absolute" style={{ left: left - size / 2, top, transform: "translateY(0)" }}>{inner}</div>;
+    return <div className="absolute" style={{ left: left - size / 2, top }}>{inner}</div>;
   }
   return (
     <Link href={level ? `/learn/play/${level.id}` : "/learn/tree"} className="absolute" style={{ left: left - size / 2, top }}>
       {inner}
+    </Link>
+  );
+}
+
+function RewardTile({ x, y }: { x: number; y: number }) {
+  return (
+    <Link href="/dashboard/wheel" className="absolute flex flex-col items-center gap-1" style={{ left: x - 36, top: y }}>
+      <span className="w-[72px] h-[72px] rounded-2xl bg-dl-purple flex items-center justify-center text-[36px] shadow-[0_4px_0_0_#7d3fbf]">
+        🎁
+      </span>
+      <span className="text-[11px] font-extrabold text-white">Claim</span>
     </Link>
   );
 }

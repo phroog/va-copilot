@@ -19,6 +19,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
   const [streak, setStreak] = useState(0);
   const [xp, setXp] = useState(0);
   const [gems, setGems] = useState<number | null>(null);
+  const [courseEmoji, setCourseEmoji] = useState("🍠");
 
   useEffect(() => {
     fetch("/api/learn/tree")
@@ -28,6 +29,8 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           setStreak(d.user.streak ?? 0);
           setXp(d.user.xp ?? 0);
         }
+        const active = (d?.paths ?? []).find((p: any) => p.id === d?.activePathId) ?? d?.paths?.[0];
+        if (active?.emoji) setCourseEmoji(active.emoji);
       })
       .catch(() => {});
     fetch("/api/ai/credits")
@@ -51,14 +54,21 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
       {/* Top HUD — always visible */}
       {!inLesson && (
         <header className="sticky top-0 z-50">
-          <div className="h-14 px-4 flex items-center justify-between bg-[#131628]/80 backdrop-blur border-b border-white/5">
-            <div className="flex items-center gap-4">
+          <div className="h-14 px-3 flex items-center justify-between bg-[#131628]/80 backdrop-blur border-b border-white/5">
+            <div className="flex items-center gap-3.5">
+              <Link
+                href="/learn/courses"
+                className="w-9 h-9 rounded-xl bg-[#1f2233] border border-white/10 flex items-center justify-center text-[22px] leading-none hover:border-dl-purple/60 transition-colors"
+                title="Switch course"
+              >
+                {courseEmoji}
+              </Link>
               <HudItem icon="🔥" value={streak} color="flame" />
               <HudItem icon="💎" value={gems ?? "…"} color="gem" />
               <HudItem icon="⚡" value={xp} color="xp" />
             </div>
             <Link href="/learn" className="flex items-center gap-2">
-              <span className="text-[26px] leading-none">🍠</span>
+              <span className="text-[24px] leading-none">🍠</span>
               <span className="text-lg font-extrabold text-white hidden sm:inline">Sari</span>
             </Link>
           </div>
