@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/lib/i18n/context";
+import { TOOL_GROUPS } from "@/components/nav/sidebar-groups";
 import { useToast } from "@/components/toast";
 import MoodCheckDialog from "@/components/mood-check-dialog";
 import { useProfileName } from "@/lib/use-profile-name";
@@ -51,6 +52,36 @@ interface TimeEntry {
 }
 
 const PLAN_LABELS: Record<string, string> = { free: "Sari Sprout", basic: "Sari Bloom", pro: "Sari Money Club" };
+
+function ToolsBrowser() {
+  const { t } = useLocale();
+  return (
+    <div className="rounded-3xl bg-[#1f2233] border border-white/10 p-4">
+      <p className="text-sm font-extrabold text-white mb-3">🧰 All tools</p>
+      <div className="space-y-3.5">
+        {TOOL_GROUPS.map((g) => (
+          <div key={g.labelKey}>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-white/40 mb-1.5">
+              {g.emoji} {t(g.labelKey)}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {g.links.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/80 text-xs font-bold hover:bg-dl-purple hover:text-white hover:border-dl-purpleDark transition-all squishy"
+                >
+                  <link.icon className="w-3.5 h-3.5" />
+                  {t(link.labelKey)}
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardHome() {
   const { t } = useLocale();
@@ -238,6 +269,11 @@ export default function DashboardHome() {
           </div>
         </div>
       </Link>
+
+      {/* All tools (mobile second level) */}
+      <div className="lg:hidden">
+        <ToolsBrowser />
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

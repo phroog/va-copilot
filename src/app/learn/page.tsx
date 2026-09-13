@@ -157,8 +157,32 @@ export default function LearnHome() {
 
   if (loading) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center">
-        <span className="text-white/50 animate-pulse">Loading your path…</span>
+      <div className="pb-6 max-w-[480px] mx-auto">
+        <div className="flex gap-1.5 px-4 pt-4 pb-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-8 w-24 rounded-2xl bg-white/5 animate-pulse" />
+          ))}
+        </div>
+        <div className="px-4">
+          <div className="rounded-t-3xl bg-[#1f2233] px-5 py-4 space-y-2 border border-white/5">
+            <div className="h-3 w-28 rounded-full bg-white/10 animate-pulse" />
+            <div className="h-5 w-44 rounded-full bg-white/10 animate-pulse" />
+          </div>
+        </div>
+        <div className="px-4 mt-3">
+          <div className="h-11 rounded-2xl bg-white/5 animate-pulse" />
+        </div>
+        <div className="relative max-w-[480px] mx-auto" style={{ height: 900 }}>
+          {Array.from({ length: 9 }).map((_, i) => {
+            const x = CENTER + (i % 2 === 0 ? OFFSET : -OFFSET);
+            return (
+              <div key={i} className="absolute flex flex-col items-center" style={{ left: x - 35, top: i * 95 }}>
+                <div className="w-[70px] h-[70px] rounded-full bg-white/5 border border-white/10 animate-pulse" />
+                <div className="mt-2 h-3 w-20 rounded-full bg-white/5 animate-pulse" />
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   }
@@ -388,14 +412,14 @@ function PathNode({ row, x, y }: { row: PathRow; x: number; y: number }) {
           </svg>
         )}
         <motion.button
-          animate={isCurrent ? { scale: [1, 1.06, 1] } : node.status === "completed" ? { scale: [0.6, 1.12, 1] } : {}}
-          transition={isCurrent ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : node.status === "completed" ? { type: "spring", stiffness: 300, damping: 12 } : {}}
+          animate={node.status === "completed" ? { scale: [0.6, 1.12, 1] } : {}}
+          transition={node.status === "completed" ? { type: "spring", stiffness: 300, damping: 12 } : {}}
           disabled={locked}
           title={locked ? "Locked — keep going" : node.title}
           className={cn(
-            "absolute rounded-full border-4 flex items-center justify-center transition-all",
+            "absolute rounded-full border-4 flex items-center justify-center transition-all will-change-transform",
             style,
-            isCurrent && "border-white/30",
+            isCurrent && "border-white/30 animate-dl-pulse",
             locked ? "cursor-not-allowed" : "cursor-pointer hover:brightness-110"
           )}
           style={{ width: size, height: size, left: (ringD - size) / 2, top: (ringD - size) / 2 }}

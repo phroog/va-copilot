@@ -140,8 +140,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </header>
         )}
 
-        {/* Tools sub-nav (mobile) */}
-        {isTools && !inLesson && <ToolsMobileNav />}
+        {/* Tools sub-nav is in the desktop sidebar (accordion) and in the tools
+        hub on mobile — nothing extra to render here. */}
 
         <main className={cn(!inLesson && "pb-24 lg:pb-10")}>{children}</main>
       </div>
@@ -238,59 +238,6 @@ function ToolsSidebarNav() {
           </div>
         );
       })}
-    </div>
-  );
-}
-
-// Mobile: tools as expandable pill sub-nav under the HUD.
-function ToolsMobileNav() {
-  const { t } = useLocale();
-  const pathname = usePathname();
-  const activeGroup = TOOL_GROUPS.find((g) => g.links.some((l) => l.href === pathname));
-  const [openGroup, setOpenGroup] = useState<string | null>(activeGroup?.labelKey ?? TOOL_GROUPS[0]?.labelKey ?? null);
-
-  return (
-    <div className="lg:hidden sticky top-14 z-30 bg-[#131628]/90 backdrop-blur border-b border-white/5 px-2 py-2">
-      <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-        {TOOL_GROUPS.map((g) => {
-          const active = g.labelKey === activeGroup?.labelKey;
-          return (
-            <button
-              key={g.labelKey}
-              onClick={() => setOpenGroup(openGroup === g.labelKey ? null : g.labelKey)}
-              className={cn(
-                "shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-extrabold border transition-all",
-                active || openGroup === g.labelKey
-                  ? "bg-dl-purple text-white border-dl-purpleDark"
-                  : "bg-[#1f2233] text-white/50 border-white/10 hover:text-white"
-              )}
-            >
-              <span className="text-sm leading-none">{g.emoji}</span>
-              {t(g.labelKey)}
-            </button>
-          );
-        })}
-      </div>
-      {openGroup && (
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          {TOOL_GROUPS.find((g) => g.labelKey === openGroup)?.links.map((link) => {
-            const active = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all squishy",
-                  active ? "bg-dl-purple text-white shadow-btn-purple" : "bg-[#1f2233] text-white/70 border border-white/10 hover:text-white"
-                )}
-              >
-                <link.icon className="w-3.5 h-3.5" />
-                {t(link.labelKey)}
-              </Link>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
