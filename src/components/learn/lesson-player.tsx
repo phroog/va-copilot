@@ -116,14 +116,14 @@ function StoryMode({
     return (
       <div className="flex flex-col items-center justify-center text-center py-14 px-4 animate-fade-in">
         <div className="text-6xl mb-4 animate-float">🎯</div>
-        <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 leading-tight">{content.title}</h1>
-        <p className="mt-3 text-slate-500 dark:text-slate-400 max-w-md">{content.intro}</p>
-        <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-kawaii-lavender/20 dark:bg-dark-surface text-sm font-bold text-kawaii-purple dark:text-kawaii-lavender">
+        <h1 className="text-3xl font-extrabold text-white leading-tight">{content.title}</h1>
+        <p className="mt-3 text-white/50 max-w-md">{content.intro}</p>
+        <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2a2d3f] text-sm font-bold text-dl-purpleLight">
           {blocks.length} steps · +{xpReward} XP
         </div>
         <button
           onClick={() => setPhase("playing")}
-          className="mt-8 px-10 py-4 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-lg shadow-lg shadow-kawaii-purple/30 hover:from-purple-400 hover:to-pink-400 transition-all animate-glow-pulse"
+          className="mt-8 px-10 py-4 rounded-2xl bg-dl-green text-white shadow-btn-green font-extrabold text-lg transition-all squishy hover:brightness-105 active:translate-y-1 active:shadow-none"
         >
           Start Mission →
         </button>
@@ -134,15 +134,15 @@ function StoryMode({
   return (
     <div className="py-6 px-4 animate-fade-in">
       <div className="flex items-center justify-between mb-4">
-        <div className="h-2 flex-1 rounded-full bg-kawaii-lavender/20 dark:bg-dark-surface overflow-hidden mr-4">
+        <div className="h-2 flex-1 rounded-full bg-[#2a2d3f] overflow-hidden mr-4">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-kawaii-purple to-kawaii-pink transition-all duration-300"
+            className="h-full rounded-full bg-dl-purple transition-all duration-300"
             style={{ width: `${((idx + (answered ? 1 : 0)) / blocks.length) * 100}%` }}
           />
         </div>
         <div className="flex items-center gap-3">
           {combo >= 2 && (
-            <span className="inline-flex items-center gap-1 text-xs font-extrabold text-kawaii-coral animate-pop-in">
+            <span className="inline-flex items-center gap-1 text-xs font-extrabold text-dl-orange animate-pop-in">
               <Flame className="w-4 h-4" /> x{combo}
             </span>
           )}
@@ -166,17 +166,17 @@ function StoryMode({
       />
 
       {answered && (
-        <div className={cn("mt-4 p-4 rounded-xl border-2 flex items-start gap-3 animate-fade-in", isCorrect ? "border-kawaii-mint bg-kawaii-mint/10" : "border-kawaii-coral bg-kawaii-coral/10")}>
-          <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0", isCorrect ? "bg-kawaii-mint" : "bg-kawaii-coral")}>
+        <div className={cn("mt-4 p-4 rounded-xl border-2 flex items-start gap-3 animate-fade-in", isCorrect ? "border-dl-green bg-dl-green/15" : "border-dl-red bg-dl-red/15")}>
+          <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0", isCorrect ? "bg-dl-green" : "bg-dl-red")}>
             {isCorrect ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
           </div>
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{feedback}</p>
+          <p className="text-sm font-semibold text-white/90">{feedback}</p>
         </div>
       )}
 
       {answered && (
         <div className="mt-6 flex justify-end">
-          <button onClick={next} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-kawaii-purple text-white font-bold shadow-lg shadow-kawaii-purple/20 hover:bg-purple-400 transition-all squishy">
+          <button onClick={next} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-dl-green text-white shadow-btn-green hover:brightness-105 active:translate-y-1 active:shadow-none transition-all squishy">
             {idx + 1 >= blocks.length ? "See my result" : "Continue"} <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -255,18 +255,18 @@ function RapidMode({
     return (
       <div className="flex flex-col items-center justify-center text-center py-14 px-4 animate-fade-in">
         <div className="text-6xl mb-4 animate-bounce">⚡</div>
-        <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">Rapid Fire!</h1>
-        <p className="mt-2 text-slate-500 dark:text-slate-400 max-w-sm">{content.intro}</p>
-        <div className="mt-5 flex items-center gap-2 text-sm font-bold text-slate-500 dark:text-slate-400">
-          <span className="inline-flex items-center gap-1"><Heart className="w-4 h-4 fill-kawaii-coral text-kawaii-coral" />3 lives</span>
+        <h1 className="text-3xl font-extrabold text-white">Rapid Fire!</h1>
+        <p className="mt-2 text-white/50 max-w-sm">{content.intro}</p>
+        <div className="mt-5 flex items-center gap-2 text-sm font-bold text-white/50">
+          <span className="inline-flex items-center gap-1"><Heart className="w-4 h-4 fill-kawaii-coral text-dl-orange" />3 lives</span>
           <span>·</span>
           <span>{blocks.length} quick questions</span>
           <span>·</span>
-          <span className="text-kawaii-purple dark:text-kawaii-lavender">+{xpReward} XP</span>
+          <span className="text-dl-purpleLight">+{xpReward} XP</span>
         </div>
         <button
           onClick={() => setPhase("playing")}
-          className="mt-8 px-10 py-4 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-lg shadow-lg shadow-kawaii-purple/30 hover:from-purple-400 hover:to-pink-400 transition-all animate-glow-pulse"
+          className="mt-8 px-10 py-4 rounded-2xl bg-dl-green text-white shadow-btn-green font-extrabold text-lg transition-all squishy hover:brightness-105 active:translate-y-1 active:shadow-none"
         >
           GO! ⚡
         </button>
@@ -278,8 +278,8 @@ function RapidMode({
     return (
       <div className="flex flex-col items-center justify-center text-center py-14 px-4 animate-pop-in">
         <div className="text-6xl mb-3">💔</div>
-        <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">Out of lives!</h1>
-        <p className="mt-2 text-slate-500 dark:text-slate-400 max-w-sm">You got {correctCount} of {blocks.length}. Review the explanations and try again — reps make you client-ready.</p>
+        <h1 className="text-3xl font-extrabold text-white">Out of lives!</h1>
+        <p className="mt-2 text-white/50 max-w-sm">You got {correctCount} of {blocks.length}. Review the explanations and try again — reps make you client-ready.</p>
         <div className="mt-8 flex gap-3">
           <button
             onClick={() => {
@@ -290,7 +290,7 @@ function RapidMode({
               setCombo(0);
               resetRound();
             }}
-            className="px-6 py-3 rounded-full bg-kawaii-purple text-white font-bold shadow-lg shadow-kawaii-purple/20 hover:bg-purple-400 transition-all squishy"
+            className="px-6 py-3 rounded-full bg-dl-green text-white shadow-btn-green hover:brightness-105 active:translate-y-1 active:shadow-none transition-all squishy"
           >
             🔄 Retry
           </button>
@@ -299,7 +299,7 @@ function RapidMode({
               const a = Math.max(0.4, correctCount / blocks.length);
               onComplete({ accuracy: a, stars: starsFor(a) });
             }}
-            className="px-6 py-3 rounded-full border-2 border-kawaii-lavender/40 text-slate-600 dark:text-slate-300 font-bold hover:bg-kawaii-lavender/10 transition-all squishy"
+            className="px-6 py-3 rounded-full border-2 border-kawaii-lavender/40 text-white/75 font-bold hover:bg-kawaii-lavender/10 transition-all squishy"
           >
             Finish ({starsFor(Math.max(0.4, correctCount / blocks.length))} star{starsFor(Math.max(0.4, correctCount / blocks.length)) > 1 ? "s" : ""})
           </button>
@@ -314,12 +314,12 @@ function RapidMode({
       <div className="flex items-center justify-between mb-4">
         <div className="flex gap-1">
           {[1, 2, 3].map((h) => (
-            <Heart key={h} className={cn("w-5 h-5 transition-all", h <= hearts ? "fill-kawaii-coral text-kawaii-coral" : "text-slate-300 dark:text-dark-surface")} />
+            <Heart key={h} className={cn("w-5 h-5 transition-all", h <= hearts ? "fill-kawaii-coral text-dl-orange" : "text-slate-300 dark:text-dark-surface")} />
           ))}
         </div>
         <div className="flex items-center gap-3">
           {combo >= 2 && (
-            <span className="inline-flex items-center gap-1 text-sm font-extrabold text-kawaii-coral animate-pop-in">
+            <span className="inline-flex items-center gap-1 text-sm font-extrabold text-dl-orange animate-pop-in">
               <Flame className="w-5 h-5" /> x{combo}
             </span>
           )}
@@ -343,17 +343,17 @@ function RapidMode({
       />
 
       {answered && (
-        <div className={cn("mt-4 p-4 rounded-xl border-2 flex items-start gap-3 animate-fade-in", isCorrect ? "border-kawaii-mint bg-kawaii-mint/10" : "border-kawaii-coral bg-kawaii-coral/10")}>
-          <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0", isCorrect ? "bg-kawaii-mint" : "bg-kawaii-coral")}>
+        <div className={cn("mt-4 p-4 rounded-xl border-2 flex items-start gap-3 animate-fade-in", isCorrect ? "border-dl-green bg-dl-green/15" : "border-dl-red bg-dl-red/15")}>
+          <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0", isCorrect ? "bg-dl-green" : "bg-dl-red")}>
             {isCorrect ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
           </div>
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{feedback}</p>
+          <p className="text-sm font-semibold text-white/90">{feedback}</p>
         </div>
       )}
 
       {answered && (
         <div className="mt-6 flex justify-end">
-          <button onClick={next} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-kawaii-purple text-white font-bold shadow-lg shadow-kawaii-purple/20 hover:bg-purple-400 transition-all squishy">
+          <button onClick={next} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-dl-green text-white shadow-btn-green hover:brightness-105 active:translate-y-1 active:shadow-none transition-all squishy">
             {idx + 1 >= blocks.length ? "Finish!" : "Next"} <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -449,14 +449,14 @@ function ChatMode({
     return (
       <div className="flex flex-col items-center justify-center text-center py-14 px-4 animate-fade-in">
         <div className="text-6xl mb-4 animate-float">💬</div>
-        <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">Client Chat Sim</h1>
-        <p className="mt-2 text-slate-500 dark:text-slate-400 max-w-sm">A client just messaged you. Pick the reply that would make a real VA shine. {content.intro}</p>
-        <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-kawaii-lavender/20 dark:bg-dark-surface text-sm font-bold text-kawaii-purple dark:text-kawaii-lavender">
+        <h1 className="text-3xl font-extrabold text-white">Client Chat Sim</h1>
+        <p className="mt-2 text-white/50 max-w-sm">A client just messaged you. Pick the reply that would make a real VA shine. {content.intro}</p>
+        <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2a2d3f] text-sm font-bold text-dl-purpleLight">
           {blocks.length} conversations · +{xpReward} XP
         </div>
         <button
           onClick={start}
-          className="mt-8 px-10 py-4 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-lg shadow-lg shadow-kawaii-purple/30 hover:from-purple-400 hover:to-pink-400 transition-all animate-glow-pulse"
+          className="mt-8 px-10 py-4 rounded-2xl bg-dl-green text-white shadow-btn-green font-extrabold text-lg transition-all squishy hover:brightness-105 active:translate-y-1 active:shadow-none"
         >
           Open chat →
         </button>
@@ -476,7 +476,7 @@ function ChatMode({
           m.role === "client" ? (
             <div key={m.id} className="flex items-end gap-2 animate-fade-in">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-kawaii-purple to-kawaii-pink flex items-center justify-center text-sm shrink-0">👤</div>
-              <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-bl-sm bg-white dark:bg-dark-surface text-sm text-slate-700 dark:text-slate-200 shadow-sm">
+              <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-bl-sm bg-white dark:bg-dark-surface text-sm text-white/90 shadow-sm">
                 {m.text}
               </div>
             </div>
@@ -502,7 +502,7 @@ function ChatMode({
               key={i}
               onClick={() => reply(i)}
               className={cn(
-                "w-full text-left px-4 py-3 rounded-xl border-2 transition-all squishy font-semibold text-slate-700 dark:text-slate-200",
+                "w-full text-left px-4 py-3 rounded-xl border-2 transition-all squishy font-semibold text-white/90",
                 "border-kawaii-lavender/40 bg-white dark:bg-dark-card hover:border-kawaii-purple hover:bg-kawaii-lavender/10"
               )}
             >
@@ -514,7 +514,7 @@ function ChatMode({
 
       {answered && (
         <div className="mt-4 flex justify-end">
-          <button onClick={next} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-kawaii-purple text-white font-bold shadow-lg shadow-kawaii-purple/20 hover:bg-purple-400 transition-all squishy">
+          <button onClick={next} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-dl-green text-white shadow-btn-green hover:brightness-105 active:translate-y-1 active:shadow-none transition-all squishy">
             {idx + 1 >= blocks.length ? "Finish" : "Next message"} <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -542,31 +542,31 @@ function BlockView(props: {
 
   if (block.type === "text") {
     return (
-      <div className="p-6 rounded-2xl bg-white/80 dark:bg-dark-card/80 border border-kawaii-lavender/30 dark:border-dark-surface">
-        <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 mb-2">{block.heading}</h2>
-        <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{block.body}</p>
+      <div className="p-6 rounded-2xl bg-[#1f2233] border border-white/10">
+        <h2 className="text-xl font-extrabold text-white mb-2">{block.heading}</h2>
+        <p className="text-white/75 leading-relaxed">{block.body}</p>
       </div>
     );
   }
   if (block.type === "tip") {
     return (
-      <div className="p-5 rounded-2xl bg-kawaii-peach/20 dark:bg-dark-surface border border-kawaii-coral/30">
-        <p className="text-slate-700 dark:text-slate-200 font-semibold">💡 {block.text}</p>
+      <div className="p-5 rounded-2xl bg-dl-gold/10 border border-dl-gold/30">
+        <p className="text-white/90 font-semibold">💡 {block.text}</p>
       </div>
     );
   }
   if (block.type === "reveal") {
     return (
-      <div className="p-6 rounded-2xl bg-white/80 dark:bg-dark-card/80 border border-kawaii-lavender/30 dark:border-dark-surface text-center">
+      <div className="p-6 rounded-2xl bg-[#1f2233] border border-white/10 text-center">
         {!props.answered ? (
           <button
             onClick={() => props.onAnswer(true, "")}
-            className="px-6 py-3 rounded-full bg-kawaii-lavender/30 dark:bg-dark-surface font-bold text-kawaii-purple dark:text-kawaii-lavender hover:bg-kawaii-lavender/50 transition-all squishy"
+            className="px-6 py-3 rounded-full bg-kawaii-lavender/30 dark:bg-dark-surface font-bold text-dl-purpleLight hover:bg-kawaii-lavender/50 transition-all squishy"
           >
             {block.label}
           </button>
         ) : (
-          <p className="text-slate-700 dark:text-slate-200 font-semibold animate-fade-in">✨ {block.content}</p>
+          <p className="text-white/90 font-semibold animate-fade-in">✨ {block.content}</p>
         )}
       </div>
     );
@@ -575,9 +575,9 @@ function BlockView(props: {
   if (block.type === "pick" || block.type === "scenario") {
     const isScenario = block.type === "scenario";
     return (
-      <div className="p-6 rounded-2xl bg-white/80 dark:bg-dark-card/80 border border-kawaii-lavender/30 dark:border-dark-surface">
-        <p className="text-sm font-bold text-kawaii-purple dark:text-kawaii-lavender mb-1">{isScenario ? "🎬 Quick scenario" : "❓ Your move"}</p>
-        <h3 className={cn("font-extrabold text-slate-800 dark:text-slate-100 mb-4", props.big ? "text-xl" : "text-lg")}>{block.prompt}</h3>
+      <div className="p-6 rounded-2xl bg-[#1f2233] border border-white/10">
+        <p className="text-sm font-bold text-dl-purpleLight mb-1">{isScenario ? "🎬 Quick scenario" : "❓ Your move"}</p>
+        <h3 className={cn("font-extrabold text-white mb-4", props.big ? "text-xl" : "text-lg")}>{block.prompt}</h3>
         <div className="space-y-2">
           {block.options.map((opt, i) => {
             const isSelected = props.selected === i;
@@ -592,12 +592,12 @@ function BlockView(props: {
                   props.onAnswer(i === block.correct, block.explanation);
                 }}
                 className={cn(
-                  "w-full text-left rounded-xl border-2 transition-all squishy font-semibold text-slate-700 dark:text-slate-200",
+                  "w-full text-left rounded-2xl transition-all squishy font-extrabold",
                   props.big ? "px-5 py-4 text-base" : "px-4 py-3",
-                  !props.answered && "border-kawaii-lavender/30 hover:border-kawaii-purple/60 hover:bg-kawaii-lavender/10 bg-white/60 dark:bg-dark-surface/40",
-                  showCorrect && "border-kawaii-mint bg-kawaii-mint/15 text-slate-800",
-                  showWrong && "border-kawaii-coral bg-kawaii-coral/15",
-                  props.answered && !showCorrect && !showWrong && "border-kawaii-lavender/20 opacity-50"
+                  !props.answered && "bg-white text-dl-grey shadow-btn-white hover:brightness-95 active:translate-y-1 active:shadow-none",
+                  showCorrect && "bg-dl-green text-white shadow-btn-green",
+                  showWrong && "bg-dl-red text-white shadow-btn-red animate-shake",
+                  props.answered && !showCorrect && !showWrong && "bg-[#2a2d3f] text-white/30"
                 )}
               >
                 {opt}
@@ -611,9 +611,9 @@ function BlockView(props: {
 
   if (block.type === "fill") {
     return (
-      <div className="p-6 rounded-2xl bg-white/80 dark:bg-dark-card/80 border border-kawaii-lavender/30 dark:border-dark-surface">
-        <p className="text-sm font-bold text-kawaii-purple dark:text-kawaii-lavender mb-1">✍️ Fill the blank</p>
-        <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 mb-4">{block.prompt}</h3>
+      <div className="p-6 rounded-2xl bg-[#1f2233] border border-white/10">
+        <p className="text-sm font-bold text-dl-purpleLight mb-1">✍️ Fill the blank</p>
+        <h3 className="text-lg font-extrabold text-white mb-4">{block.prompt}</h3>
         <input
           autoFocus
           value={props.fillText}
@@ -626,7 +626,7 @@ function BlockView(props: {
             }
           }}
           placeholder="Type your answer…"
-          className="w-full h-12 px-4 rounded-xl border-2 border-kawaii-lavender/40 bg-white dark:bg-dark-card text-slate-800 dark:text-slate-100 text-center font-bold focus:border-kawaii-purple outline-none"
+          className="w-full h-12 px-4 rounded-xl border-2 border-kawaii-lavender/40 bg-white dark:bg-dark-card text-white text-center font-bold focus:border-kawaii-purple outline-none"
         />
         {!props.answered && (
           <button
@@ -648,9 +648,9 @@ function BlockView(props: {
   if (block.type === "order") {
     const pool = props.shuffledOrder.filter((item) => !props.orderAnswer.some((a) => a.originalIndex === item.originalIndex));
     return (
-      <div className="p-6 rounded-2xl bg-white/80 dark:bg-dark-card/80 border border-kawaii-lavender/30 dark:border-dark-surface">
-        <p className="text-sm font-bold text-kawaii-purple dark:text-kawaii-lavender mb-1">🔀 Put these in order</p>
-        <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 mb-4">{block.prompt}</h3>
+      <div className="p-6 rounded-2xl bg-[#1f2233] border border-white/10">
+        <p className="text-sm font-bold text-dl-purpleLight mb-1">🔀 Put these in order</p>
+        <h3 className="text-lg font-extrabold text-white mb-4">{block.prompt}</h3>
         <div className="space-y-2 mb-3">
           {props.orderAnswer.map((item, i) => (
             <button
@@ -659,7 +659,7 @@ function BlockView(props: {
                 if (props.answered) return;
                 props.setOrderAnswer(props.orderAnswer.filter((_, j) => j !== i));
               }}
-              className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl bg-kawaii-lavender/20 dark:bg-dark-surface font-semibold text-slate-700 dark:text-slate-200"
+              className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#2a2d3f] font-semibold text-white/90"
             >
               <span className="w-5 h-5 rounded-full bg-kawaii-purple text-white text-xs flex items-center justify-center shrink-0">{i + 1}</span>
               {item.text}
@@ -680,7 +680,7 @@ function BlockView(props: {
                   props.onAnswer(correct, block.explanation);
                 }
               }}
-              className="px-4 py-2 rounded-xl border-2 border-kawaii-lavender/40 bg-white/60 dark:bg-dark-surface/40 font-semibold text-slate-700 dark:text-slate-200 hover:border-kawaii-purple transition-all squishy"
+              className="px-4 py-2 rounded-xl border-2 border-kawaii-lavender/40 bg-white/60 dark:bg-dark-surface/40 font-semibold text-white/90 hover:border-kawaii-purple transition-all squishy"
             >
               {item.text}
             </button>

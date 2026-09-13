@@ -83,7 +83,7 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
   if (loading) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
-        <p className="text-slate-400 animate-pulse">Preparing your mission…</p>
+        <p className="text-white/40 animate-pulse">Preparing your mission…</p>
       </div>
     );
   }
@@ -104,10 +104,10 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
         <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-kawaii-coral to-kawaii-pink flex items-center justify-center text-4xl mb-4 animate-glow-pulse">
           <Lock className="w-9 h-9 text-white" />
         </div>
-        <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
+        <h1 className="text-3xl font-extrabold text-white">
           {locked.requiresPaid ? "This skill is locked" : "Complete the previous skill first"}
         </h1>
-        <p className="mt-2 text-slate-500 dark:text-slate-400 max-w-md">
+        <p className="mt-2 text-white/60 max-w-md">
           {locked.requiresPaid
             ? "You've mastered the free skills. Go pro to unlock the full skill tree and keep climbing toward agency-ready."
             : "Skills unlock in order. Finish the one before it and this one opens up."}
@@ -135,10 +135,10 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
               <span key={s} className={cn("transition-transform", s <= result.stars ? "scale-110" : "opacity-25 grayscale")}>⭐</span>
             ))}
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-800 dark:text-slate-100">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-white">
             {result.firstCompletion ? "Mission complete! 🎉" : "Practice logged!"}
           </h1>
-          <p className="mt-2 text-slate-500 dark:text-slate-400">{takeaway}</p>
+          <p className="mt-2 text-white/60">{takeaway}</p>
         </div>
 
         {result.firstCompletion && (
@@ -197,10 +197,10 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
   return (
     <div className="py-6">
       <div className="mb-2 text-center">
-        <p className="text-xs font-bold uppercase tracking-wider text-kawaii-purple dark:text-kawaii-lavender">{nodeTitle}</p>
-        <h1 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">{title}</h1>
+        <p className="text-xs font-bold uppercase tracking-wider text-dl-purpleLight">{nodeTitle}</p>
+        <h1 className="text-xl font-extrabold text-white">{title}</h1>
       </div>
-      {submitting && <p className="text-center text-sm text-slate-400 animate-pulse">Saving your XP…</p>}
+      {submitting && <p className="text-center text-sm text-white/40 animate-pulse">Saving your XP…</p>}
       <LessonPlayer content={content} xpReward={xpReward} mode={modeForLevel(params.levelId)} onComplete={handleComplete} />
     </div>
   );
