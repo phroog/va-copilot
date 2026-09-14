@@ -45,47 +45,66 @@ export function subscribeSoundSettings(fn: () => void): () => void {
 }
 
 // ── playback ──────────────────────────────────────────────────
+const SOUND_NAMES = ["correct", "wrong", "complete", "streak", "levelup", "heartloss", "tap", "xp-tick", "node-complete", "freeze"];
 const howlCache = new Map<string, any>();
 
-async function getHowl(name: string): Promise<any> {
-  if (howlCache.has(name)) return howlCache.get(name);
-  const { Howl } = await import("howler");
-  const h = new Howl({ src: [`/sounds/${name}.wav`], volume: 0.85 });
-  howlCache.set(name, h);
-  return h;
+async function ensureHowls(): Promise<boolean> {
+  try {
+    const { Howl } = await import("howler");
+    for (const n of SOUND_NAMES) {
+      if (!howlCache.has(n)) howlCache.set(n, new Howl({ src: [`/sounds/${n}.wav`], volume: 0.85 }));
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function playSound(name: string) {
   if (typeof window === "undefined") return;
   if (!settings.sound) return;
-  getHowl(name)
-    .then((h) => h.play())
-    .catch(() => {});
-}
-
-// iOS/Safari keeps the AudioContext suspended until a user gesture — resume it
-// on the first interaction so sounds unlock on iPhone/iPad.
-let unlockRegistered = false;
-function resumeContext() {
-  import("howler")
-    .then((mod) => {
-      const Howler = (mod as any).Howler;
-      const ctx = Howler?.ctx;
-      if (ctx && typeof ctx.resume === "function" && ctx.state === "suspended") {
-        ctx.resume().catch(() => {});
-      }
+  const h = howlCache.get(name);
+  if (h) {
+    try {
+      h.play();
+    } catch {
+      // ignore
+    }
+    return;
+  }
+  // not primed yet — load lazily
+  ensureHowls()
+    .then((ok) => {
+      if (ok) howlCache.get(name)?.play();
     })
     .catch(() => {});
 }
+
+// iOS/Safari keeps the AudioContext suspended until a user gesture. Preload
+// every sound and play a (near-silent) tap inside the FIRST gesture so audio
+// unlocks on iPhone/iPad — later plays then run synchronously.
+let unlockRegistered = false;
+let primed = false;
 
 export function registerAudioUnlock() {
   if (typeof window === "undefined" || unlockRegistered) return;
   unlockRegistered = true;
   const unlock = () => {
-    resumeContext();
-    window.removeEventListener("pointerdown", unlock);
-    window.removeEventListener("touchstart", unlock);
-    window.removeEventListener("keydown", unlock);
+    if (primed) return;
+    primed = true;
+    ensureHowls().then(async () => {
+      try {
+        const { Howler } = await import("howler");
+        const ctx = Howler?.ctx;
+        if (ctx && typeof ctx.resume === "function" && ctx.state === "suspended") ctx.resume().catch(() => {});
+        const tap = howlCache.get("tap");
+        if (tap) {
+          tap.volume(0.0001);
+          tap.play();
+          tap.volume(0.85);
+        }
+      } catch {}
+    });
   };
   window.addEventListener("pointerdown", unlock, { once: true });
   window.addEventListener("touchstart", unlock, { once: true });

@@ -20,13 +20,21 @@ export async function POST() {
     return NextResponse.json({ error: "Push not configured" }, { status: 500 });
   }
 
-  const { data: subs } = await supabase
+  const { data: subs, error } = await supabase
     .from("push_subscriptions")
     .select("endpoint, keys")
     .eq("user_id", user.id);
 
+  if (error) {
+    const missing = /does not exist|relation/i.test(error.message);
+    return NextResponse.json(
+      { error: missing ? "Push isn't set up yet — run the push_subscriptions migration." : error.message, sent: 0 },
+      { status: 500 }
+    );
+  }
+
   if (!subs || subs.length === 0) {
-    return NextResponse.json({ error: "No push subscription", sent: 0 }, { status: 404 });
+    return NextResponse.json({ error: "No push subscription — open Permissions and tap Enable first.", sent: 0 }, { status: 404 });
   }
 
   const payload = JSON.stringify({
