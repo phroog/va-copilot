@@ -12,11 +12,17 @@ import { TOOL_GROUPS } from "./sidebar-groups";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { href: "/learn", label: "Learn", icon: "🏠", match: (p: string) => p.startsWith("/learn") && !p.startsWith("/learn/play") },
+  { href: "/learn", label: "Learn", icon: "🏠", match: (p: string) => p.startsWith("/learn") && !p.startsWith("/learn/leaderboard") && !p.startsWith("/learn/play") },
   { href: "/dashboard", label: "Tools", icon: "🔧", match: (p: string) => p.startsWith("/dashboard") },
+  { href: "/feed", label: "Feed", icon: "📡", match: (p: string) => p.startsWith("/feed") },
+  { href: "/badge", label: "Badge", icon: "🏅", match: (p: string) => p.startsWith("/badge") },
   { href: "/learn/leaderboard", label: "Ranks", icon: "🏆", match: (p: string) => p.startsWith("/learn/leaderboard") },
-  { href: "/dashboard/credits", label: "Shop", icon: "🛍️", match: (p: string) => p.startsWith("/dashboard/credits") },
-  { href: "/dashboard/settings", label: "Profile", icon: "👤", match: (p: string) => p.startsWith("/dashboard/settings") },
+];
+
+const PROFILE_MENU = [
+  { href: "/dashboard/settings", icon: "👤", label: "Profile & settings" },
+  { href: "/pricing", icon: "💳", label: "Subscription" },
+  { href: "/dashboard/credits", icon: "🛍️", label: "Shop" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -28,6 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [gems, setGems] = useState<number | null>(null);
   const [courseEmoji, setCourseEmoji] = useState("🍠");
   const [coursesOpen, setCoursesOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const inLesson = pathname.startsWith("/learn/play");
   const isTools = pathname.startsWith("/dashboard");
@@ -94,7 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Top HUD */}
         {!inLesson && (
           <header className="sticky top-0 z-50">
-            <div className="h-14 px-3 flex items-center justify-between bg-[#131628]/80 backdrop-blur border-b border-white/5">
+            <div className="relative h-14 px-3 flex items-center justify-between bg-[#131628]/80 backdrop-blur border-b border-white/5">
               <div className="flex items-center gap-3.5">
                 <button
                   onClick={() => setCoursesOpen(true)}
@@ -107,10 +114,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <span className={cn("text-[22px] leading-none", streak >= 7 && "animate-flame")}>🔥</span>
                   <span className="text-base font-extrabold text-white tabular-nums">{streak}</span>
                 </span>
-                <span className="flex items-center gap-1.5 min-w-0">
+                <Link href="/dashboard/credits" className="flex items-center gap-1.5 min-w-0" title="Shop">
                   <span className="text-[22px] leading-none">💎</span>
                   <span className="text-base font-extrabold text-white tabular-nums">{gems ?? "…"}</span>
-                </span>
+                </Link>
                 <span className="flex items-center gap-1.5 min-w-0">
                   <span className="text-[22px] leading-none">⚡</span>
                   <span className="text-base font-extrabold text-white tabular-nums">{xp}</span>
@@ -131,6 +138,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   {settings.haptic ? "📳" : "🔕"}
                 </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setMenuOpen((o) => !o)}
+                    className="w-9 h-9 rounded-xl bg-[#1f2233] border border-white/10 flex items-center justify-center text-lg leading-none hover:border-white/30 transition-colors"
+                    title="Profile & settings"
+                  >
+                    ⚙️
+                  </button>
+                  {menuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-[60]" onClick={() => setMenuOpen(false)} />
+                      <div className="absolute right-0 top-12 z-[70] w-52 rounded-2xl bg-[#1f2233] border border-white/10 shadow-2xl p-1.5 animate-pop-in">
+                        {PROFILE_MENU.map((m) => (
+                          <Link
+                            key={m.href}
+                            href={m.href}
+                            onClick={() => setMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/5 hover:text-white transition-colors"
+                          >
+                            <span className="text-lg leading-none">{m.icon}</span>
+                            {m.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
                 <Link href="/learn" className="flex items-center gap-2">
                   <span className="text-[24px] leading-none">🍠</span>
                   <span className="text-lg font-extrabold text-white hidden sm:inline">Sari</span>
