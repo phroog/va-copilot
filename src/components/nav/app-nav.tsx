@@ -7,7 +7,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { Mochi } from "@/components/learn/mochi";
 import { CourseSheet } from "@/components/learn/course-sheet";
 import { PermissionsSheet } from "@/components/settings/permissions-sheet";
-import { useSoundSettings } from "@/lib/sounds";
+import { useSoundSettings, registerAudioUnlock } from "@/lib/sounds";
 import { setupPWA } from "@/lib/pwa";
 import { useLocale } from "@/lib/i18n/context";
 import { TOOL_GROUPS } from "./sidebar-groups";
@@ -41,6 +41,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setupPWA();
+    registerAudioUnlock();
   }, []);
 
   const inLesson = pathname.startsWith("/learn/play");

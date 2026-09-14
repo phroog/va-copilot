@@ -63,6 +63,35 @@ export function playSound(name: string) {
     .catch(() => {});
 }
 
+// iOS/Safari keeps the AudioContext suspended until a user gesture — resume it
+// on the first interaction so sounds unlock on iPhone/iPad.
+let unlockRegistered = false;
+function resumeContext() {
+  import("howler")
+    .then((mod) => {
+      const Howler = (mod as any).Howler;
+      const ctx = Howler?.ctx;
+      if (ctx && typeof ctx.resume === "function" && ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+    })
+    .catch(() => {});
+}
+
+export function registerAudioUnlock() {
+  if (typeof window === "undefined" || unlockRegistered) return;
+  unlockRegistered = true;
+  const unlock = () => {
+    resumeContext();
+    window.removeEventListener("pointerdown", unlock);
+    window.removeEventListener("touchstart", unlock);
+    window.removeEventListener("keydown", unlock);
+  };
+  window.addEventListener("pointerdown", unlock, { once: true });
+  window.addEventListener("touchstart", unlock, { once: true });
+  window.addEventListener("keydown", unlock, { once: true });
+}
+
 // ── React hook ────────────────────────────────────────────────
 export function useSoundSettings() {
   const [, force] = useState(0);

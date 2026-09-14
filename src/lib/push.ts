@@ -35,8 +35,13 @@ export async function enablePush(): Promise<PushResult> {
   const permission = await Notification.requestPermission();
   if (permission !== "granted") return { ok: false, status: permission, error: "Permission not granted." };
 
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const publicKey = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "").trim();
   if (!publicKey) return { ok: false, status: permission, error: "Push isn't configured yet." };
+
+  const keyBytes = urlBase64ToUint8Array(publicKey);
+  if (keyBytes.byteLength !== 65 || keyBytes[0] !== 0x04) {
+    return { ok: false, status: permission, error: "Push key is invalid — check your VAPID configuration." };
+  }
 
   try {
     const reg = await navigator.serviceWorker.ready;
@@ -44,7 +49,7 @@ export async function enablePush(): Promise<PushResult> {
     if (!sub) {
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey) as unknown as BufferSource,
+        applicationServerKey: keyBytes as unknown as BufferSource,
       });
     }
     const res = await fetch("/api/push/subscribe", {
