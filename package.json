@@ -19,6 +19,7 @@
     "@supabase/supabase-js": "^2.39.0",
     "@types/canvas-confetti": "^1.9.0",
     "@types/howler": "^2.2.13",
+    "@types/web-push": "^3.6.4",
     "canvas-confetti": "^1.9.4",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.0",
@@ -35,7 +36,8 @@
     "tailwindcss-animate": "^1.0.7",
     "tesseract.js": "^4.1.4",
     "tweetnacl": "^1.0.3",
-    "tweetnacl-util": "^0.15.1"
+    "tweetnacl-util": "^0.15.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

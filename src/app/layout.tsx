@@ -8,6 +8,14 @@ import MetaPixel from "@/components/meta-pixel";
 export const metadata: Metadata = {
   title: "Sari",
   description: "Your all-in-one freelancing companion",
+  manifest: "/manifest.json",
+  icons: { apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Sari",
+  },
+  themeColor: "#a560f0",
 };
 
 export default function RootLayout({

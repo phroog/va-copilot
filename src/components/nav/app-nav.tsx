@@ -6,7 +6,9 @@ import { usePathname } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Mochi } from "@/components/learn/mochi";
 import { CourseSheet } from "@/components/learn/course-sheet";
+import { PermissionsSheet } from "@/components/settings/permissions-sheet";
 import { useSoundSettings } from "@/lib/sounds";
+import { setupPWA } from "@/lib/pwa";
 import { useLocale } from "@/lib/i18n/context";
 import { TOOL_GROUPS } from "./sidebar-groups";
 import { cn } from "@/lib/utils";
@@ -35,6 +37,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [courseEmoji, setCourseEmoji] = useState("🍠");
   const [coursesOpen, setCoursesOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [permsOpen, setPermsOpen] = useState(false);
+
+  useEffect(() => {
+    setupPWA();
+  }, []);
 
   const inLesson = pathname.startsWith("/learn/play");
   const isTools = pathname.startsWith("/dashboard");
@@ -161,6 +168,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             {m.label}
                           </Link>
                         ))}
+                        <button
+                          onClick={() => {
+                            setMenuOpen(false);
+                            setPermsOpen(true);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/5 hover:text-white transition-colors text-left"
+                        >
+                          <span className="text-lg leading-none">🔔</span>
+                          Permissions
+                        </button>
                       </div>
                     </>
                   )}
@@ -214,6 +231,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Mochi />
 
       <CourseSheet open={coursesOpen} onClose={() => setCoursesOpen(false)} onCourseChanged={loadHud} />
+      <PermissionsSheet open={permsOpen} onClose={() => setPermsOpen(false)} />
     </div>
   );
 }
