@@ -57,7 +57,10 @@ export async function enablePush(): Promise<PushResult> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ subscription: sub.toJSON() }),
     });
-    if (!res.ok) return { ok: false, status: permission, error: "Couldn't save your subscription." };
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      return { ok: false, status: permission, error: `Save failed: ${d?.error || res.status}` };
+    }
     return { ok: true, status: permission };
   } catch (e: any) {
     return { ok: false, status: permission, error: e?.message || "Subscription failed." };

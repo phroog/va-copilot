@@ -41,6 +41,26 @@ export function PermissionsSheet({ open, onClose }: { open: boolean; onClose: ()
     setBusy(true);
     setMsg(null);
     try {
+      // Re-save the current browser subscription first (idempotent) so a failed
+      // earlier save self-heals.
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          const sr = await fetch("/api/push/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ subscription: sub.toJSON() }),
+          });
+          if (!sr.ok) {
+            const sd = await sr.json().catch(() => ({}));
+            setMsg(`Save failed: ${sd?.error || sr.status}`);
+            setBusy(false);
+            return;
+          }
+        }
+      } catch {}
+
       const res = await fetch("/api/push/test", { method: "POST" });
       const d = await res.json();
       setMsg(res.ok ? `Test sent to ${d.sent} device${d.sent === 1 ? "" : "s"}` : d.error || "Failed");
