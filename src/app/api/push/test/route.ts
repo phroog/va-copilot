@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import webpush from "web-push";
 
 function setupWebPush() {
@@ -20,13 +21,14 @@ export async function POST() {
     return NextResponse.json({ error: "Push not configured" }, { status: 500 });
   }
 
-  const { data: subs, error } = await supabase
+  const admin = createServiceRoleClient();
+  const { data: subs, error } = await admin
     .from("push_subscriptions")
     .select("endpoint, keys")
     .eq("user_id", user.id);
 
   if (error) {
-    const missing = /does not exist|relation/i.test(error.message);
+    const missing = /does not exist|relation|could not find the table/i.test(error.message);
     return NextResponse.json(
       { error: missing ? "Push isn't set up yet — run the push_subscriptions migration." : error.message, sent: 0 },
       { status: 500 }
@@ -51,7 +53,7 @@ export async function POST() {
     } catch (e: any) {
       // 410/404 = stale subscription → remove it.
       if (e?.statusCode === 410 || e?.statusCode === 404) {
-        await supabase.from("push_subscriptions").delete().eq("endpoint", s.endpoint);
+        await admin.from("push_subscriptions").delete().eq("endpoint", s.endpoint);
       }
     }
   }
