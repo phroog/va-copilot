@@ -6,3 +6,4 @@ collector/profile/
 collector/cdp-profile/
 tsconfig.tsbuildinfo
 .vercel
+*.log 
