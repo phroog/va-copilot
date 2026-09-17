@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { PathWithNodes } from "@/lib/learn/types";
+import { playSound } from "@/lib/sounds";
 import { cn } from "@/lib/utils";
 
 export function CourseSheet({
@@ -42,6 +43,7 @@ export function CourseSheet({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path_id: id }),
       });
+      playSound("chime");
       onCourseChanged?.();
       onClose();
     } catch {

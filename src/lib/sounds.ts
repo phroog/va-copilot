@@ -45,7 +45,7 @@ export function subscribeSoundSettings(fn: () => void): () => void {
 }
 
 // ── playback ──────────────────────────────────────────────────
-const SOUND_NAMES = ["correct", "wrong", "complete", "streak", "levelup", "heartloss", "tap", "xp-tick", "node-complete", "freeze"];
+const SOUND_NAMES = ["correct", "wrong", "complete", "streak", "levelup", "heartloss", "tap", "xp-tick", "node-complete", "freeze", "gong", "choir", "chime", "whoosh", "coin", "pop", "bell", "fanfare"];
 const howlCache = new Map<string, any>();
 
 async function ensureHowls(): Promise<boolean> {

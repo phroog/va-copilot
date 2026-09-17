@@ -8,6 +8,7 @@ import { Mochi } from "@/components/learn/mochi";
 import { CourseSheet } from "@/components/learn/course-sheet";
 import { PermissionsSheet } from "@/components/settings/permissions-sheet";
 import { useSoundSettings, registerAudioUnlock } from "@/lib/sounds";
+import { playSound } from "@/lib/sounds";
 import { setupPWA } from "@/lib/pwa";
 import { useLocale } from "@/lib/i18n/context";
 import { TOOL_GROUPS } from "./sidebar-groups";
@@ -85,6 +86,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={tab.href}
                   href={tab.href}
+                  onClick={() => playSound("tap")}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-2xl text-[15px] font-bold transition-all squishy",
                     active ? "bg-dl-purple text-white shadow-btn-purple" : "text-white/60 hover:bg-white/5 hover:text-white"
@@ -211,6 +213,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={tab.href}
                   href={tab.href}
+                  onClick={() => playSound("tap")}
                   className={cn(
                     "flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-2xl transition-all",
                     active ? "bg-dl-purple/20" : "hover:bg-white/5"

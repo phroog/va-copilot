@@ -8,6 +8,7 @@ import type { LevelMode } from "@/lib/learn/modes";
 import { cn } from "@/lib/utils";
 import { answerJuice, finishJuice } from "@/lib/juice";
 import { smallBurst } from "@/lib/confetti";
+import { playSound } from "@/lib/sounds";
 
 const PRAISE = ["Nice!", "Nailed it!", "You're on fire!", "Boom!", "Client material!", "Too easy!", "That's the pro move!"];
 const GENTLE = ["Not quite — here's why.", "Almost! Check this out.", "Good try, learn this:"];
@@ -129,7 +130,7 @@ function StoryMode({
           {blocks.length} steps · +{xpReward} XP
         </div>
         <button
-          onClick={() => setPhase("playing")}
+          onClick={() => { playSound("gong"); setPhase("playing"); }}
           className="mt-8 px-10 py-4 rounded-2xl bg-dl-green text-white shadow-btn-green font-extrabold text-lg transition-all squishy hover:brightness-105 active:translate-y-1 active:shadow-none"
         >
           Start Mission →
@@ -276,7 +277,7 @@ function RapidMode({
           <span className="text-dl-purpleLight">+{xpReward} XP</span>
         </div>
         <button
-          onClick={() => setPhase("playing")}
+          onClick={() => { playSound("gong"); setPhase("playing"); }}
           className="mt-8 px-10 py-4 rounded-2xl bg-dl-green text-white shadow-btn-green font-extrabold text-lg transition-all squishy hover:brightness-105 active:translate-y-1 active:shadow-none"
         >
           GO! ⚡
@@ -418,7 +419,7 @@ function ChatMode({
     setMessages((prev) => [...prev, { ...m, id: msgId.current++ }]);
   };
 
-  const start = () => {
+  const start = () => { playSound("chime");
     setPhase("chat");
     setMessages([]);
     setIdx(0);

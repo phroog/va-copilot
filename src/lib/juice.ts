@@ -23,18 +23,26 @@ export function answerJuice(correct: boolean) {
 export function finishJuice() {
   burstConfetti();
   playSound("complete");
+  playSound("chime");
   haptic(HAPTIC.COMPLETE);
   mochiReactAuto("excited", 3200);
 }
 
 export function nodeCompleteJuice() {
+  playSound("gong");
   playSound("node-complete");
   haptic(HAPTIC.NODE);
   mochiReactAuto("excited", 2600);
 }
 
 export function levelUpJuice() {
-  playSound("levelup");
+  playSound("choir");
+  playSound("fanfare");
   celebrationConfetti();
   mochiReactAuto("excited", 3500);
+}
+
+export function claimJuice() {
+  playSound("coin");
+  haptic(HAPTIC.TAP);
 }
