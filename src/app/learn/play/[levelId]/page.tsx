@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LessonPlayer } from "@/components/learn/lesson-player";
 import { RollingNumber } from "@/components/learn/rolling-number";
+import { QuitDialog } from "@/components/learn/quit-dialog";
 import { levelUpJuice, nodeCompleteJuice } from "@/lib/juice";
 import { modeForLevel } from "@/lib/learn/modes";
 import { RankHud, type HudUser } from "@/components/learn/rank-hud";
@@ -35,6 +36,7 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CompleteResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [quitOpen, setQuitOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -206,13 +208,21 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
   if (!content) return null;
 
   return (
-    <div className="py-6">
-      <div className="mb-2 text-center">
+    <div className="py-6 relative">
+      <button
+        onClick={() => setQuitOpen(true)}
+        className="fixed top-3 left-3 z-40 w-10 h-10 rounded-full bg-[#1f2233] border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:border-white/30 transition-all"
+        title="Quit lesson"
+      >
+        ✕
+      </button>
+      <div className="mb-2 text-center px-12">
         <p className="text-xs font-bold uppercase tracking-wider text-dl-purpleLight">{nodeTitle}</p>
         <h1 className="text-xl font-extrabold text-white">{title}</h1>
       </div>
       {submitting && <p className="text-center text-sm text-white/40 animate-pulse">Saving your XP…</p>}
       <LessonPlayer content={content} xpReward={xpReward} mode={modeForLevel(params.levelId)} onComplete={handleComplete} />
+      <QuitDialog open={quitOpen} onClose={() => setQuitOpen(false)} onQuit={() => router.push("/learn")} />
     </div>
   );
 }

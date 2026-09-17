@@ -11,6 +11,7 @@ interface Entry {
   xp: number;
   isBot: boolean;
   isYou: boolean;
+  isNew?: boolean;
 }
 
 interface LeaderboardData {
@@ -88,7 +89,9 @@ export default function Leaderboard() {
               >
                 {e.avatar}
               </div>
-              <p className="text-xs font-extrabold text-white mt-1 truncate">{e.name}</p>
+              <p className="text-xs font-extrabold text-white mt-1 truncate">
+                {e.name} {e.isNew && <span className="text-[9px] text-dl-blue align-middle">NEW</span>}
+              </p>
               <p className="text-[11px] font-bold text-dl-purpleLight">{e.xp} XP</p>
             </div>
           );
@@ -114,6 +117,7 @@ export default function Leaderboard() {
               <span className="flex-1 font-bold text-white/90 truncate">
                 {e.name}
                 {e.isBot && <span className="ml-1 text-[10px] text-white/30 font-semibold">🤖</span>}
+                {e.isNew && <span className="ml-1 text-[9px] font-extrabold text-dl-blue bg-dl-blue/15 px-1.5 py-0.5 rounded-full">NEW</span>}
                 {e.isYou && <span className="ml-1 text-[10px] font-extrabold text-dl-purpleLight">YOU</span>}
               </span>
               <span className="text-sm font-extrabold text-dl-purpleLight">{e.xp} XP</span>

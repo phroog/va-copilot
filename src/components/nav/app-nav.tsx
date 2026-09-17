@@ -112,38 +112,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {!inLesson && (
           <header className="sticky top-0 z-50">
             <div className="relative h-14 px-3 flex items-center justify-between bg-[#131628]/80 backdrop-blur border-b border-white/5">
-              <div className="flex items-center gap-3.5">
+              <div className="flex items-center gap-2 sm:gap-3.5">
                 <button
                   onClick={() => setCoursesOpen(true)}
-                  className="w-9 h-9 rounded-xl bg-[#1f2233] border border-white/10 flex items-center justify-center text-[22px] leading-none hover:border-dl-purple/60 transition-colors"
+                  className="w-9 h-9 rounded-xl bg-[#1f2233] border border-white/10 flex items-center justify-center text-[20px] sm:text-[22px] leading-none hover:border-dl-purple/60 transition-colors shrink-0"
                   title="Switch course"
                 >
                   {courseEmoji}
                 </button>
-                <span className="flex items-center gap-1.5 min-w-0">
-                  <span className={cn("text-[22px] leading-none", streak >= 7 && "animate-flame")}>🔥</span>
+                <span className="flex items-center gap-1 min-w-0">
+                  <span className={cn("text-[20px] sm:text-[22px] leading-none", streak >= 7 && "animate-flame")}>🔥</span>
                   <span className="text-base font-extrabold text-white tabular-nums">{streak}</span>
                 </span>
-                <Link href="/dashboard/credits" className="flex items-center gap-1.5 min-w-0" title="Shop">
-                  <span className="text-[22px] leading-none">💎</span>
+                <Link href="/dashboard/credits" className="flex items-center gap-1 min-w-0" title="Shop">
+                  <span className="text-[20px] sm:text-[22px] leading-none">💎</span>
                   <span className="text-base font-extrabold text-white tabular-nums">{gems ?? "…"}</span>
                 </Link>
-                <span className="flex items-center gap-1.5 min-w-0">
+                <span className="hidden sm:flex items-center gap-1 min-w-0">
                   <span className="text-[22px] leading-none">⚡</span>
                   <span className="text-base font-extrabold text-white tabular-nums">{xp}</span>
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 sm:gap-1.5">
                 <button
                   onClick={toggleSound}
-                  className="w-9 h-9 rounded-xl bg-[#1f2233] border border-white/10 flex items-center justify-center text-lg leading-none hover:border-white/30 transition-colors"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#1f2233] border border-white/10 flex items-center justify-center text-base sm:text-lg leading-none hover:border-white/30 transition-colors shrink-0"
                   title={settings.sound ? "Mute sounds" : "Unmute sounds"}
                 >
                   {settings.sound ? "🔊" : "🔇"}
                 </button>
                 <button
                   onClick={toggleHaptic}
-                  className="w-9 h-9 rounded-xl bg-[#1f2233] border border-white/10 flex items-center justify-center text-lg leading-none hover:border-white/30 transition-colors"
+                  className="hidden sm:flex w-9 h-9 rounded-xl bg-[#1f2233] border border-white/10 items-center justify-center text-lg leading-none hover:border-white/30 transition-colors shrink-0"
                   title={settings.haptic ? "Disable vibration" : "Enable vibration"}
                 >
                   {settings.haptic ? "📳" : "🔕"}

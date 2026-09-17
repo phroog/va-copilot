@@ -242,11 +242,11 @@ export default function DashboardHome() {
       <MoodCheckDialog />
 
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-3xl font-extrabold text-slate-800 dark:text-slate-100 truncate">
             {greeting}{userName ? ", " + userName : ""}
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">{t("welcomeDashboard")}</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 truncate">{t("welcomeDashboard")}</p>
         </div>
         <Link href="/pricing">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-kawaii-purple/10 text-kawaii-purple dark:text-kawaii-lavender text-xs font-bold hover:bg-kawaii-purple/20 transition-all">

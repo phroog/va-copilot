@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { mochiReact, subscribeMochi, mochiEffective, type MochiMood } from "@/lib/mochi";
 import { playSound } from "@/lib/sounds";
 
-function MochiFace({ mood }: { mood: MochiMood }) {
+export function MochiFace({ mood, size = "100%" }: { mood: MochiMood; size?: number | string }) {
   const eyeColor = "#2e1e3a";
   const eyes =
     mood === "sleeping" ? (
@@ -56,7 +56,7 @@ function MochiFace({ mood }: { mood: MochiMood }) {
     );
 
   return (
-    <svg viewBox="0 0 100 100" width="100%" height="100%">
+    <svg viewBox="0 0 100 100" width={size} height={size}>
       <defs>
         <radialGradient id="mochiBody" cx="40%" cy="30%" r="80%">
           <stop offset="0%" stopColor="#c79bf5" />
@@ -70,6 +70,12 @@ function MochiFace({ mood }: { mood: MochiMood }) {
       <ellipse cx="71" cy="70" rx="8" ry="5" fill="#ff8ba7" opacity="0.6" />
       {eyes}
       {mouth}
+      {mood === "sad" && (
+        <>
+          <path d="M30 44 Q26 48 29 53" stroke="#8ee0ff" strokeWidth="3.4" fill="#a5e7ff" strokeLinecap="round" opacity="0.9" />
+          <path d="M70 44 Q74 48 71 53" stroke="#8ee0ff" strokeWidth="3.4" fill="#a5e7ff" strokeLinecap="round" opacity="0.9" />
+        </>
+      )}
       {mood === "thinking" && (
         <g fill={eyeColor} opacity="0.7">
           <circle cx="78" cy="26" r="3" />

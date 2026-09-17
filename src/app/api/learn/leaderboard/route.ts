@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeXp, rankFromXp } from "@/lib/learn/ranks";
-import { botDisplay, type BotRow } from "@/lib/learn/bots";
+import { botDisplay, dailyNewBots, type BotRow } from "@/lib/learn/bots";
 
 export interface LeaderboardEntry {
   id: string;
@@ -10,6 +10,7 @@ export interface LeaderboardEntry {
   xp: number;
   isBot: boolean;
   isYou: boolean;
+  isNew?: boolean;
 }
 
 export async function GET() {
@@ -32,8 +33,11 @@ export async function GET() {
   const entries: LeaderboardEntry[] = [];
 
   for (const bot of (botsRes.data ?? []) as BotRow[]) {
-    const d = botDisplay(bot);
-    entries.push({ id: d.id, name: d.name, avatar: d.avatar, xp: d.xp, isBot: true, isYou: false });
+    entries.push({ ...botDisplay(bot), isYou: false });
+  }
+  // Rotating newcomer bots so the board changes every day.
+  for (const nb of dailyNewBots()) {
+    entries.push({ ...nb, isYou: false });
   }
 
   for (const u of (topUsersRes.data ?? []) as { user_id: string; full_name: string; xp: number }[]) {
@@ -59,7 +63,8 @@ export async function GET() {
   merged.sort((a, b) => b.xp - a.xp);
 
   // User rank among everyone (1-based).
-  const higherBots = (botsRes.data ?? []).filter((b: BotRow) => botDisplay(b).xp > userXp).length;
+  const allBots = [...(botsRes.data ?? []).map((b: BotRow) => botDisplay(b)), ...dailyNewBots()];
+  const higherBots = allBots.filter((b) => b.xp > userXp).length;
   const higherUsers = (topUsersRes.data ?? []).filter((u: any) => u.xp > userXp && u.user_id !== user.id).length;
   const userRankOverall = 1 + higherBots + higherUsers;
 
