@@ -2,16 +2,23 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, X, ArrowRight, Flame, Heart } from "lucide-react";
+import { Check, X, ArrowRight, Flame, Heart, Timer } from "lucide-react";
 import type { LessonContent, LessonBlock } from "@/lib/learn/types";
 import type { LevelMode } from "@/lib/learn/modes";
 import { cn } from "@/lib/utils";
 import { answerJuice, finishJuice } from "@/lib/juice";
 import { smallBurst } from "@/lib/confetti";
 import { playSound } from "@/lib/sounds";
+import { formatTime } from "@/lib/learn/performance";
 
 const PRAISE = ["Nice!", "Nailed it!", "You're on fire!", "Boom!", "Client material!", "Too easy!", "That's the pro move!"];
 const GENTLE = ["Not quite — here's why.", "Almost! Check this out.", "Good try, learn this:"];
+
+export interface LessonResult {
+  accuracy: number;
+  stars: number;
+  timeSeconds: number;
+}
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -29,6 +36,30 @@ function starsFor(accuracy: number): number {
 const pick = () => PRAISE[Math.floor(Math.random() * PRAISE.length)];
 const gentle = () => GENTLE[Math.floor(Math.random() * GENTLE.length)];
 
+// Counts elapsed seconds while `active` is true.
+function useElapsed(active: boolean): number {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const started = Date.now() - elapsed * 1000;
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+  return elapsed;
+}
+
+function TimerChip({ elapsed, targetSeconds }: { elapsed: number; targetSeconds: number }) {
+  const ratio = targetSeconds > 0 ? elapsed / targetSeconds : 1.5;
+  const color = ratio < 0.5 ? "text-dl-green" : ratio < 0.75 ? "text-dl-gold" : ratio < 1 ? "text-dl-orange" : "text-dl-red";
+  return (
+    <span className={cn("inline-flex items-center gap-1 text-xs font-extrabold tabular-nums", color)}>
+      <Timer className="w-4 h-4" /> {formatTime(elapsed)}
+      <span className="text-white/30 font-bold">/ {formatTime(targetSeconds)}</span>
+    </span>
+  );
+}
+
 const INTERACTIVE: LessonBlock["type"][] = ["pick", "scenario", "fill", "order"];
 const CHAT_TYPES: LessonBlock["type"][] = ["pick", "scenario"];
 
@@ -40,35 +71,39 @@ interface OrderItem {
 export function LessonPlayer({
   content,
   xpReward,
+  targetSeconds,
   mode,
   onComplete,
 }: {
   content: LessonContent;
   xpReward: number;
+  targetSeconds?: number;
   mode: LevelMode;
-  onComplete: (result: { accuracy: number; stars: number }) => void;
+  onComplete: (result: LessonResult) => void;
 }) {
   const chatBlocks = content.blocks.filter((b) => CHAT_TYPES.includes(b.type as any));
   const rapidBlocks = content.blocks.filter((b) => INTERACTIVE.includes(b.type as any));
 
   if (mode === "rapid" && rapidBlocks.length >= 2) {
-    return <RapidMode content={content} xpReward={xpReward} blocks={rapidBlocks} onComplete={onComplete} />;
+    return <RapidMode content={content} xpReward={xpReward} targetSeconds={targetSeconds} blocks={rapidBlocks} onComplete={onComplete} />;
   }
   if (mode === "chat" && chatBlocks.length >= 2) {
-    return <ChatMode content={content} xpReward={xpReward} blocks={chatBlocks} onComplete={onComplete} />;
+    return <ChatMode content={content} xpReward={xpReward} targetSeconds={targetSeconds} blocks={chatBlocks} onComplete={onComplete} />;
   }
-  return <StoryMode content={content} xpReward={xpReward} onComplete={onComplete} />;
+  return <StoryMode content={content} xpReward={xpReward} targetSeconds={targetSeconds} onComplete={onComplete} />;
 }
 
 // ───────────────────────── Story / Mission ─────────────────────────
 function StoryMode({
   content,
   xpReward,
+  targetSeconds,
   onComplete,
 }: {
   content: LessonContent;
   xpReward: number;
-  onComplete: (result: { accuracy: number; stars: number }) => void;
+  targetSeconds?: number;
+  onComplete: (result: LessonResult) => void;
 }) {
   const [phase, setPhase] = useState<"intro" | "playing">("intro");
   const [idx, setIdx] = useState(0);
@@ -80,6 +115,9 @@ function StoryMode({
   const [selected, setSelected] = useState<number | null>(null);
   const [fillText, setFillText] = useState("");
   const [orderAnswer, setOrderAnswer] = useState<OrderItem[]>([]);
+
+  const target = targetSeconds ?? (content.blocks.length * 20);
+  const elapsed = useElapsed(phase === "playing");
 
   const blocks = content.blocks;
   const interactiveCount = blocks.filter((b) => INTERACTIVE.includes(b.type as any)).length;
@@ -96,7 +134,7 @@ function StoryMode({
     answerJuice(correct);
     setAnswered(true);
     setIsCorrect(correct);
-    setFeedback(explanation || (correct ? pick() : gentle()));
+    setFeedback(`${correct ? pick() : gentle()} ${explanation || ""}`.trim());
     if (correct) {
       setCorrectCount((c) => c + 1);
       setCombo((c) => c + 1);
@@ -107,7 +145,7 @@ function StoryMode({
     if (idx + 1 >= blocks.length) {
       const accuracy = interactiveCount > 0 ? correctCount / interactiveCount : 1;
       finishJuice();
-      onComplete({ accuracy, stars: starsFor(accuracy) });
+      onComplete({ accuracy, stars: starsFor(accuracy), timeSeconds: elapsed });
     } else {
       const ni = idx + 1;
       setIdx(ni);
@@ -154,6 +192,7 @@ function StoryMode({
               <Flame className="w-4 h-4" /> x{combo}
             </span>
           )}
+          <TimerChip elapsed={elapsed} targetSeconds={target} />
           <span className="text-xs font-bold text-slate-400">{idx + 1}/{blocks.length}</span>
         </div>
       </div>
@@ -199,13 +238,15 @@ function StoryMode({
 function RapidMode({
   content,
   xpReward,
+  targetSeconds,
   blocks,
   onComplete,
 }: {
   content: LessonContent;
   xpReward: number;
+  targetSeconds?: number;
   blocks: LessonBlock[];
-  onComplete: (result: { accuracy: number; stars: number }) => void;
+  onComplete: (result: LessonResult) => void;
 }) {
   const [phase, setPhase] = useState<"ready" | "playing" | "over">("ready");
   const [idx, setIdx] = useState(0);
@@ -218,6 +259,9 @@ function RapidMode({
   const [selected, setSelected] = useState<number | null>(null);
   const [fillText, setFillText] = useState("");
   const [orderAnswer, setOrderAnswer] = useState<OrderItem[]>([]);
+
+  const target = targetSeconds ?? (blocks.length * 20);
+  const elapsed = useElapsed(phase === "playing");
 
   const block = blocks[idx];
   const shuffledOrder = useMemo(() => {
@@ -238,7 +282,7 @@ function RapidMode({
     answerJuice(correct);
     setAnswered(true);
     setIsCorrect(correct);
-    setFeedback(explanation || (correct ? pick() : gentle()));
+    setFeedback(`${correct ? pick() : gentle()} ${explanation || ""}`.trim());
     if (correct) {
       setCorrectCount((c) => c + 1);
       setCombo((c) => c + 1);
@@ -256,7 +300,7 @@ function RapidMode({
     if (idx + 1 >= blocks.length) {
       const accuracy = correctCount / blocks.length;
       finishJuice();
-      onComplete({ accuracy, stars: starsFor(accuracy) });
+      onComplete({ accuracy, stars: starsFor(accuracy), timeSeconds: elapsed });
       return;
     }
     setIdx((i) => i + 1);
@@ -310,7 +354,7 @@ function RapidMode({
             onClick={() => {
               const a = Math.max(0.4, correctCount / blocks.length);
               finishJuice();
-              onComplete({ accuracy: a, stars: starsFor(a) });
+              onComplete({ accuracy: a, stars: starsFor(a), timeSeconds: elapsed });
             }}
             className="px-6 py-3 rounded-full border-2 border-kawaii-lavender/40 text-white/75 font-bold hover:bg-kawaii-lavender/10 transition-all squishy"
           >
@@ -336,6 +380,7 @@ function RapidMode({
               <Flame className="w-5 h-5" /> x{combo}
             </span>
           )}
+          <TimerChip elapsed={elapsed} targetSeconds={target} />
           <span className="text-xs font-bold text-slate-400">{idx + 1}/{blocks.length}</span>
         </div>
       </div>
@@ -388,13 +433,15 @@ interface ChatMsg {
 function ChatMode({
   content,
   xpReward,
+  targetSeconds,
   blocks,
   onComplete,
 }: {
   content: LessonContent;
   xpReward: number;
+  targetSeconds?: number;
   blocks: LessonBlock[];
-  onComplete: (result: { accuracy: number; stars: number }) => void;
+  onComplete: (result: LessonResult) => void;
 }) {
   const [phase, setPhase] = useState<"intro" | "chat">("intro");
   const [idx, setIdx] = useState(0);
@@ -404,6 +451,9 @@ function ChatMode({
   const [correctCount, setCorrectCount] = useState(0);
   const chatRef = useRef<HTMLDivElement>(null);
   const msgId = useRef(1);
+
+  const target = targetSeconds ?? (blocks.length * 25);
+  const elapsed = useElapsed(phase === "chat");
 
   const block = blocks[idx];
   const options = (block?.type === "pick" || block?.type === "scenario") ? block.options : [];
@@ -451,7 +501,7 @@ function ChatMode({
     if (idx + 1 >= blocks.length) {
       const accuracy = correctCount / blocks.length;
       finishJuice();
-      onComplete({ accuracy, stars: starsFor(accuracy) });
+      onComplete({ accuracy, stars: starsFor(accuracy), timeSeconds: elapsed });
       return;
     }
     const ni = idx + 1;
@@ -485,7 +535,10 @@ function ChatMode({
     <div className="py-4 px-3 animate-fade-in">
       <div className="flex items-center justify-between mb-3 px-1">
         <p className="text-xs font-bold text-slate-400">💬 Live client sim</p>
-        <span className="text-xs font-bold text-slate-400">{idx + 1}/{blocks.length}</span>
+        <div className="flex items-center gap-3">
+          <TimerChip elapsed={elapsed} targetSeconds={target} />
+          <span className="text-xs font-bold text-slate-400">{idx + 1}/{blocks.length}</span>
+        </div>
       </div>
 
       <div ref={chatRef} className="h-[52vh] overflow-y-auto space-y-3 rounded-3xl bg-[#F6F1FA] dark:bg-dark-card/60 border border-kawaii-lavender/20 dark:border-dark-surface p-4">

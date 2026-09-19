@@ -10,15 +10,20 @@ import { RollingNumber } from "@/components/learn/rolling-number";
 import { QuitDialog } from "@/components/learn/quit-dialog";
 import { levelUpJuice, nodeCompleteJuice } from "@/lib/juice";
 import { modeForLevel } from "@/lib/learn/modes";
+import { formatTime } from "@/lib/learn/performance";
 import { RankHud, type HudUser } from "@/components/learn/rank-hud";
 import type { LessonContent } from "@/lib/learn/types";
-import { Lock, Crown } from "lucide-react";
+import { Lock, Crown, Zap, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CompleteResult {
   xp_earned: number;
+  speed_bonus: number;
   stars: number;
   firstCompletion: boolean;
+  speed_tier: string;
+  accuracy_tier: string;
+  time_seconds: number;
   user: HudUser;
   rankUp: { from: string; to: string; levelBefore: number; levelAfter: number } | null;
   unlockedNodes: { id: string; title: string; emoji: string }[];
@@ -30,6 +35,7 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
   const [title, setTitle] = useState("");
   const [nodeTitle, setNodeTitle] = useState("");
   const [xpReward, setXpReward] = useState(30);
+  const [targetSeconds, setTargetSeconds] = useState(180);
   const [takeaway, setTakeaway] = useState("");
   const [locked, setLocked] = useState<{ reason: string; requiresPaid: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,6 +63,7 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
         setTitle(data.level.title);
         setNodeTitle(data.node?.title ?? "");
         setXpReward(data.level.xp_reward ?? 30);
+        setTargetSeconds(Math.max((data.level.duration_minutes ?? 3), 1) * 60);
         setTakeaway(data.level.content?.takeaway ?? "");
         setLoading(false);
       } catch (e: any) {
@@ -66,13 +73,13 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
     })();
   }, [params.levelId, router]);
 
-  const handleComplete = async (r: { accuracy: number; stars: number }) => {
+  const handleComplete = async (r: { accuracy: number; stars: number; timeSeconds: number }) => {
     setSubmitting(true);
     try {
       const res = await fetch(`/api/learn/level/${params.levelId}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accuracy: r.accuracy, stars: r.stars }),
+        body: JSON.stringify({ accuracy: r.accuracy, stars: r.stars, timeSeconds: r.timeSeconds }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save progress");
@@ -139,6 +146,16 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
   }
 
   if (result) {
+    const TIER_META: Record<string, { label: string; emoji: string }> = {
+      platinum: { label: "Platinum", emoji: "💎" },
+      gold: { label: "Gold", emoji: "🥇" },
+      silver: { label: "Silver", emoji: "🥈" },
+      bronze: { label: "Bronze", emoji: "🥉" },
+    };
+    const st = TIER_META[result.speed_tier] ?? TIER_META.bronze;
+    const at = TIER_META[result.accuracy_tier] ?? TIER_META.bronze;
+    const baseXp = result.xp_earned - (result.speed_bonus || 0);
+
     return (
       <div className="py-10 px-4 animate-pop-in">
         <div className="text-center mb-6">
@@ -148,50 +165,68 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
             ))}
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white">
-            {result.firstCompletion ? "Mission complete! 🎉" : "Practice logged!"}
+            {result.firstCompletion ? "Mission complete! 🎉" : "Replay XP earned! 🔁"}
           </h1>
           <p className="mt-2 text-white/60">{takeaway}</p>
         </div>
 
-        {result.firstCompletion && (
-          <div className="max-w-md mx-auto space-y-3">
-            <Card className="bg-[#1f2233] border-white/10">
-              <CardContent className="p-4 flex items-center justify-center gap-3">
-                <span className="text-2xl">⚡</span>
-                <RollingNumber value={result.xp_earned} className="text-2xl font-extrabold text-dl-purpleLight" />
-                <span className="text-2xl font-extrabold text-dl-purpleLight">XP</span>
-              </CardContent>
-            </Card>
-
-            {result.rankUp && (
-              <Card className="border-kawaii-purple/40 dark:border-dark-surface bg-gradient-to-br from-kawaii-purple/10 to-kawaii-pink/10">
-                <CardContent className="p-4 text-center">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Rank up</p>
-                  <p className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
-                    {result.user.rankEmoji} {result.rankUp.to} <span className="text-sm font-bold text-kawaii-purple">· Level {result.rankUp.levelAfter}</span>
-                  </p>
-                </CardContent>
-              </Card>
+        <div className="max-w-md mx-auto space-y-3">
+          <Card className="bg-[#1f2233] border-white/10">
+            <CardContent className="p-4 flex items-center justify-center gap-3">
+              <span className="text-2xl">⚡</span>
+              <RollingNumber value={result.xp_earned} className="text-2xl font-extrabold text-dl-purpleLight" />
+              <span className="text-2xl font-extrabold text-dl-purpleLight">XP</span>
+            </CardContent>
+            {result.speed_bonus > 0 && (
+              <p className="pb-2 text-center text-[11px] font-bold text-dl-gold">
+                +{baseXp} base · +{result.speed_bonus} speed bonus
+              </p>
             )}
+          </Card>
 
-            {result.unlockedNodes.length > 0 && (
-              <Card className="border-kawaii-mint/40 dark:border-dark-surface bg-kawaii-mint/10">
-                <CardContent className="p-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">New skill unlocked</p>
-                  <div className="space-y-1">
-                    {result.unlockedNodes.map((n) => (
-                      <p key={n.id} className="font-bold text-slate-800 dark:text-slate-100">{n.emoji} {n.title}</p>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            <div className="mt-2">
-              <RankHud user={result.user} compact />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border-2 border-kawaii-lavender/40 bg-[#1f2233] p-4 text-center">
+              <Zap className="w-5 h-5 mx-auto text-dl-gold mb-1" />
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-white/40">Speed</p>
+              <p className="text-lg font-extrabold text-white">{st.emoji} {st.label}</p>
+              <p className="text-[10px] text-white/40">{formatTime(result.time_seconds)}</p>
+            </div>
+            <div className="rounded-2xl border-2 border-kawaii-lavender/40 bg-[#1f2233] p-4 text-center">
+              <Target className="w-5 h-5 mx-auto text-dl-green mb-1" />
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-white/40">Accuracy</p>
+              <p className="text-lg font-extrabold text-white">{at.emoji} {at.label}</p>
+              <p className="text-[10px] text-white/40">⭐ {result.stars}/3</p>
             </div>
           </div>
-        )}
+
+          {result.rankUp && (
+            <Card className="border-kawaii-purple/40 dark:border-dark-surface bg-gradient-to-br from-kawaii-purple/10 to-kawaii-pink/10">
+              <CardContent className="p-4 text-center">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Rank up</p>
+                <p className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
+                  {result.user.rankEmoji} {result.rankUp.to} <span className="text-sm font-bold text-kawaii-purple">· Level {result.rankUp.levelAfter}</span>
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {result.unlockedNodes.length > 0 && (
+            <Card className="border-kawaii-mint/40 dark:border-dark-surface bg-kawaii-mint/10">
+              <CardContent className="p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">New skill unlocked</p>
+                <div className="space-y-1">
+                  {result.unlockedNodes.map((n) => (
+                    <p key={n.id} className="font-bold text-slate-800 dark:text-slate-100">{n.emoji} {n.title}</p>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="mt-2">
+            <RankHud user={result.user} compact />
+          </div>
+        </div>
 
         <div className="mt-8 flex flex-col items-center gap-3">
           <Button size="lg" onClick={() => router.push("/learn")} className="px-10">
@@ -221,7 +256,7 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
         <h1 className="text-xl font-extrabold text-white">{title}</h1>
       </div>
       {submitting && <p className="text-center text-sm text-white/40 animate-pulse">Saving your XP…</p>}
-      <LessonPlayer content={content} xpReward={xpReward} mode={modeForLevel(params.levelId)} onComplete={handleComplete} />
+      <LessonPlayer content={content} xpReward={xpReward} targetSeconds={targetSeconds} mode={modeForLevel(params.levelId)} onComplete={handleComplete} />
       <QuitDialog open={quitOpen} onClose={() => setQuitOpen(false)} onQuit={() => router.push("/learn")} />
     </div>
   );

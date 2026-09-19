@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeXp } from "@/lib/learn/ranks";
 import { ensureProfile } from "@/lib/learn/profile";
+import { accuracyTier, speedTier, speedBonusXp, speedRatio } from "@/lib/learn/performance";
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), hi);
@@ -16,6 +17,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const body = await request.json().catch(() => ({}));
   const stars = clamp(Math.round(body.stars ?? 0), 0, 3);
   const accuracy = clamp(body.accuracy ?? 0, 0, 1);
+  const timeSeconds = clamp(Number(body.timeSeconds ?? 0), 0, 3600);
 
   const { data: level } = await supabase.from("learn_levels").select("*").eq("id", levelId).maybeSingle();
   if (!level) return NextResponse.json({ error: "Level not found" }, { status: 404 });
@@ -26,12 +28,19 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const { data: existing } = await supabase.from("learn_progress").select("*").eq("user_id", user.id).eq("level_id", levelId).maybeSingle();
   const firstCompletion = !existing || existing.status !== "completed";
 
-  // XP: awarded once, scaled by accuracy (floor at 50% of the reward).
-  const xpAward = firstCompletion
-    ? Math.max(Math.round(level.xp_reward * (0.5 + 0.5 * accuracy)), Math.round(level.xp_reward * 0.5))
-    : 0;
+  // XP: every replay earns XP (infinite replay). Base scales with accuracy,
+  // plus a speed bonus so faster runs rank higher.
+  const targetSeconds = Math.max((level.duration_minutes ?? 3), 1) * 60;
+  const ratio = speedRatio(timeSeconds, targetSeconds);
+  const aTier = accuracyTier(accuracy);
+  const sTier = speedTier(ratio);
+  const baseXp = Math.max(Math.round(level.xp_reward * (0.5 + 0.5 * accuracy)), Math.round(level.xp_reward * 0.5));
+  const speedBonus = speedBonusXp(level.xp_reward, ratio);
+  const xpAward = baseXp + speedBonus;
 
   const newStars = Math.max(stars, existing?.stars ?? 0);
+  const newBestAccuracy = Math.max(accuracy, existing?.best_accuracy ?? 0);
+  const newBestSpeedRatio = Math.min(ratio, existing?.best_speed_ratio ?? 1.5);
 
   // Upsert progress.
   const { error: progError } = await supabase.from("learn_progress").upsert(
@@ -41,7 +50,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
       node_id: level.node_id,
       status: "completed",
       stars: newStars,
-      xp_earned: firstCompletion ? xpAward : existing?.xp_earned ?? xpAward,
+      xp_earned: (existing?.xp_earned ?? 0) + xpAward,
+      best_accuracy: newBestAccuracy,
+      best_speed_ratio: newBestSpeedRatio,
+      best_xp: Math.max(xpAward, existing?.best_xp ?? 0),
       attempts: (existing?.attempts ?? 0) + 1,
       completed_at: existing?.completed_at ?? new Date().toISOString(),
     },
@@ -87,8 +99,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
   return NextResponse.json({
     success: true,
     xp_earned: xpAward,
+    speed_bonus: speedBonus,
     stars: newStars,
     firstCompletion,
+    speed_tier: sTier.key,
+    accuracy_tier: aTier.key,
+    time_seconds: timeSeconds,
     user: { ...after, streak },
     rankUp,
     unlockedNodes,
