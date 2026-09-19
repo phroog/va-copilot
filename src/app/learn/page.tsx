@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { sortNodes } from "@/lib/learn/gate";
 import { modeForLevel } from "@/lib/learn/modes";
 import type { PathWithNodes, NodeWithStatus } from "@/lib/learn/types";
 import type { HudUser } from "@/components/learn/rank-hud";
+import { ClientSim } from "@/components/learn/client-sim";
 import { cn } from "@/lib/utils";
 
 const NODE = 70;
@@ -79,6 +80,7 @@ export default function LearnHome() {
   const [user, setUser] = useState<HudUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [chosen, setChosen] = useState(false);
+  const [mode, setMode] = useState<"rank" | "sim">("rank");
 
   const load = async () => {
     try {
@@ -117,6 +119,14 @@ export default function LearnHome() {
       // ignore
     }
   };
+
+  // Client Sim needs a category context — auto-select the first path if none is chosen.
+  useEffect(() => {
+    if (mode === "sim" && !chosen && paths.length > 0) {
+      choosePath(paths[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, paths, chosen]);
 
   const activePath = paths.find((p) => p.id === activePathId) ?? null;
 
@@ -222,21 +232,40 @@ export default function LearnHome() {
 
   return (
     <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }} className="pb-6">
-      {/* path pills */}
-      <div className="flex gap-1.5 overflow-x-auto px-4 pt-4 pb-3 max-w-[480px] mx-auto" style={{ scrollbarWidth: "none" }}>
-        {paths.map((p) => (
+      {/* mode toggle: rank climb / client sim */}
+      <div className="max-w-[480px] mx-auto px-4 pt-4">
+        <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-[#1f2233] border border-white/10">
           <button
-            key={p.id}
-            onClick={() => choosePath(p.id)}
+            onClick={() => setMode("rank")}
             className={cn(
-              "shrink-0 px-3 py-1.5 rounded-2xl text-xs font-extrabold border transition-all",
-              p.id === activePathId ? "bg-dl-purple text-white border-dl-purpleDark shadow-btn-purple" : "bg-[#1f2233] text-white/50 border-white/10 hover:text-white"
+              "py-2 rounded-xl text-[13px] font-extrabold transition-all squishy",
+              mode === "rank" ? "bg-dl-purple text-white shadow-btn-purple" : "text-white/50 hover:text-white"
             )}
           >
-            {p.emoji} {p.title}
+            🌳 Rank climb
           </button>
-        ))}
+          <button
+            onClick={() => setMode("sim")}
+            className={cn(
+              "py-2 rounded-xl text-[13px] font-extrabold transition-all squishy",
+              mode === "sim" ? "bg-dl-green text-white shadow-btn-green" : "text-white/50 hover:text-white"
+            )}
+          >
+            💬 Client Sim
+          </button>
+        </div>
       </div>
+
+      {/* swipeable category pills */}
+      <CategoryPills paths={paths} activeId={activePathId} onSelect={choosePath} />
+
+      {mode === "sim" && (
+        <div className="mt-2">
+          <ClientSim path={activePath} onBack={() => setMode("rank")} />
+        </div>
+      )}
+
+      {mode === "rank" && (<>
 
       {/* green progress header */}
       {activePath && (
@@ -360,6 +389,8 @@ export default function LearnHome() {
           </div>
         );
       })()}
+      </>)}
+
     </motion.div>
   );
 }
@@ -468,5 +499,57 @@ function RewardTile({ x, y }: { x: number; y: number }) {
       </span>
       <span className="text-[11px] font-extrabold text-white">Claim</span>
     </Link>
+  );
+}
+
+// Swipeable category selector with snap-scroll + arrow buttons.
+function CategoryPills({
+  paths,
+  activeId,
+  onSelect,
+}: {
+  paths: PathWithNodes[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * 170, behavior: "smooth" });
+  return (
+    <div className="relative max-w-[480px] mx-auto pt-3">
+      <button
+        onClick={() => scroll(-1)}
+        className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-[#1f2233] border border-white/10 flex items-center justify-center text-white/70 hover:text-white text-lg leading-none"
+        title="Scroll categories"
+      >
+        ‹
+      </button>
+      <div
+        ref={ref}
+        className="flex gap-1.5 overflow-x-auto px-8 py-1"
+        style={{ scrollbarWidth: "none", scrollSnapType: "x mandatory" }}
+      >
+        {paths.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => onSelect(p.id)}
+            className={cn(
+              "snap-start shrink-0 px-3 py-1.5 rounded-2xl text-xs font-extrabold border transition-all squishy",
+              p.id === activeId
+                ? "bg-dl-purple text-white border-dl-purpleDark shadow-btn-purple"
+                : "bg-[#1f2233] text-white/50 border-white/10 hover:text-white"
+            )}
+          >
+            {p.emoji} {p.title}
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={() => scroll(1)}
+        className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-[#1f2233] border border-white/10 flex items-center justify-center text-white/70 hover:text-white text-lg leading-none"
+        title="Scroll categories"
+      >
+        ›
+      </button>
+    </div>
   );
 }

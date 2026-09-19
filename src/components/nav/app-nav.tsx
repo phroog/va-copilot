@@ -160,6 +160,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <>
                       <div className="fixed inset-0 z-[60]" onClick={() => setMenuOpen(false)} />
                       <div className="absolute right-0 top-12 z-[70] w-52 rounded-2xl bg-[#1f2233] border border-white/10 shadow-2xl p-1.5 animate-pop-in">
+                        <button
+                          onClick={() => {
+                            setMenuOpen(false);
+                            setCoursesOpen(true);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white/80 hover:bg-white/5 hover:text-white transition-colors text-left"
+                        >
+                          <span className="text-lg leading-none">🎯</span>
+                          Switch course
+                        </button>
                         {PROFILE_MENU.map((m) => (
                           <Link
                             key={m.href}

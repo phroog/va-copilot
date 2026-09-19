@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { sortNodes } from "@/lib/learn/gate";
 import { fingerprintId } from "@/lib/learn/tree-gen";
-import type { PathWithNodes, NodeWithStatus } from "@/lib/learn/types";
+import type { PathWithNodes } from "@/lib/learn/types";
 import type { HudUser } from "@/components/learn/rank-hud";
 import { cn } from "@/lib/utils";
 
@@ -61,13 +61,17 @@ export default function BadgePage() {
 
   const activePath = paths.find((p) => p.id === (user as any)?.activePathId) ?? paths[0] ?? null;
 
-  const { mastered, sorted, pct, fpId } = useMemo(() => {
-    if (!activePath) return { mastered: [], sorted: [], pct: 0, fpId: "" };
-    const sorted = sortNodes(activePath.nodes);
-    const mastered = sorted.filter((n) => n.status === "completed");
-    const pct = activePath.totalNodes ? mastered.length / activePath.totalNodes : 0;
-    return { mastered, sorted, pct, fpId: fingerprintId(sorted) };
-  }, [activePath]);
+  // Overall across ALL categories + fingerprint of the active path.
+  const overall = useMemo(() => {
+    let mastered = 0;
+    let total = 0;
+    for (const p of paths) {
+      mastered += p.completedNodes ?? 0;
+      total += p.totalNodes ?? 0;
+    }
+    const fpId = activePath ? fingerprintId(sortNodes(activePath.nodes)) : "";
+    return { mastered, total, pct: total > 0 ? mastered / total : 0, fpId };
+  }, [paths, activePath]);
 
   const ringR = 42;
   const ringC = 2 * Math.PI * ringR;
@@ -152,7 +156,7 @@ export default function BadgePage() {
           {activePath && <p className="text-[11px] font-bold text-dl-gold mt-0.5">{activePath.emoji} {activePath.title}</p>}
         </div>
 
-        {/* mastery ring */}
+        {/* mastery ring (all categories) */}
         <div className="relative flex items-center justify-center my-5">
           <svg width={110} height={110} className="-rotate-90">
             <circle cx={55} cy={55} r={ringR} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={9} />
@@ -164,33 +168,35 @@ export default function BadgePage() {
               stroke="#58cc02"
               strokeWidth={9}
               strokeLinecap="round"
-              strokeDasharray={`${ringC * pct} ${ringC}`}
+              strokeDasharray={`${ringC * overall.pct} ${ringC}`}
             />
           </svg>
           <div className="absolute text-center">
-            <p className="text-2xl font-extrabold text-white leading-none">{Math.round(pct * 100)}%</p>
+            <p className="text-2xl font-extrabold text-white leading-none">{Math.round(overall.pct * 100)}%</p>
             <p className="text-[9px] font-extrabold uppercase tracking-wider text-white/40">mastered</p>
-          </div>
-        </div>
-
-        {/* seals */}
-        <div className="relative">
-          <p className="text-[10px] font-extrabold uppercase tracking-widest text-white/40 mb-3 text-center">
-            {mastered.length}/{sorted.length} skills sealed
-          </p>
-          <div className="grid grid-cols-4 gap-2.5">
-            {sorted.map((n, i) => (
-              <Seal key={n.id} node={n} index={i} />
-            ))}
           </div>
         </div>
 
         {/* footer */}
         <div className="relative mt-5 pt-3 border-t border-white/5 flex items-center justify-between text-[10px] font-bold text-white/35">
           <span>Issued {new Date().toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}</span>
-          <span className="text-dl-gold/70">{fpId}</span>
+          <span className="text-dl-gold/70">{overall.fpId}</span>
         </div>
       </div>
+
+      {/* per-category badges */}
+      {paths.length > 0 && (
+        <div className="mt-6">
+          <p className="text-[11px] font-extrabold uppercase tracking-widest text-white/40 mb-2">
+            Your category badges · {overall.mastered}/{overall.total} skills sealed
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {paths.map((p) => (
+              <CategoryBadge key={p.id} path={p} active={p.id === activePath?.id} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* performance */}
       <div className="mt-5">
@@ -307,37 +313,23 @@ function PerfCard({ label, emoji, value, sub }: { label: string; emoji: string; 
   );
 }
 
-function Seal({ node, index }: { node: NodeWithStatus; index: number }) {
-  const done = node.status === "completed";
+function CategoryBadge({ path, active }: { path: PathWithNodes; active: boolean }) {
+  const pct = path.totalNodes > 0 ? path.completedNodes / path.totalNodes : 0;
+  const done = pct >= 1;
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.6 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: 0.05 + index * 0.015, type: "spring", stiffness: 260, damping: 16 }}
-      className="flex flex-col items-center gap-1"
-    >
-      <span
-        className={cn(
-          "relative w-14 h-14 rounded-full flex items-center justify-center text-[26px] transition-all",
-          done
-            ? "bg-gradient-to-br from-dl-gold to-dl-goldDark text-white shadow-[0_4px_0_0_#e5a500]"
-            : "bg-white/5 border-2 border-dashed border-white/15 opacity-45"
+    <div className={cn("rounded-2xl border p-3.5", active ? "border-dl-purple/60 bg-dl-purple/10" : "border-white/10 bg-[#1f2233]")}>
+      <div className="flex items-center justify-between">
+        <span className="text-2xl">{path.emoji}</span>
+        {done ? (
+          <span className="text-[10px] font-extrabold text-dl-green bg-dl-green/15 px-1.5 py-0.5 rounded-full">SEALED ✓</span>
+        ) : (
+          <span className="text-[10px] font-extrabold text-white/40">{path.completedNodes}/{path.totalNodes}</span>
         )}
-        title={node.title}
-      >
-        {node.emoji}
-        {done && (
-          <motion.span
-            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-dl-green text-white text-[10px] font-extrabold flex items-center justify-center border-2 border-[#2a2d3f]"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2 + index * 0.015, type: "spring", stiffness: 300, damping: 12 }}
-          >
-            ✓
-          </motion.span>
-        )}
-      </span>
-      <span className="text-[9px] font-bold text-white/70 text-center leading-tight max-w-[72px]">{node.title}</span>
-    </motion.div>
+      </div>
+      <p className="mt-1.5 text-[12px] font-extrabold text-white leading-tight">{path.title}</p>
+      <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
+        <div className="h-full rounded-full bg-dl-green" style={{ width: `${Math.round(pct * 100)}%` }} />
+      </div>
+    </div>
   );
 }
