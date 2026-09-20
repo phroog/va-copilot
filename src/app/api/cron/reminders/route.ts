@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { setupWebPush, sendToSubs } from "@/lib/push-server";
 
@@ -40,16 +41,34 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const dry = url.searchParams.get("dry") === "1";
   const force = url.searchParams.get("force") === "1";
+  // lazy = only the requesting user is evaluated (client-side fallback check);
+  // it's auth-gated, so it doesn't need the shared secret.
+  const lazy = url.searchParams.get("lazy") === "1";
+
+  const secret = process.env.CRON_SECRET;
+  if (secret && !lazy && request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const admin = createServiceRoleClient();
   const now = new Date();
   const today = utcDay(now);
   const hour = now.getUTCHours();
 
-  const { data: subs } = await admin.from("push_subscriptions").select("user_id, endpoint, keys");
-  if (!subs || subs.length === 0) return NextResponse.json({ checked: 0, sent: 0 });
+  let userIds: string[];
+  if (lazy) {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    userIds = [user.id];
+  } else {
+    const { data: allSubs } = await admin.from("push_subscriptions").select("user_id");
+    userIds = (allSubs ?? []).map((s) => s.user_id);
+    if (userIds.length === 0) return NextResponse.json({ checked: 0, sent: 0 });
+  }
 
-  const userIds = subs.map((s) => s.user_id);
+  const { data: subs } = await admin.from("push_subscriptions").select("user_id, endpoint, keys").in("user_id", userIds);
+  if (!subs || subs.length === 0) return NextResponse.json({ checked: userIds.length, sent: 0 });
   const [profilesRes, plansRes, remindersRes] = await Promise.all([
     admin.from("profiles").select("user_id, streak_count, last_active_date").in("user_id", userIds),
     admin.from("subscriptions").select("user_id, plan, status, access_until").in("user_id", userIds),

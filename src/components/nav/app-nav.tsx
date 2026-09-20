@@ -71,6 +71,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     loadHud();
   }, []);
 
+  // Lazy reminder check: evaluates the signed-in user whenever the app opens
+  // (fallback to the GitHub Actions cron — works even with zero cron slots).
+  useEffect(() => {
+    fetch("/api/cron/reminders?lazy=1").catch(() => {});
+  }, []);
+
   return (
     <div className="dark min-h-screen text-white" style={{ background: "linear-gradient(180deg, #0a0a1a 0%, #131628 100%)" }}>
       {/* Desktop sidebar */}

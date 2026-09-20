@@ -1,0 +1,19 @@
+name: push-reminders
+
+on:
+  schedule:
+    # Every 30 minutes (offset minutes to spread load). GitHub Actions is used
+    # because the Vercel plan is limited to one daily cron job.
+    - cron: "17,47 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger reminder pushes
+        run: |
+          curl -sS -m 120 -o /tmp/reminders.out -w "HTTP %{http_code}\n" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL || 'https://va-copilot-theta.vercel.app' }}/api/cron/reminders"
+          cat /tmp/reminders.out
