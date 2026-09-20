@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { sortNodes } from "@/lib/learn/gate";
@@ -104,6 +104,19 @@ export default function LearnHome() {
 
   useEffect(() => {
     load();
+  }, []);
+
+  // Categories are switched only via the header Courses menu — reload the tree
+  // when the course changes (or when returning to the tab).
+  useEffect(() => {
+    const reload = () => load();
+    window.addEventListener("sari:course-changed", reload);
+    window.addEventListener("focus", reload);
+    return () => {
+      window.removeEventListener("sari:course-changed", reload);
+      window.removeEventListener("focus", reload);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const choosePath = async (pathId: string) => {
@@ -256,8 +269,7 @@ export default function LearnHome() {
         </div>
       </div>
 
-      {/* swipeable category pills */}
-      <CategoryPills paths={paths} activeId={activePathId} onSelect={choosePath} />
+      {/* categories are switched via the header Courses menu (CourseSheet) */}
 
       {mode === "sim" && (
         <div className="mt-2">
@@ -502,54 +514,4 @@ function RewardTile({ x, y }: { x: number; y: number }) {
   );
 }
 
-// Swipeable category selector with snap-scroll + arrow buttons.
-function CategoryPills({
-  paths,
-  activeId,
-  onSelect,
-}: {
-  paths: PathWithNodes[];
-  activeId: string | null;
-  onSelect: (id: string) => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * 170, behavior: "smooth" });
-  return (
-    <div className="relative max-w-[480px] mx-auto pt-3">
-      <button
-        onClick={() => scroll(-1)}
-        className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-[#1f2233] border border-white/10 flex items-center justify-center text-white/70 hover:text-white text-lg leading-none"
-        title="Scroll categories"
-      >
-        ‹
-      </button>
-      <div
-        ref={ref}
-        className="flex gap-1.5 overflow-x-auto px-8 py-1"
-        style={{ scrollbarWidth: "none", scrollSnapType: "x mandatory" }}
-      >
-        {paths.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => onSelect(p.id)}
-            className={cn(
-              "snap-start shrink-0 px-3 py-1.5 rounded-2xl text-xs font-extrabold border transition-all squishy",
-              p.id === activeId
-                ? "bg-dl-purple text-white border-dl-purpleDark shadow-btn-purple"
-                : "bg-[#1f2233] text-white/50 border-white/10 hover:text-white"
-            )}
-          >
-            {p.emoji} {p.title}
-          </button>
-        ))}
-      </div>
-      <button
-        onClick={() => scroll(1)}
-        className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-[#1f2233] border border-white/10 flex items-center justify-center text-white/70 hover:text-white text-lg leading-none"
-        title="Scroll categories"
-      >
-        ›
-      </button>
-    </div>
-  );
-}
+// Categories are switched via the header Courses menu only.

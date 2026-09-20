@@ -10,6 +10,7 @@ import { RollingNumber } from "@/components/learn/rolling-number";
 import { RankHud, type HudUser } from "@/components/learn/rank-hud";
 import {
   generateRound,
+  difficultyForStreak,
   HAPPY_EMOJIS,
   MAX_HAPPY,
   START_HAPPY,
@@ -17,6 +18,7 @@ import {
   streakMultiplier,
   xpForRound,
   type SimRound,
+  type SimDifficulty,
 } from "@/lib/learn/client-sim";
 
 interface ChatMsg {
@@ -52,6 +54,7 @@ export function ClientSim({ path, onBack }: { path: PathWithNodes | null; onBack
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const msgId = useRef(1);
+  const prevDifficulty = useRef<SimDifficulty>("easy");
 
   const catTitle = path?.title ?? "Virtual Assistant";
 
@@ -82,7 +85,13 @@ export function ClientSim({ path, onBack }: { path: PathWithNodes | null; onBack
   const push = (m: Omit<ChatMsg, "id">) => setMessages((prev) => [...prev, { ...m, id: msgId.current++ }]);
 
   const newRound = () => {
-    const r = generateRound(catTitle);
+    const diff = difficultyForStreak(streak);
+    if (diff !== prevDifficulty.current) {
+      if (diff === "medium") push({ role: "system", text: "🔥 Things are heating up — clients are getting trickier. Stay sharp!", ok: true });
+      if (diff === "hard") push({ role: "system", text: "🚨 Hard mode: traps everywhere now. Don't get baited.", ok: true });
+      prevDifficulty.current = diff;
+    }
+    const r = generateRound(catTitle, diff);
     setRound(r);
     setAnswered(false);
     setSelected(null);
@@ -100,6 +109,7 @@ export function ClientSim({ path, onBack }: { path: PathWithNodes | null; onBack
     setSessionXp(0);
     setMessages([]);
     msgId.current = 1;
+    prevDifficulty.current = "easy";
     setPhase("chat");
     newRound();
   };
@@ -275,82 +285,86 @@ export function ClientSim({ path, onBack }: { path: PathWithNodes | null; onBack
   // ── chat screen ──
   return (
     <div className="px-3 pb-4 animate-fade-in">
-      {/* top bar: category + happiness + streak + xp + timer */}
-      <div className="flex items-center justify-between mb-2 px-1">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-lg">{path?.emoji ?? "💼"}</span>
-          <p className="text-xs font-extrabold text-white truncate">{catTitle}</p>
+      <div className="flex flex-col" style={{ height: "calc(100dvh - 240px)" }}>
+        {/* top bar: category + streak + xp */}
+        <div className="shrink-0 flex items-center justify-between mb-1.5 px-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-lg">{path?.emoji ?? "💼"}</span>
+            <p className="text-xs font-extrabold text-white truncate">{catTitle}</p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="inline-flex items-center gap-1 text-xs font-extrabold text-dl-orange" title="Happy streak">
+              🔥{streak} <span className="text-white/40">x{mult}</span>
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs font-extrabold text-dl-purpleLight">
+              ⚡{sessionXp}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="inline-flex items-center gap-1 text-xs font-extrabold text-dl-orange" title="Happy streak">
-            🔥{streak} <span className="text-white/40">x{mult}</span>
-          </span>
-          <span className="inline-flex items-center gap-1 text-xs font-extrabold text-dl-purpleLight">
-            ⚡{sessionXp}
-          </span>
-        </div>
-      </div>
 
-      {/* happiness + timer strip */}
-      <div className="flex items-center justify-between px-1 mb-3">
-        <span className="inline-flex items-center gap-0.5 text-lg" title="Client happiness">
-          {[0, 1, 2, 3].map((i) => (
-            <span key={i} className={cn("transition-all", i <= happiness ? "" : "opacity-20 grayscale")}>{HAPPY_EMOJIS[i]}</span>
-          ))}
-        </span>
-        <div className={cn("flex items-center gap-1 text-sm font-extrabold tabular-nums", secondsLeft <= 5 ? "text-dl-red animate-pulse" : secondsLeft <= 10 ? "text-dl-orange" : "text-white/70")}>
-          ⏱ {secondsLeft}s
-        </div>
-      </div>
-
-      {/* chat window */}
-      <div ref={chatRef} className="h-[46vh] overflow-y-auto space-y-2.5 rounded-3xl bg-[#F6F1FA] dark:bg-dark-card/60 border border-kawaii-lavender/20 dark:border-dark-surface p-4">
-        {messages.map((m) =>
-          m.role === "client" ? (
-            <div key={m.id} className="flex items-end gap-2 animate-fade-in">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-kawaii-purple to-kawaii-pink flex items-center justify-center text-sm shrink-0">👤</div>
-              <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-bl-sm bg-white dark:bg-dark-surface text-sm text-white/90 shadow-sm whitespace-pre-wrap">
-                {m.text}
-              </div>
-            </div>
-          ) : m.role === "you" ? (
-            <div key={m.id} className="flex justify-end animate-fade-in">
-              <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-br-sm bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white text-sm shadow-sm whitespace-pre-wrap">
-                {m.text}
-              </div>
-            </div>
-          ) : (
-            <div key={m.id} className={cn("max-w-[90%] mx-auto px-4 py-2.5 rounded-2xl text-xs font-semibold animate-pop-in", m.ok ? "bg-kawaii-mint/15 text-emerald-700 dark:text-emerald-300" : m.trap ? "bg-dl-red/15 text-rose-700 dark:text-rose-300 border border-dl-red/30" : "bg-kawaii-coral/15 text-rose-700 dark:text-rose-300")}>
-              {m.ok ? "✅ " : m.trap ? "🚨 " : "🤔 "}{m.text}
-            </div>
-          )
-        )}
-      </div>
-
-      {/* reply options */}
-      <AnimatePresence mode="wait">
-        {!answered && round && (
-          <motion.div key={round.message} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 space-y-2">
-            {round.options.map((opt, i) => (
-              <button
-                key={i}
-                onClick={() => answer(i)}
-                className="w-full text-left px-4 py-3 rounded-xl border-2 border-kawaii-lavender/40 bg-white dark:bg-dark-card hover:border-kawaii-purple hover:bg-kawaii-lavender/10 transition-all squishy font-semibold text-white/90"
-              >
-                {opt}
-              </button>
+        {/* happiness + timer strip */}
+        <div className="shrink-0 flex items-center justify-between px-1 mb-2">
+          <span className="inline-flex items-center gap-0.5 text-lg" title="Client happiness">
+            {[0, 1, 2, 3].map((i) => (
+              <span key={i} className={cn("transition-all", i <= happiness ? "" : "opacity-20 grayscale")}>{HAPPY_EMOJIS[i]}</span>
             ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {answered && (
-        <div className="mt-4 flex justify-end">
-          <button onClick={next} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-dl-green text-white shadow-btn-green hover:brightness-105 active:translate-y-1 active:shadow-none transition-all squishy">
-            {happiness <= 0 ? "See results" : "Next client"} <span>→</span>
-          </button>
+          </span>
+          <div className={cn("flex items-center gap-1 text-sm font-extrabold tabular-nums", secondsLeft <= 5 ? "text-dl-red animate-pulse" : secondsLeft <= 10 ? "text-dl-orange" : "text-white/70")}>
+            ⏱ {secondsLeft}s
+          </div>
         </div>
-      )}
+
+        {/* chat window — flexes, so answers below always stay on screen */}
+        <div ref={chatRef} className="flex-1 min-h-0 overflow-y-auto space-y-2.5 rounded-3xl bg-[#F6F1FA] dark:bg-dark-card/60 border border-kawaii-lavender/20 dark:border-dark-surface p-4">
+          {messages.map((m) =>
+            m.role === "client" ? (
+              <div key={m.id} className="flex items-end gap-2 animate-fade-in">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-kawaii-purple to-kawaii-pink flex items-center justify-center text-sm shrink-0">👤</div>
+                <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-bl-sm bg-white dark:bg-dark-surface text-sm text-white/90 shadow-sm whitespace-pre-wrap">
+                  {m.text}
+                </div>
+              </div>
+            ) : m.role === "you" ? (
+              <div key={m.id} className="flex justify-end animate-fade-in">
+                <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-br-sm bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white text-sm shadow-sm whitespace-pre-wrap">
+                  {m.text}
+                </div>
+              </div>
+            ) : (
+              <div key={m.id} className={cn("max-w-[90%] mx-auto px-4 py-2.5 rounded-2xl text-xs font-semibold animate-pop-in", m.ok ? "bg-kawaii-mint/15 text-emerald-700 dark:text-emerald-300" : m.trap ? "bg-dl-red/15 text-rose-700 dark:text-rose-300 border border-dl-red/30" : "bg-kawaii-coral/15 text-rose-700 dark:text-rose-300")}>
+                {m.ok ? "✅ " : m.trap ? "🚨 " : "🤔 "}{m.text}
+              </div>
+            )
+          )}
+        </div>
+
+        {/* reply options — pinned, always visible */}
+        <div className="shrink-0 mt-2">
+          <AnimatePresence mode="wait">
+            {!answered && round && (
+              <motion.div key={round.message} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-1.5">
+                {round.options.map((opt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => answer(i)}
+                    className="w-full text-left px-4 py-2.5 rounded-xl border-2 border-kawaii-lavender/40 bg-white dark:bg-dark-card hover:border-kawaii-purple hover:bg-kawaii-lavender/10 transition-all squishy font-semibold text-[13px] text-white/90"
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {answered && (
+            <div className="flex justify-end">
+              <button onClick={next} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-dl-green text-white shadow-btn-green hover:brightness-105 active:translate-y-1 active:shadow-none transition-all squishy">
+                {happiness <= 0 ? "See results" : "Next client"} <span>→</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="mt-2 flex justify-center">
         <button onClick={endSession} className="text-[11px] font-bold text-white/40 hover:text-white/70 transition-colors">

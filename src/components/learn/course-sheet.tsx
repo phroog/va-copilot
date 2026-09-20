@@ -45,6 +45,7 @@ export function CourseSheet({
       });
       playSound("chime");
       onCourseChanged?.();
+      window.dispatchEvent(new CustomEvent("sari:course-changed"));
       onClose();
     } catch {
       // ignore

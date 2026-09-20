@@ -7,6 +7,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { Mochi } from "@/components/learn/mochi";
 import { CourseSheet } from "@/components/learn/course-sheet";
 import { PermissionsSheet } from "@/components/settings/permissions-sheet";
+import { ReminderToast } from "@/components/nav/reminder-toast";
 import { useSoundSettings, registerAudioUnlock } from "@/lib/sounds";
 import { playSound } from "@/lib/sounds";
 import { setupPWA } from "@/lib/pwa";
@@ -243,6 +244,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <Mochi />
+      <ReminderToast />
 
       <CourseSheet open={coursesOpen} onClose={() => setCoursesOpen(false)} onCourseChanged={loadHud} />
       <PermissionsSheet open={permsOpen} onClose={() => setPermsOpen(false)} />
