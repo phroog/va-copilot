@@ -51,15 +51,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isTools = pathname.startsWith("/dashboard");
 
   const loadHud = () => {
-    fetch("/api/learn/tree")
+    fetch("/api/learn/hud")
       .then((r) => r.json())
       .then((d) => {
-        if (d?.user) {
-          setStreak(d.user.streak ?? 0);
-          setXp(d.user.xp ?? 0);
-        }
-        const active = (d?.paths ?? []).find((p: any) => p.id === d?.activePathId) ?? d?.paths?.[0];
-        if (active?.emoji) setCourseEmoji(active.emoji);
+        if (typeof d?.xp === "number") setXp(d.xp);
+        if (typeof d?.streak === "number") setStreak(d.streak);
+        if (d?.courseEmoji) setCourseEmoji(d.courseEmoji);
       })
       .catch(() => {});
     fetch("/api/ai/credits")
@@ -73,8 +70,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Lazy reminder check: evaluates the signed-in user whenever the app opens
-  // (fallback to the GitHub Actions cron — works even with zero cron slots).
+  // (fallback to the GitHub Actions cron). Throttled to once per day to keep
+  // Vercel usage minimal.
   useEffect(() => {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      if (localStorage.getItem("sari_remind_check") === today) return;
+      localStorage.setItem("sari_remind_check", today);
+    } catch {}
     fetch("/api/cron/reminders?lazy=1").catch(() => {});
   }, []);
 

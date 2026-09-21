@@ -21,7 +21,7 @@ export async function GET() {
   const [profileRes, topUsersRes, botsRes, higherUsersCountRes] = await Promise.all([
     supabase.from("profiles").select("xp,full_name,streak_count").eq("user_id", user.id).maybeSingle(),
     supabase.from("profiles").select("user_id,full_name,xp").gt("xp", 0).order("xp", { ascending: false }).limit(50),
-    supabase.from("leaderboard_bots").select("*").order("base_xp", { ascending: false }),
+    supabase.from("leaderboard_bots").select("id,name,avatar,base_xp").order("base_xp", { ascending: false }),
     supabase.from("profiles").select("xp", { count: "exact", head: true }).gt("xp", 0),
   ]);
 

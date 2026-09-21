@@ -40,11 +40,27 @@ export interface LearnLevel {
 
 export type NodeStatus = "locked" | "available" | "completed";
 
-export interface NodeWithStatus extends SkillNode {
+// Minimal per-level reference on tree nodes — enough to start a level and
+// show XP, without shipping thousands of full level objects to the client.
+export interface LevelRef {
+  id: string;
+  xp_reward: number;
+}
+
+// Slim node for the skill tree — deliberately NOT the full SkillNode so the
+// response stays small on slow connections.
+export interface NodeWithStatus {
+  id: string;
+  parent_id: string | null;
+  depth: number;
+  order_index: number;
+  title: string;
+  subtitle: string;
+  emoji: string;
   status: NodeStatus;
   requiresPaid: boolean;
   progress: { stars: number; xp_earned: number; completed: boolean } | null;
-  levels: LearnLevel[];
+  levels: LevelRef[];
   lessonDone: number;
   lessonTotal: number;
   nextLevelId: string | null;

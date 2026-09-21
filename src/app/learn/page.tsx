@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { sortNodes } from "@/lib/learn/gate";
@@ -81,8 +81,10 @@ export default function LearnHome() {
   const [loading, setLoading] = useState(true);
   const [chosen, setChosen] = useState(false);
   const [mode, setMode] = useState<"rank" | "sim">("rank");
+  const lastLoadRef = useRef(0);
 
   const load = async () => {
+    lastLoadRef.current = Date.now();
     try {
       const res = await fetch("/api/learn/tree");
       if (res.status === 401) {
@@ -107,13 +109,18 @@ export default function LearnHome() {
   }, []);
 
   // Categories are switched only via the header Courses menu — reload the tree
-  // when the course changes (or when returning to the tab).
+  // when the course changes, and refresh on focus at most once a minute (keeps
+  // it fast on slow connections and cheap on Vercel).
   useEffect(() => {
-    const reload = () => load();
-    window.addEventListener("sari:course-changed", reload);
+    const reload = () => {
+      if (Date.now() - lastLoadRef.current < 60_000) return;
+      load();
+    };
+    const courseReload = () => load();
+    window.addEventListener("sari:course-changed", courseReload);
     window.addEventListener("focus", reload);
     return () => {
-      window.removeEventListener("sari:course-changed", reload);
+      window.removeEventListener("sari:course-changed", courseReload);
       window.removeEventListener("focus", reload);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
