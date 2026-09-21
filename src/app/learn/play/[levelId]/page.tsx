@@ -20,6 +20,7 @@ interface CompleteResult {
   xp_earned: number;
   speed_bonus: number;
   stars: number;
+  accuracy: number;
   firstCompletion: boolean;
   speed_tier: string;
   accuracy_tier: string;
@@ -167,6 +168,11 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white">
             {result.firstCompletion ? "Mission complete! 🎉" : "Replay XP earned! 🔁"}
           </h1>
+          {result.stars === 3 && (
+            <p className="mt-2 inline-block px-3 py-1 rounded-full bg-dl-gold/15 border border-dl-gold/40 text-dl-gold text-xs font-extrabold animate-pop-in">
+              💯 Perfect run!
+            </p>
+          )}
           <p className="mt-2 text-white/60">{takeaway}</p>
         </div>
 
@@ -195,7 +201,7 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
               <Target className="w-5 h-5 mx-auto text-dl-green mb-1" />
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-white/40">Accuracy</p>
               <p className="text-lg font-extrabold text-white">{at.emoji} {at.label}</p>
-              <p className="text-[10px] text-white/40">⭐ {result.stars}/3</p>
+              <p className="text-[10px] text-white/40">⭐ {result.stars}/3 · {Math.round((result.accuracy ?? 0) * 100)}%</p>
             </div>
           </div>
 

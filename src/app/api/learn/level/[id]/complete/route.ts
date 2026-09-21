@@ -101,6 +101,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     xp_earned: xpAward,
     speed_bonus: speedBonus,
     stars: newStars,
+    accuracy,
     firstCompletion,
     speed_tier: sTier.key,
     accuracy_tier: aTier.key,

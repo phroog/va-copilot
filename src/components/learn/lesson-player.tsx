@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { answerJuice, finishJuice } from "@/lib/juice";
 import { smallBurst } from "@/lib/confetti";
 import { playSound } from "@/lib/sounds";
+import { startMusic, stopMusic } from "@/lib/music";
 import { formatTime } from "@/lib/learn/performance";
 
 const PRAISE = ["Nice!", "Nailed it!", "You're on fire!", "Boom!", "Client material!", "Too easy!", "That's the pro move!"];
@@ -118,6 +119,13 @@ function StoryMode({
 
   const target = targetSeconds ?? (content.blocks.length * 20);
   const elapsed = useElapsed(phase === "playing");
+
+  // Soft ambient during the mission, fades out when it ends.
+  useEffect(() => {
+    if (phase === "playing") startMusic("lesson");
+    else stopMusic();
+    return () => stopMusic();
+  }, [phase]);
 
   const blocks = content.blocks;
   const interactiveCount = blocks.filter((b) => INTERACTIVE.includes(b.type as any)).length;
@@ -262,6 +270,13 @@ function RapidMode({
 
   const target = targetSeconds ?? (blocks.length * 20);
   const elapsed = useElapsed(phase === "playing");
+
+  // Soft ambient during the mission, fades out when it ends.
+  useEffect(() => {
+    if (phase === "playing") startMusic("lesson");
+    else stopMusic();
+    return () => stopMusic();
+  }, [phase]);
 
   const block = blocks[idx];
   const shuffledOrder = useMemo(() => {
@@ -454,6 +469,13 @@ function ChatMode({
 
   const target = targetSeconds ?? (blocks.length * 25);
   const elapsed = useElapsed(phase === "chat");
+
+  // Soft ambient during the sim, fades out when it ends.
+  useEffect(() => {
+    if (phase === "chat") startMusic("lesson");
+    else stopMusic();
+    return () => stopMusic();
+  }, [phase]);
 
   const block = blocks[idx];
   const options = (block?.type === "pick" || block?.type === "scenario") ? block.options : [];

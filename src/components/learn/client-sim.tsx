@@ -6,6 +6,7 @@ import type { PathWithNodes } from "@/lib/learn/types";
 import { cn } from "@/lib/utils";
 import { playSound } from "@/lib/sounds";
 import { answerJuice, finishJuice, levelUpJuice } from "@/lib/juice";
+import { startMusic, stopMusic } from "@/lib/music";
 import { RollingNumber } from "@/components/learn/rolling-number";
 import { RankHud, type HudUser } from "@/components/learn/rank-hud";
 import {
@@ -64,6 +65,12 @@ export function ClientSim({ path, onBack }: { path: PathWithNodes | null; onBack
       if (el) el.scrollTop = el.scrollHeight;
     }
   }, [messages, phase]);
+
+  useEffect(() => {
+    if (phase === "chat") startMusic("sim");
+    else stopMusic();
+    return () => stopMusic();
+  }, [phase]);
 
   // round timer
   useEffect(() => {
