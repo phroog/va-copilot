@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { answerJuice, finishJuice } from "@/lib/juice";
 import { smallBurst } from "@/lib/confetti";
 import { playSound } from "@/lib/sounds";
-import { startMusic, stopMusic } from "@/lib/music";
+import { startMusic, stopMusic, playRisingCue } from "@/lib/music";
 import { formatTime } from "@/lib/learn/performance";
 
 const PRAISE = ["Nice!", "Nailed it!", "You're on fire!", "Boom!", "Client material!", "Too easy!", "That's the pro move!"];
@@ -128,6 +128,12 @@ function StoryMode({
   }, [phase]);
 
   const blocks = content.blocks;
+
+  // Rising "final push" tone when reaching the top of the level.
+  useEffect(() => {
+    if (phase === "playing" && idx + 1 >= blocks.length) playRisingCue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, idx]);
   const interactiveCount = blocks.filter((b) => INTERACTIVE.includes(b.type as any)).length;
   const block = blocks[idx];
   const isPassive = block?.type === "text" || block?.type === "tip";
@@ -283,6 +289,12 @@ function RapidMode({
     if (block?.type === "order") return shuffle(block.items.map((text, originalIndex) => ({ text, originalIndex })));
     return [];
   }, [block]);
+
+  // Rising "final push" tone when reaching the top of the level.
+  useEffect(() => {
+    if (phase === "playing" && idx + 1 >= blocks.length) playRisingCue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, idx]);
 
   const resetRound = () => {
     setAnswered(false);
@@ -479,6 +491,12 @@ function ChatMode({
 
   const block = blocks[idx];
   const options = (block?.type === "pick" || block?.type === "scenario") ? block.options : [];
+
+  // Rising "final push" tone when reaching the top of the level.
+  useEffect(() => {
+    if (phase === "chat" && idx + 1 >= blocks.length) playRisingCue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, idx]);
 
   useEffect(() => {
     if (phase === "chat") {

@@ -8,6 +8,7 @@ import { modeForLevel } from "@/lib/learn/modes";
 import type { PathWithNodes, NodeWithStatus } from "@/lib/learn/types";
 import type { HudUser } from "@/components/learn/rank-hud";
 import { ClientSim } from "@/components/learn/client-sim";
+import { startMusic, stopMusic } from "@/lib/music";
 import { cn } from "@/lib/utils";
 
 const NODE = 70;
@@ -147,6 +148,12 @@ export default function LearnHome() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, paths, chosen]);
+
+  // Calm map theme on the rank tree; ClientSim manages its own music.
+  useEffect(() => {
+    if (mode === "rank") startMusic("map");
+    return () => stopMusic();
+  }, [mode]);
 
   const activePath = paths.find((p) => p.id === activePathId) ?? null;
 

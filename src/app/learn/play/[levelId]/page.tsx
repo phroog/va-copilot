@@ -9,6 +9,7 @@ import { LessonPlayer } from "@/components/learn/lesson-player";
 import { RollingNumber } from "@/components/learn/rolling-number";
 import { QuitDialog } from "@/components/learn/quit-dialog";
 import { levelUpJuice, nodeCompleteJuice } from "@/lib/juice";
+import { playVictoryJingle } from "@/lib/music";
 import { modeForLevel } from "@/lib/learn/modes";
 import { formatTime } from "@/lib/learn/performance";
 import { RankHud, type HudUser } from "@/components/learn/rank-hud";
@@ -97,6 +98,7 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
     if (!result) return;
     if (result.rankUp) levelUpJuice();
     else if (result.firstCompletion && result.unlockedNodes.length > 0) nodeCompleteJuice();
+    if (result.stars === 3) playVictoryJingle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result?.rankUp, result?.unlockedNodes]);
 
