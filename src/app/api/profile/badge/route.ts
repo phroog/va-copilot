@@ -20,9 +20,16 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name,xp,streak_count,badge_activities,badge_projects")
+    .select("full_name,xp,streak_count,badge_activities,badge_projects,public_id")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  // Ensure a shareable public id exists.
+  let publicId = profile?.public_id ?? null;
+  if (!publicId) {
+    publicId = "user_" + crypto.randomUUID().split("-")[0].slice(0, 8);
+    await supabase.from("profiles").update({ public_id: publicId }).eq("user_id", user.id);
+  }
 
   const { data: agg } = await supabase
     .from("learn_progress")
@@ -43,6 +50,7 @@ export async function GET() {
       name: profile?.full_name || user.email?.split("@")[0] || "Virtual Assistant",
       xp,
       streak: profile?.streak_count ?? 0,
+      publicId,
       rank: xpInfo,
     },
     portfolio: {

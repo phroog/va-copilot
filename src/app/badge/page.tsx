@@ -16,7 +16,7 @@ const TIER_META: Record<string, { label: string; emoji: string }> = {
 };
 
 interface BadgeData {
-  profile: { name: string; xp: number; streak: number; rank: HudUser };
+  profile: { name: string; xp: number; streak: number; publicId: string | null; rank: HudUser };
   portfolio: { activities: string[]; projects: string[] };
   stats: { lessonsDone: number; avgAccuracy: number; bestSpeedTier: string; bestAccuracyTier: string; masteredPct: number | null };
 }
@@ -35,6 +35,7 @@ export default function BadgePage() {
   const [newProject, setNewProject] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -80,6 +81,22 @@ export default function BadgePage() {
   const stats = data?.stats ?? { lessonsDone: 0, avgAccuracy: 0, bestSpeedTier: "bronze", bestAccuracyTier: "bronze", masteredPct: null };
   const speedTierInfo = TIER_META[stats.bestSpeedTier] ?? TIER_META.bronze;
   const accTierInfo = TIER_META[stats.bestAccuracyTier] ?? TIER_META.bronze;
+
+  // All categories the user actually touched (not just the active one).
+  const specialties = paths.filter((p) => p.completedNodes > 0 || p.nodes.some((n) => n.status !== "locked"));
+
+  const shareLink = data?.profile.publicId
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/p/${data.profile.publicId}`
+    : "";
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
 
   const addItem = (list: string[], set: (s: string[]) => void, val: string) => {
     const v = val.trim();
@@ -153,7 +170,16 @@ export default function BadgePage() {
           <div className="text-4xl mb-1">{user?.rankEmoji ?? "🏅"}</div>
           <p className="text-xl font-extrabold text-white leading-tight">{name}</p>
           <p className="text-[13px] text-white/60">{user?.rankTitle} · Level {user?.level ?? 1}</p>
-          {activePath && <p className="text-[11px] font-bold text-dl-gold mt-0.5">{activePath.emoji} {activePath.title}</p>}
+          {specialties.length > 0 && (
+            <div className="mt-2 flex flex-wrap justify-center gap-1.5">
+              {specialties.map((s) => (
+                <span key={s.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-dl-gold/15 border border-dl-gold/40 text-[10px] font-extrabold text-dl-gold">
+                  {s.emoji} {s.title}
+                  {s.completedNodes >= s.totalNodes && " ✓"}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* mastery ring (all categories) */}
@@ -183,6 +209,19 @@ export default function BadgePage() {
           <span className="text-dl-gold/70">{overall.fpId}</span>
         </div>
       </div>
+
+      {/* share */}
+      {shareLink && (
+        <div className="mt-4">
+          <button
+            onClick={copyLink}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-extrabold text-sm shadow-btn-purple hover:brightness-110 active:translate-y-1 active:shadow-none transition-all squishy"
+          >
+            {copied ? "✅ Link copied!" : "🔗 Share my badge (put it in your bio)"}
+          </button>
+          {copied && <p className="mt-1.5 text-center text-[11px] text-white/40">{shareLink}</p>}
+        </div>
+      )}
 
       {/* per-category badges */}
       {paths.length > 0 && (

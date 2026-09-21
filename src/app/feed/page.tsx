@@ -31,6 +31,7 @@ export default function FeedPage() {
   const [user, setUser] = useState<HudUser | null>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<"feed" | "events">("feed");
 
   useEffect(() => {
     (async () => {
@@ -162,6 +163,15 @@ export default function FeedPage() {
     urgent: true,
   });
 
+  // Past community sessions (Google Meet) — informational, no commitments.
+  const EVENTS = [
+    { emoji: "🎙️", title: "Pricing & Packaging Masterclass", topic: "Rates", date: "Aug 18, 2026", duration: "45 min", status: "Ended · Recording available" },
+    { emoji: "✉️", title: "Email Automation 101", topic: "Inbox Ops", date: "Sep 02, 2026", duration: "30 min", status: "Ended · Notes published" },
+    { emoji: "🤝", title: "Client Onboarding Bootcamp", topic: "Clients", date: "Sep 09, 2026", duration: "40 min", status: "Ended · Recording available" },
+    { emoji: "🗂️", title: "Notion Systems for VAs", topic: "Tools", date: "Sep 14, 2026", duration: "50 min", status: "Ended" },
+    { emoji: "🤖", title: "AI Tools Deep Dive", topic: "AI", date: "Sep 17, 2026", duration: "35 min", status: "Ended · Highlights" },
+  ];
+
   if (loading) {
     return (
       <div className="py-6 px-4 max-w-[480px] mx-auto space-y-3">
@@ -177,10 +187,61 @@ export default function FeedPage() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="py-6 px-4 max-w-[480px] mx-auto pb-10">
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-2xl font-extrabold text-white">Feed</h1>
-        <span className="text-xs font-bold text-white/40">live updates</span>
+        <span className="text-xs font-bold text-white/40">{tab === "events" ? "live events" : "live updates"}</span>
       </div>
-      <p className="text-[13px] text-white/50 mb-5">Alerts, drops & moments you don't want to miss.</p>
 
+      {/* tabs */}
+      <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-[#1f2233] border border-white/10 mt-3 mb-5">
+        <button
+          onClick={() => setTab("feed")}
+          className={cn("py-2 rounded-xl text-[13px] font-extrabold transition-all squishy", tab === "feed" ? "bg-dl-purple text-white shadow-btn-purple" : "text-white/50 hover:text-white")}
+        >
+          📡 Feed
+        </button>
+        <button
+          onClick={() => setTab("events")}
+          className={cn("py-2 rounded-xl text-[13px] font-extrabold transition-all squishy", tab === "events" ? "bg-dl-green text-white shadow-btn-green" : "text-white/50 hover:text-white")}
+        >
+          📅 Live events
+        </button>
+      </div>
+
+      {tab === "events" ? (
+        <>
+          <p className="text-[13px] text-white/50 mb-4">
+            Community Google Meet sessions for VAs — workshops, recaps &amp; recordings from past sessions.
+          </p>
+          <div className="space-y-2.5">
+            {EVENTS.map((ev, i) => (
+              <motion.div
+                key={ev.title}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="relative rounded-3xl bg-[#1f2233] border border-white/10 overflow-hidden"
+              >
+                <span className="absolute left-0 top-0 bottom-0 w-1.5 bg-dl-green" />
+                <div className="pl-5 pr-4 py-3.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{ev.emoji}</span>
+                    <p className="font-extrabold text-white text-[15px] flex-1">{ev.title}</p>
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-white/50 bg-white/5 px-2 py-0.5 rounded-full">{ev.topic}</span>
+                  </div>
+                  <p className="text-[13px] text-white/55 mt-1">
+                    Google Meet · {ev.date} · {ev.duration}
+                  </p>
+                  <div className="flex items-center justify-between mt-2.5">
+                    <span className="text-[11px] font-bold text-dl-green">{ev.status}</span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          <p className="text-center text-[11px] text-white/35 mt-5">
+            New sessions are announced in the feed. Watch the community space for the next meet.
+          </p>
+        </>
+      ) : (
       <div className="space-y-2.5">
         {items.map((it, i) => {
           const a = ACCENT[it.accent];
@@ -213,6 +274,7 @@ export default function FeedPage() {
           );
         })}
       </div>
+      )}
     </motion.div>
   );
 }
