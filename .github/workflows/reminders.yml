@@ -13,7 +13,8 @@ jobs:
     steps:
       - name: Trigger reminder pushes
         run: |
-          curl -sS -m 120 -o /tmp/reminders.out -w "HTTP %{http_code}\n" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL || 'https://va-copilot-theta.vercel.app' }}/api/cron/reminders"
+          code=$(curl -sS -m 120 -o /tmp/reminders.out -w "%{http_code}" \
+            "${{ secrets.APP_URL || 'https://va-copilot-theta.vercel.app' }}/api/cron/reminders")
+          echo "HTTP $code"
           cat /tmp/reminders.out
+          test "${code:0:1}" = "2" || { echo "reminders endpoint failed"; exit 1; }

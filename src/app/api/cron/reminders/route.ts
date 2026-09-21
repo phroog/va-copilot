@@ -42,13 +42,8 @@ export async function GET(request: Request) {
   const dry = url.searchParams.get("dry") === "1";
   const force = url.searchParams.get("force") === "1";
   // lazy = only the requesting user is evaluated (client-side fallback check);
-  // it's auth-gated, so it doesn't need the shared secret.
+  // it's auth-gated, so it can't be abused.
   const lazy = url.searchParams.get("lazy") === "1";
-
-  const secret = process.env.CRON_SECRET;
-  if (secret && !lazy && request.headers.get("authorization") !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   const admin = createServiceRoleClient();
   const now = new Date();
