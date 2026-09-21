@@ -13,7 +13,7 @@ import { setupWebPush, sendToSubs } from "@/lib/push-server";
 const GRIND_MESSAGES = [
   "Your path is waiting — a 3-minute mission keeps the momentum ⚡",
   "Client Sim is open — easy XP while it's quiet 💬",
-  "Quick grind? The bots are moving on the leaderboard 🏆",
+  "Quick grind? The leaderboard is heating up 🏆",
   "One lesson today keeps your streak alive 🔥",
   "Your skills are getting dusty — knock one out 😄",
 ];

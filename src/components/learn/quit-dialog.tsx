@@ -15,7 +15,7 @@ const PLEAS = [
   "QUIT?! But you're SO close!",
   "Mochi told everyone you're the best. Don't lie to Mochi.",
   "Just ONE more lesson. For Mochi. Please?",
-  "The bots are catching up! Gooo!",
+  "Everyone's grinding — don't fall behind!",
   "Mochi already picked out your certificate.",
   "You were THIS close to Leveling up!",
   "What would your dream client say?!",

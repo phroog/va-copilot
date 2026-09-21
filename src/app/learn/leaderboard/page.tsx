@@ -68,7 +68,7 @@ export default function Leaderboard() {
           </div>
           <div className="text-right">
             <p className="text-xl font-extrabold text-dl-purpleLight leading-none">#{data.user.rank}</p>
-            <p className="text-[10px] text-white/40">of {Math.max(data.totalPlayers + 40, 100)}</p>
+            <p className="text-[10px] text-white/40">of {data.totalPlayers}</p>
           </div>
         </div>
       </div>
@@ -116,7 +116,6 @@ export default function Leaderboard() {
               </span>
               <span className="flex-1 font-bold text-white/90 truncate">
                 {e.name}
-                {e.isBot && <span className="ml-1 text-[10px] text-white/30 font-semibold">🤖</span>}
                 {e.isNew && <span className="ml-1 text-[9px] font-extrabold text-dl-blue bg-dl-blue/15 px-1.5 py-0.5 rounded-full">NEW</span>}
                 {e.isYou && <span className="ml-1 text-[10px] font-extrabold text-dl-purpleLight">YOU</span>}
               </span>

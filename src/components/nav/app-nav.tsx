@@ -8,6 +8,7 @@ import { Mochi } from "@/components/learn/mochi";
 import { CourseSheet } from "@/components/learn/course-sheet";
 import { PermissionsSheet } from "@/components/settings/permissions-sheet";
 import { ReminderToast } from "@/components/nav/reminder-toast";
+import { SariIntro } from "@/components/nav/sari-intro";
 import { useSoundSettings, registerAudioUnlock } from "@/lib/sounds";
 import { playSound } from "@/lib/sounds";
 import { setupPWA } from "@/lib/pwa";
@@ -135,7 +136,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <span className="text-[20px] sm:text-[22px] leading-none">💎</span>
                   <span className="text-base font-extrabold text-white tabular-nums">{gems ?? "…"}</span>
                 </Link>
-                <span className="hidden sm:flex items-center gap-1 min-w-0">
+                <span className="flex items-center gap-1 min-w-0">
                   <span className="text-[22px] leading-none">⚡</span>
                   <span className="text-base font-extrabold text-white tabular-nums">{xp}</span>
                 </span>
@@ -251,6 +252,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <Mochi />
       <ReminderToast />
+      <SariIntro />
 
       <CourseSheet open={coursesOpen} onClose={() => setCoursesOpen(false)} onCourseChanged={loadHud} />
       <PermissionsSheet open={permsOpen} onClose={() => setPermsOpen(false)} />

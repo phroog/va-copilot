@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const NUDGES = [
   { href: "/learn", text: "⚡ One quick mission keeps your momentum going." },
   { href: "/learn", text: "🔥 Your streak is watching. 3 minutes is all it takes." },
-  { href: "/learn/leaderboard", text: "🏆 The bots are grinding — don't fall behind!" },
+  { href: "/learn/leaderboard", text: "🏆 The leaderboard is heating up — keep your spot!" },
   { href: "/learn", text: "💬 Client Sim is open — easy XP while it's quiet." },
   { href: "/badge", text: "🏅 One more sealed skill makes your badge pop." },
 ];

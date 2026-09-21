@@ -32,13 +32,28 @@ export async function GET() {
 
   const entries: LeaderboardEntry[] = [];
 
-  for (const bot of (botsRes.data ?? []) as BotRow[]) {
-    entries.push({ ...botDisplay(bot), isYou: false });
+  // All seeded bots (2,000+) — rank counts every one of them.
+  const allBots = ((botsRes.data ?? []) as BotRow[]).map((bot) => ({ ...botDisplay(bot), isYou: false }));
+  const daily = dailyNewBots().map((nb) => ({ ...nb, isYou: false }));
+
+  // Only show a slice of the board: the top bots + the few around the user.
+  const sortedBots = [...allBots].sort((a, b) => b.xp - a.xp);
+  const topBots = sortedBots.slice(0, 40);
+  const ui = sortedBots.findIndex((b) => b.xp <= userXp);
+  const around: LeaderboardEntry[] = [];
+  if (ui >= 0) {
+    around.push(...sortedBots.slice(Math.max(0, ui - 3), ui), ...sortedBots.slice(ui, ui + 4));
   }
-  // Rotating newcomer bots so the board changes every day.
-  for (const nb of dailyNewBots()) {
-    entries.push({ ...nb, isYou: false });
+  const displayBots: LeaderboardEntry[] = [];
+  const seenBots = new Set<string>();
+  for (const b of [...topBots, ...around]) {
+    if (seenBots.has(b.id)) continue;
+    seenBots.add(b.id);
+    displayBots.push(b);
   }
+
+  for (const b of displayBots) entries.push(b);
+  for (const nb of daily) entries.push(nb);
 
   for (const u of (topUsersRes.data ?? []) as { user_id: string; full_name: string; xp: number }[]) {
     entries.push({
@@ -62,9 +77,8 @@ export async function GET() {
 
   merged.sort((a, b) => b.xp - a.xp);
 
-  // User rank among everyone (1-based).
-  const allBots = [...(botsRes.data ?? []).map((b: BotRow) => botDisplay(b)), ...dailyNewBots()];
-  const higherBots = allBots.filter((b) => b.xp > userXp).length;
+  // User rank among everyone (1-based) — out of 2,000+ competitors.
+  const higherBots = [...allBots, ...daily].filter((b) => b.xp > userXp).length;
   const higherUsers = (topUsersRes.data ?? []).filter((u: any) => u.xp > userXp && u.user_id !== user.id).length;
   const userRankOverall = 1 + higherBots + higherUsers;
 
@@ -74,9 +88,11 @@ export async function GET() {
     merged.push({ id: user.id, name: userName, avatar: userRank.emoji, xp: userXp, isBot: false, isYou: true });
   }
 
+  const totalPlayers = (higherUsersCountRes.count ?? 0) + allBots.length + daily.length;
+
   return NextResponse.json({
     entries: merged.slice(0, 100),
     user: { ...summarizeXp(userXp), streak, name: userName, rank: userRankOverall },
-    totalPlayers: higherUsersCountRes.count ?? 0,
+    totalPlayers,
   });
 }

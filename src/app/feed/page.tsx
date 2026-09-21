@@ -136,7 +136,7 @@ export default function FeedPage() {
   items.push({
     icon: "📡",
     title: "Sari Season 1",
-    desc: "The season ends soon. Final ranks lock in — stay ahead of the bots.",
+    desc: "The season ends soon. Final ranks lock in — every XP counts now.",
     href: "/learn/leaderboard",
     cta: "See standings",
     accent: "blue",

@@ -103,12 +103,21 @@ export function registerAudioUnlock() {
           tap.play();
           tap.volume(0.85);
         }
+        // First user gesture = when the intro sound is finally allowed.
+        if (introActive && settings.sound) playSound("chime");
       } catch {}
     });
   };
   window.addEventListener("pointerdown", unlock, { once: true });
   window.addEventListener("touchstart", unlock, { once: true });
   window.addEventListener("keydown", unlock, { once: true });
+}
+
+// The app intro (brand mark on open) signals when its sound window is live so
+// the audio-unlock handler can play the chime on the first allowed gesture.
+let introActive = false;
+export function setIntroActive(active: boolean) {
+  introActive = active;
 }
 
 // ── React hook ────────────────────────────────────────────────
