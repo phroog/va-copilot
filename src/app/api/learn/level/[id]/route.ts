@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { summarizeXp } from "@/lib/learn/ranks";
 import { isPaidUser, nodeRequiresPaid, sortNodes } from "@/lib/learn/gate";
 import { getOrGenerateLevel } from "@/lib/learn/level-gen";
+import { ensureDaily, getEnergy } from "@/lib/learn/energy";
 import type { LearnLevel, SkillNode, VaPath } from "@/lib/learn/types";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
@@ -36,6 +37,13 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   // clickable). Only the paid-depth gate is enforced server-side.
   if (nodeRequiresPaid(pathIndex) && !paid) {
     return NextResponse.json({ locked: true, reason: "paid", requiresPaid: true }, { status: 402 });
+  }
+
+  // Daily Energy gate: FREE/BLOOM have a limited number of lessons per day.
+  await ensureDaily(supabase, user.id);
+  const energy = await getEnergy(supabase, user.id);
+  if (energy.lessonsLeft <= 0) {
+    return NextResponse.json({ locked: true, reason: "energy", requiresPaid: false, energy }, { status: 429 });
   }
 
   const content = await getOrGenerateLevel(user.id, level as LearnLevel, node as SkillNode, (path as VaPath) ?? null);

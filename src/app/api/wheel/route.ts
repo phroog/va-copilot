@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { spinWheel } from "@/lib/payments";
+import { ensureProfile } from "@/lib/learn/profile";
+import { grantBonusLessons } from "@/lib/learn/energy";
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -44,32 +46,14 @@ export async function POST() {
 
   const reward = spinWheel();
 
-  if (reward.type === "views") {
-    const { data: view } = await supabase
-      .from("user_job_views")
-      .select("count, swaps, bonus")
-      .eq("user_id", user.id)
-      .eq("view_date", today)
-      .maybeSingle();
-    const count = view?.count ?? 0;
-    const swaps = view?.swaps ?? 0;
-    const bonus = (view?.bonus ?? 0) + reward.amount;
-    await supabase.from("user_job_views").upsert(
-      { user_id: user.id, view_date: today, count, swaps, bonus },
-      { onConflict: "user_id,view_date" }
-    );
+  if (reward.type === "lessons") {
+    // Daily Energy: extra lesson slots for today.
+    await grantBonusLessons(supabase, user.id, reward.amount);
   } else {
-    const { data: credits } = await supabase
-      .from("ai_credits")
-      .select("balance, total_used")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    const balance = (credits?.balance ?? 0) + reward.amount;
-    const total_used = credits?.total_used ?? 0;
-    await supabase.from("ai_credits").upsert(
-      { user_id: user.id, balance, total_used },
-      { onConflict: "user_id" }
-    );
+    // XP straight to the profile.
+    const profile = await ensureProfile(supabase, user.id);
+    const { data: cur } = await supabase.from("profiles").select("xp").eq("user_id", user.id).maybeSingle();
+    await supabase.from("profiles").update({ xp: (cur?.xp ?? profile?.xp ?? 0) + reward.amount }).eq("user_id", user.id);
   }
 
   await supabase.from("user_wheel_spins").insert({

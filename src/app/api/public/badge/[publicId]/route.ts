@@ -3,6 +3,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { summarizeXp } from "@/lib/learn/ranks";
 import { accuracyTier, speedTier } from "@/lib/learn/performance";
 import { sortNodes } from "@/lib/learn/gate";
+import { planFromSubscription } from "@/lib/learn/energy";
 import type { VaPath } from "@/lib/learn/types";
 
 // Public badge data for a shareable profile link. No auth required — the
@@ -15,17 +16,20 @@ export async function GET(_req: Request, { params }: { params: { publicId: strin
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("user_id,full_name,xp,streak_count,badge_activities,badge_projects")
+    .select("user_id,full_name,xp,streak_count,badge_activities,badge_projects,badge_tagline")
     .eq("public_id", publicId)
     .maybeSingle();
   if (!profile) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const [progressRes, pathsRes, nodesRes, levelsRes] = await Promise.all([
+  const [progressRes, pathsRes, nodesRes, levelsRes, subRes] = await Promise.all([
     admin.from("learn_progress").select("level_id,node_id,status,stars").eq("user_id", profile.user_id).eq("status", "completed"),
     admin.from("va_paths").select("*").eq("is_active", true).order("order_index"),
     admin.from("skill_nodes").select("*"),
     admin.from("learn_levels").select("id,node_id"),
+    admin.from("subscriptions").select("plan,status,access_until").eq("user_id", profile.user_id).maybeSingle(),
   ]);
+
+  const plan = planFromSubscription(subRes.data);
 
   const xp = profile.xp ?? 0;
   const rankInfo = summarizeXp(xp);
@@ -41,13 +45,14 @@ export async function GET(_req: Request, { params }: { params: { publicId: strin
 
   const paths = (pathsRes.data ?? []) as VaPath[];
   const nodes = (nodesRes.data ?? []) as any[];
-  const specialties: { emoji: string; title: string; pct: number; sealed: boolean }[] = [];
+  const specialties: { emoji: string; title: string; pct: number; sealed: boolean; done: number; total: number; skills: string[] }[] = [];
 
   let masteredTotal = 0;
   let totalNodes = 0;
   for (const path of paths) {
     const pathNodes = sortNodes(nodes.filter((n) => n.path_id === path.id));
     let done = 0;
+    const skills: string[] = [];
     for (const node of pathNodes) {
       const ids = levelsByNode.get(node.id) ?? [];
       if (ids.length === 0) continue;
@@ -55,6 +60,7 @@ export async function GET(_req: Request, { params }: { params: { publicId: strin
       if (ids.every((id) => completedLevelIds.has(id))) {
         done++;
         masteredTotal++;
+        if (skills.length < 10) skills.push(node.title);
       }
     }
     if (done > 0) {
@@ -63,6 +69,9 @@ export async function GET(_req: Request, { params }: { params: { publicId: strin
         title: path.title,
         pct: done / Math.max(pathNodes.length, 1),
         sealed: done >= pathNodes.length,
+        done,
+        total: pathNodes.length,
+        skills,
       });
     }
   }
@@ -82,6 +91,10 @@ export async function GET(_req: Request, { params }: { params: { publicId: strin
   return NextResponse.json({
     name: profile.full_name || "Virtual Assistant",
     publicId,
+    tagline: profile.badge_tagline ?? "",
+    plan,
+    verified: plan === "pro",
+    scout: plan === "pro" ? "top" : plan === "basic" ? "pool" : "none",
     xp,
     level: rankInfo.level,
     rankEmoji: rankInfo.rankEmoji,

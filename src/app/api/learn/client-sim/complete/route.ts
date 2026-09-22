@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeXp } from "@/lib/learn/ranks";
 import { ensureProfile } from "@/lib/learn/profile";
+import { ensureDaily, getEnergy, consumeSimScenarios } from "@/lib/learn/energy";
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), hi);
@@ -17,6 +18,14 @@ export async function POST(request: Request) {
   const rounds = clamp(Math.round(Number(body.rounds) || 0), 0, 200);
   const correct = clamp(Math.round(Number(body.correct) || 0), 0, rounds);
   const bestStreak = clamp(Math.round(Number(body.best_streak) || 0), 0, 999);
+
+  // Daily Energy: BLOOM gets 5 scenarios/day, Money Club unlimited.
+  await ensureDaily(supabase, user.id);
+  const energy = await getEnergy(supabase, user.id);
+  if (energy.simLimit !== Infinity && rounds > energy.simLeft) {
+    return NextResponse.json({ error: "Out of sim scenarios today", energy }, { status: 429 });
+  }
+  await consumeSimScenarios(supabase, user.id, rounds);
 
   const profile = await ensureProfile(supabase, user.id);
   const beforeXp = profile?.xp ?? 0;

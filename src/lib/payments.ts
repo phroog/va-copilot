@@ -103,15 +103,15 @@ export function dailyBonus(): number {
   return 5 + Math.floor(Math.random() * 16);
 }
 
-export type WheelReward = { type: "views" | "credits"; amount: number; label: string };
+export type WheelReward = { type: "lessons" | "xp"; amount: number; label: string };
 
 const WHEEL_SEGMENTS: { type: WheelReward["type"]; amount: number; label: string; weight: number }[] = [
-  { type: "views", amount: 5, label: "+5 Job Views", weight: 25 },
-  { type: "views", amount: 10, label: "+10 Job Views", weight: 20 },
-  { type: "views", amount: 20, label: "+20 Job Views", weight: 10 },
-  { type: "credits", amount: 1, label: "+1 Credit", weight: 20 },
-  { type: "credits", amount: 2, label: "+2 Credits", weight: 15 },
-  { type: "credits", amount: 5, label: "+5 Credits", weight: 10 },
+  { type: "lessons", amount: 1, label: "+1 Lesson", weight: 24 },
+  { type: "xp", amount: 100, label: "+100 XP", weight: 20 },
+  { type: "lessons", amount: 2, label: "+2 Lessons", weight: 18 },
+  { type: "xp", amount: 50, label: "+50 XP", weight: 18 },
+  { type: "lessons", amount: 3, label: "+3 Lessons", weight: 12 },
+  { type: "xp", amount: 25, label: "+25 XP", weight: 8 },
 ];
 
 export function spinWheel(): WheelReward {
@@ -121,5 +121,5 @@ export function spinWheel(): WheelReward {
     roll -= seg.weight;
     if (roll <= 0) return { type: seg.type, amount: seg.amount, label: seg.label };
   }
-  return { type: "views", amount: 5, label: "+5 Job Views" };
+  return { type: "lessons", amount: 1, label: "+1 Lesson" };
 }

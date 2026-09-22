@@ -126,6 +126,23 @@ export async function GET(request: Request) {
     if (lastActive !== today && grindOk && !hadStreakPushToday && todayCount < 2) {
       toSend.push({ userId, subs: subs.filter((s) => s.user_id === userId), kind: "grind", title: "Sari ⚡", body: GRIND_MESSAGES[Math.floor(Math.random() * GRIND_MESSAGES.length)], url: "/learn" });
     }
+
+    // 4. Rare "agencies viewed your profile" nudge (scout pool only, every few days).
+    if (plan?.plan && plan.plan !== "free") {
+      const row = userReminders.get("agency");
+      const days = row?.last_sent_at ? (now.getTime() - new Date(row.last_sent_at).getTime()) / 86_400_000 : Infinity;
+      if (force || days >= 3) {
+        const count = 2 + Math.floor(Math.random() * 4); // 2–5
+        toSend.push({
+          userId,
+          subs: subs.filter((s) => s.user_id === userId),
+          kind: "agency",
+          title: "Sari 🏢",
+          body: `${count} agencies viewed your profile this week. Keep your badge sharp!`,
+          url: "/badge",
+        });
+      }
+    }
   }
 
   // Cap at 2 pushes/user/day (unless force).

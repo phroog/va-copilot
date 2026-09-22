@@ -81,7 +81,13 @@ export default function LearnHome() {
   const [user, setUser] = useState<HudUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [chosen, setChosen] = useState(false);
-  const [mode, setMode] = useState<"rank" | "sim">("rank");
+  const [mode, setMode] = useState<"rank" | "sim">(() => {
+    try {
+      return (localStorage.getItem("sari_learn_mode") as "rank" | "sim") || "rank";
+    } catch {
+      return "rank";
+    }
+  });
   const lastLoadRef = useRef(0);
 
   const load = async () => {

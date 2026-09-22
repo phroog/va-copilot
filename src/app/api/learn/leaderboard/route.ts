@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeXp, rankFromXp } from "@/lib/learn/ranks";
 import { botDisplay, dailyNewBots, type BotRow } from "@/lib/learn/bots";
+import { planFromSubscription, type PlanKey } from "@/lib/learn/energy";
 
 export interface LeaderboardEntry {
   id: string;
@@ -18,17 +19,33 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [profileRes, topUsersRes, botsRes, higherUsersCountRes] = await Promise.all([
+  const [profileRes, topUsersRes, botsRes, subRes, paidUsersCountRes] = await Promise.all([
     supabase.from("profiles").select("xp,full_name,streak_count").eq("user_id", user.id).maybeSingle(),
     supabase.from("profiles").select("user_id,full_name,xp").gt("xp", 0).order("xp", { ascending: false }).limit(50),
     supabase.from("leaderboard_bots").select("id,name,avatar,base_xp").order("base_xp", { ascending: false }),
-    supabase.from("profiles").select("xp", { count: "exact", head: true }).gt("xp", 0),
+    supabase.from("subscriptions").select("plan,status,access_until").eq("user_id", user.id).maybeSingle(),
+    supabase.from("subscriptions").select("user_id", { count: "exact", head: true }).in("plan", ["basic", "pro"]).in("status", ["active", "trialing"]),
   ]);
+
+  const plan = planFromSubscription(subRes.data);
+  const ineligible = plan === "free"; // FREE can view but not compete.
 
   const userXp = profileRes.data?.xp ?? 0;
   const userRank = rankFromXp(userXp);
   const userName = profileRes.data?.full_name || user.email?.split("@")[0] || "You";
   const streak = profileRes.data?.streak_count ?? 0;
+
+  // Only paid users (BLOOM+) participate as real competitors.
+  const topUsers = (topUsersRes.data ?? []) as { user_id: string; full_name: string; xp: number }[];
+  const topUserIds = topUsers.map((u) => u.user_id);
+  const { data: topSubs } = await supabase
+    .from("subscriptions")
+    .select("user_id,plan,status,access_until")
+    .in("user_id", topUserIds);
+  const paidIds = new Set(
+    (topSubs ?? []).filter((s) => planFromSubscription(s) !== "free").map((s) => s.user_id)
+  );
+  const eligibleUsers = ineligible ? topUsers.filter((u) => paidIds.has(u.user_id)) : topUsers;
 
   const entries: LeaderboardEntry[] = [];
 
@@ -55,14 +72,14 @@ export async function GET() {
   for (const b of displayBots) entries.push(b);
   for (const nb of daily) entries.push(nb);
 
-  for (const u of (topUsersRes.data ?? []) as { user_id: string; full_name: string; xp: number }[]) {
+  for (const u of eligibleUsers) {
     entries.push({
       id: u.user_id,
       name: u.full_name || "VA",
       avatar: rankFromXp(u.xp).emoji,
       xp: u.xp,
       isBot: false,
-      isYou: u.user_id === user.id,
+      isYou: !ineligible && u.user_id === user.id,
     });
   }
 
@@ -79,20 +96,22 @@ export async function GET() {
 
   // User rank among everyone (1-based) — out of 2,000+ competitors.
   const higherBots = [...allBots, ...daily].filter((b) => b.xp > userXp).length;
-  const higherUsers = (topUsersRes.data ?? []).filter((u: any) => u.xp > userXp && u.user_id !== user.id).length;
-  const userRankOverall = 1 + higherBots + higherUsers;
+  const higherUsers = eligibleUsers.filter((u) => u.xp > userXp && u.user_id !== user.id).length;
+  const userRankOverall = ineligible ? null : 1 + higherBots + higherUsers;
 
-  // If the user isn't in the top list, append their own row for the board.
-  const inList = merged.some((e) => e.isYou);
-  if (!inList) {
-    merged.push({ id: user.id, name: userName, avatar: userRank.emoji, xp: userXp, isBot: false, isYou: true });
+  // If the user is competing and isn't in the top list, append their own row.
+  if (!ineligible) {
+    const inList = merged.some((e) => e.isYou);
+    if (!inList) {
+      merged.push({ id: user.id, name: userName, avatar: userRank.emoji, xp: userXp, isBot: false, isYou: true });
+    }
   }
 
-  const totalPlayers = (higherUsersCountRes.count ?? 0) + allBots.length + daily.length;
+  const totalPlayers = (paidUsersCountRes.count ?? 0) + allBots.length + daily.length;
 
   return NextResponse.json({
     entries: merged.slice(0, 100),
-    user: { ...summarizeXp(userXp), streak, name: userName, rank: userRankOverall },
+    user: { ...summarizeXp(userXp), streak, name: userName, rank: userRankOverall, ineligible, plan },
     totalPlayers,
   });
 }

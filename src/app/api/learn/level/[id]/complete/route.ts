@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeXp } from "@/lib/learn/ranks";
 import { ensureProfile } from "@/lib/learn/profile";
+import { ensureDaily, getEnergy, consumeLessons } from "@/lib/learn/energy";
 import { accuracyTier, speedTier, speedBonusXp, speedRatio } from "@/lib/learn/performance";
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -22,6 +23,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const { data: level } = await supabase.from("learn_levels").select("*").eq("id", levelId).maybeSingle();
   if (!level) return NextResponse.json({ error: "Level not found" }, { status: 404 });
   const { data: node } = await supabase.from("skill_nodes").select("*").eq("id", level.node_id).maybeSingle();
+
+  // Daily Energy: block + track lesson consumption.
+  await ensureDaily(supabase, user.id);
+  const energy = await getEnergy(supabase, user.id);
+  if (energy.lessonsLeft <= 0) {
+    return NextResponse.json({ error: "Out of energy today", energy }, { status: 429 });
+  }
+  await consumeLessons(supabase, user.id, 1);
 
   // Existing progress + profile.
   const profile = await ensureProfile(supabase, user.id);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeXp } from "@/lib/learn/ranks";
 import { accuracyTier, speedTier } from "@/lib/learn/performance";
+import { planFromSubscription } from "@/lib/learn/energy";
 
 const MAX_ITEMS = 24;
 
@@ -20,7 +21,7 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name,xp,streak_count,badge_activities,badge_projects,public_id")
+    .select("full_name,xp,streak_count,badge_activities,badge_projects,badge_tagline,public_id")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -30,6 +31,9 @@ export async function GET() {
     publicId = "user_" + crypto.randomUUID().split("-")[0].slice(0, 8);
     await supabase.from("profiles").update({ public_id: publicId }).eq("user_id", user.id);
   }
+
+  const { data: sub } = await supabase.from("subscriptions").select("plan,status,access_until").eq("user_id", user.id).maybeSingle();
+  const plan = planFromSubscription(sub);
 
   const { data: agg } = await supabase
     .from("learn_progress")
@@ -51,6 +55,10 @@ export async function GET() {
       xp,
       streak: profile?.streak_count ?? 0,
       publicId,
+      tagline: profile?.badge_tagline ?? "",
+      plan,
+      verified: plan === "pro",
+      scout: plan === "pro" ? "top" : plan === "basic" ? "pool" : "none",
       rank: xpInfo,
     },
     portfolio: {
@@ -76,12 +84,13 @@ export async function PATCH(request: Request) {
   const update: Record<string, unknown> = {};
   if (body.activities !== undefined) update.badge_activities = cleanList(body.activities);
   if (body.projects !== undefined) update.badge_projects = cleanList(body.projects);
+  if (typeof body.tagline === "string") update.badge_tagline = body.tagline.trim().slice(0, 80);
 
   const { data, error } = await supabase
     .from("profiles")
     .update(update)
     .eq("user_id", user.id)
-    .select("badge_activities,badge_projects")
+    .select("badge_activities,badge_projects,badge_tagline")
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -89,6 +98,7 @@ export async function PATCH(request: Request) {
     portfolio: {
       activities: (data?.badge_activities ?? []) as string[],
       projects: (data?.badge_projects ?? []) as string[],
+      tagline: (data?.badge_tagline ?? "") as string,
     },
   });
 }

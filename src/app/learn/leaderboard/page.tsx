@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +17,7 @@ interface Entry {
 
 interface LeaderboardData {
   entries: Entry[];
-  user: { name: string; rank: number; level: number; rankEmoji: string; rankTitle: string; xp: number };
+  user: { name: string; rank: number | null; level: number; rankEmoji: string; rankTitle: string; xp: number; ineligible?: boolean; plan?: string };
   totalPlayers: number;
 }
 
@@ -57,21 +58,33 @@ export default function Leaderboard() {
       </div>
 
       {/* user rank card */}
-      <div className="rounded-2xl bg-[#1f2233] border border-white/10 p-4 mb-6">
-        <div className="flex items-center gap-3">
-          <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-dl-purple to-[#ff8ba7] flex items-center justify-center text-2xl">
-            {data.user.rankEmoji}
-          </span>
-          <div className="flex-1 min-w-0">
-            <p className="font-extrabold text-white">{data.user.name}</p>
-            <p className="text-xs text-white/50">{data.user.rankTitle} · Level {data.user.level}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xl font-extrabold text-dl-purpleLight leading-none">#{data.user.rank}</p>
-            <p className="text-[10px] text-white/40">of {data.totalPlayers}</p>
+      {data.user.rank ? (
+        <div className="rounded-2xl bg-[#1f2233] border border-white/10 p-4 mb-6">
+          <div className="flex items-center gap-3">
+            <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-dl-purple to-[#ff8ba7] flex items-center justify-center text-2xl">
+              {data.user.rankEmoji}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="font-extrabold text-white">{data.user.name}</p>
+              <p className="text-xs text-white/50">{data.user.rankTitle} · Level {data.user.level}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-extrabold text-dl-purpleLight leading-none">#{data.user.rank}</p>
+              <p className="text-[10px] text-white/40">of {data.totalPlayers}</p>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="rounded-2xl border border-kawaii-purple/40 bg-gradient-to-r from-kawaii-purple/15 to-kawaii-pink/15 p-4 mb-6 text-center">
+          <p className="font-extrabold text-white">🔒 Ranks are for BLOOM+</p>
+          <p className="mt-1 text-xs text-white/60">
+            Free members can watch. Upgrade to compete, get ranked &amp; join the scout pool.
+          </p>
+          <Link href="/pricing" className="mt-3 inline-block px-5 py-2.5 rounded-xl bg-dl-green text-white text-sm font-extrabold shadow-btn-green hover:brightness-105 transition-all squishy">
+            Unlock BLOOM →
+          </Link>
+        </div>
+      )}
 
       {/* podium */}
       <div className="grid grid-cols-3 gap-3 items-end mb-6">

@@ -16,8 +16,18 @@ const TIER_META: Record<string, { label: string; emoji: string }> = {
 };
 
 interface BadgeData {
-  profile: { name: string; xp: number; streak: number; publicId: string | null; rank: HudUser };
-  portfolio: { activities: string[]; projects: string[] };
+  profile: {
+    name: string;
+    xp: number;
+    streak: number;
+    publicId: string | null;
+    tagline: string;
+    plan: string;
+    verified: boolean;
+    scout: "top" | "pool" | "none";
+    rank: HudUser;
+  };
+  portfolio: { activities: string[]; projects: string[]; tagline: string };
   stats: { lessonsDone: number; avgAccuracy: number; bestSpeedTier: string; bestAccuracyTier: string; masteredPct: number | null };
 }
 
@@ -33,6 +43,7 @@ export default function BadgePage() {
   const [projects, setProjects] = useState<string[]>([]);
   const [newActivity, setNewActivity] = useState("");
   const [newProject, setNewProject] = useState("");
+  const [tagline, setTagline] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -52,6 +63,7 @@ export default function BadgePage() {
         setData(b);
         setActivities(b?.portfolio?.activities ?? []);
         setProjects(b?.portfolio?.projects ?? []);
+        setTagline(b?.portfolio?.tagline ?? b?.profile?.tagline ?? "");
       } catch {
         // ignore
       } finally {
@@ -111,7 +123,7 @@ export default function BadgePage() {
       const res = await fetch("/api/profile/badge", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activities, projects }),
+        body: JSON.stringify({ activities, projects, tagline }),
       });
       if (!res.ok) throw new Error("save failed");
       setEditing(false);
@@ -146,10 +158,33 @@ export default function BadgePage() {
       <div className="mt-3 mb-5 rounded-2xl border border-kawaii-purple/40 bg-gradient-to-r from-kawaii-purple/15 to-kawaii-pink/15 p-4">
         <p className="text-sm font-extrabold text-white">✨ This is what gets you scouted</p>
         <p className="mt-1 text-[12px] leading-relaxed text-white/60">
-          The best VAs get a shot at being matched with our partner agencies. Keep your badge sharp — every mission, project and skill
-          you seal makes you stand out.
+          {data?.profile.scout === "top"
+            ? "You're in the Top Scout Pool — partner agencies get you first. Keep your badge sharp."
+            : data?.profile.scout === "pool"
+            ? "You're in the Scout Pool — agencies can find you. Keep your badge sharp to stand out."
+            : "Free members aren't in the scout pool yet. Upgrade to BLOOM+ to get found by partner agencies."}
         </p>
+        <div className="mt-2 flex items-center gap-1.5">
+          <span className={cn(
+            "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold border",
+            data?.profile.scout === "top" ? "bg-dl-gold/20 border-dl-gold/50 text-dl-gold" : data?.profile.scout === "pool" ? "bg-kawaii-purple/20 border-kawaii-purple/50 text-kawaii-lavender" : "bg-white/5 border-white/15 text-white/40"
+          )}>
+            🏢 {data?.profile.scout === "top" ? "Top Scout Pool" : data?.profile.scout === "pool" ? "Scout Pool" : "Not in scout pool"}
+          </span>
+          {data?.profile.verified && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-dl-green/15 border border-dl-green/50 text-dl-green text-[10px] font-extrabold">
+              ✓ Verified badge
+            </span>
+          )}
+        </div>
       </div>
+
+      {data?.profile.plan === "free" && (
+        <div className="mb-4 rounded-2xl border border-dl-red/40 bg-dl-red/10 p-3 text-center">
+          <p className="text-[12px] font-extrabold text-dl-red">Badge updates are paused on Free</p>
+          <p className="text-[11px] text-white/60 mt-0.5">Upgrade to BLOOM to keep your badge live &amp; shareable.</p>
+        </div>
+      )}
 
       {/* certificate / business card */}
       <div className="relative rounded-3xl p-6 border-2 border-dl-gold/40 bg-gradient-to-b from-[#2a2d3f] to-[#1f2233] shadow-[0_0_60px_rgba(255,200,0,0.08)]">
@@ -168,8 +203,14 @@ export default function BadgePage() {
 
         <div className="relative text-center">
           <div className="text-4xl mb-1">{user?.rankEmoji ?? "🏅"}</div>
-          <p className="text-xl font-extrabold text-white leading-tight">{name}</p>
+          <p className="text-xl font-extrabold text-white leading-tight inline-flex items-center justify-center gap-2">
+            {name}
+            {data?.profile.verified && (
+              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-dl-green text-white text-[10px] font-extrabold">✓ Verified</span>
+            )}
+          </p>
           <p className="text-[13px] text-white/60">{user?.rankTitle} · Level {user?.level ?? 1}</p>
+          {data?.profile.tagline && <p className="mt-2 text-[13px] italic text-white/70">{data.profile.tagline}</p>}
           {specialties.length > 0 && (
             <div className="mt-2 flex flex-wrap justify-center gap-1.5">
               {specialties.map((s) => (
@@ -267,6 +308,20 @@ export default function BadgePage() {
             </div>
           )}
         </div>
+
+        {editing && (
+          <div className="rounded-2xl border border-white/10 bg-[#1f2233] p-4 mb-3">
+            <p className="text-[12px] font-extrabold text-white mb-2">💬 Badge tagline</p>
+            <input
+              value={tagline}
+              onChange={(e) => setTagline(e.target.value)}
+              maxLength={80}
+              placeholder="e.g. Your friendly VA for busy founders"
+              className="w-full h-11 px-3 rounded-xl border-2 border-kawaii-lavender/40 bg-white/5 text-white text-sm font-semibold placeholder:text-white/30 focus:border-kawaii-purple outline-none"
+            />
+            <p className="mt-1 text-[10px] text-white/35">{tagline.length}/80 — shown on your public profile</p>
+          </div>
+        )}
 
         <div className="rounded-2xl border border-white/10 bg-[#1f2233] p-4">
           <p className="text-[12px] font-extrabold text-white mb-2">🛠️ Services &amp; activities</p>

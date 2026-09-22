@@ -78,6 +78,9 @@ interface PublicProfile {
 export default function SettingsPage() {
   const { t } = useLocale();
   const { showToast } = useToast();
+  const [section, setSection] = useState<"general" | "tools" | "learn">("general");
+  const [musicOn, setMusicOn] = useState(true);
+  const [learnMode, setLearnMode] = useState<"rank" | "sim">("rank");
   const [profile, setProfile] = useState<Profile>({ full_name: "", desired_rate: "", bio: "", inbox_email_alias: "", business_name: "", business_address: "", business_email: "", bank_account: "", tax_id: "", public_id: "", skills: [], experience_level: "beginner", job_categories: [], job_vector: [3, 3, 3, 3, 3] });
   const [publicProfile, setPublicProfile] = useState<PublicProfile>({ username: "", display_name: "", bio: "", skills: "", photo_url: "" });
   const [pubSaving, setPubSaving] = useState(false);
@@ -242,10 +245,32 @@ export default function SettingsPage() {
     <div className="space-y-6 animate-fade-in max-w-2xl">
       <h1 className="text-3xl font-extrabold">⚙️ {t("settings")}</h1>
 
+      {/* section tabs */}
+      <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-2xl bg-kawaii-lavender/20 dark:bg-dark-surface border border-kawaii-lavender/30 dark:border-dark-surface">
+        {([
+          ["general", "General"],
+          ["tools", "Tools"],
+          ["learn", "Learn"],
+        ] as const).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setSection(key)}
+            className={`py-2 rounded-xl text-sm font-extrabold transition-all squishy ${section === key ? "bg-white text-kawaii-purple shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"}`}
+          >
+            {key === "general" ? "👤" : key === "tools" ? "🛠️" : "🧠"} {label}
+          </button>
+        ))}
+      </div>
+
+      {section === "learn" ? (
+        <LearnSettings musicOn={musicOn} setMusicOn={setMusicOn} learnMode={learnMode} setLearnMode={setLearnMode} />
+      ) : (
+        <>
+      {section === "general" && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">💎 Your Plan</CardTitle>
-          <CardDescription>Your current plan and daily job limit.</CardDescription>
+          <CardDescription>Your current plan and daily energy limits.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {sub ? (
@@ -275,7 +300,9 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+      )}
 
+      {section === "general" && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">👤 Profile</CardTitle>
@@ -300,8 +327,9 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
-      {/* Job Matching Profile */}
+      {section === "tools" && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">🎯 Job Matching Profile</CardTitle>
@@ -376,7 +404,10 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
+      {section === "general" && (
+      <>
       {/* Public ID */}
       <Card>
         <CardHeader>
@@ -510,7 +541,11 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+      </>
+      )}
 
+      {section === "tools" && (
+      <>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">🛰️ {t("jobSources")}</CardTitle>
@@ -582,8 +617,10 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+      </>
+      )}
 
-      {/* Finance: Base Currency + Default Tax Rate */}
+      {section === "general" && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">🌍 Finances: Base Currency & Taxes</CardTitle>
@@ -616,10 +653,12 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
-      {/* Telegram Integration */}
-      <TelegramSettings />
+      {section === "tools" && <TelegramSettings />}
 
+      {section === "general" && (
+      <>
       {/* Set password (for magic-link users) */}
       <SetPasswordCard />
 
@@ -641,7 +680,138 @@ export default function SettingsPage() {
 
       {/* World Clock Timezones */}
       <WorldClockSettings />
+      </>
+      )}
+        </>
+      )}
 
+    </div>
+  );
+}
+
+function LearnSettings({
+  musicOn,
+  setMusicOn,
+  learnMode,
+  setLearnMode,
+}: {
+  musicOn: boolean;
+  setMusicOn: (v: boolean) => void;
+  learnMode: "rank" | "sim";
+  setLearnMode: (m: "rank" | "sim") => void;
+}) {
+  const [energy, setEnergy] = useState<{ plan: string; lessonsLeft: number; simLeft: number } | null>(null);
+
+  useEffect(() => {
+    try {
+      setMusicOn(localStorage.getItem("sari_bgmusic") !== "0");
+      setLearnMode((localStorage.getItem("sari_learn_mode") as "rank" | "sim") || "rank");
+    } catch {}
+    fetch("/api/learn/energy")
+      .then((r) => r.json())
+      .then((d) => setEnergy(d?.energy ?? null))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const setMusic = (v: boolean) => {
+    setMusicOn(v);
+    try {
+      localStorage.setItem("sari_bgmusic", v ? "1" : "0");
+    } catch {}
+  };
+  const setMode = (m: "rank" | "sim") => {
+    setLearnMode(m);
+    try {
+      localStorage.setItem("sari_learn_mode", m);
+    } catch {}
+  };
+
+  const planName = energy?.plan === "pro" ? "Money Club" : energy?.plan === "basic" ? "BLOOM" : "Free";
+  const lessons = energy?.lessonsLeft === Infinity ? "Unlimited" : `${energy?.lessonsLeft ?? "…"} left today`;
+  const sim = energy?.simLeft === Infinity ? "Unlimited" : energy?.plan === "free" ? "Not included" : `${energy?.simLeft ?? "…"} left today`;
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">⚡ Daily Energy</CardTitle>
+          <CardDescription>Your plan's daily limits — they reset every day.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">Plan</span>
+            <span className="font-bold text-kawaii-purple">{planName}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">Lessons</span>
+            <span className="font-semibold">{lessons}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">Client Sim scenarios</span>
+            <span className="font-semibold">{sim}</span>
+          </div>
+          <div className="pt-2">
+            <Link href="/pricing"><Button size="sm" variant="outline">View plans</Button></Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">🎵 Background music</CardTitle>
+          <CardDescription>Soft music during lessons &amp; the client sim.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <input type="checkbox" checked={musicOn} onChange={(e) => setMusic(e.target.checked)} className="w-5 h-5" />
+            <span className="text-sm text-slate-600 dark:text-slate-300">{musicOn ? "Music on" : "Music off"}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">🧠 Default Learn mode</CardTitle>
+          <CardDescription>Which mode the Learn page opens in.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            {(["rank", "sim"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-extrabold transition-all squishy ${learnMode === m ? "bg-kawaii-purple text-white" : "bg-kawaii-lavender/20 dark:bg-dark-surface text-slate-500 dark:text-slate-400"}`}
+              >
+                {m === "rank" ? "🌳 Rank climb" : "💬 Client Sim"}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">🗓️ Plans</CardTitle>
+          <CardDescription>How much you can train per day.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-kawaii-mint/10 dark:bg-dark-surface/50 p-3">
+              <p className="font-extrabold text-sm">🌱 Free</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">1 lesson/day · no sim · badge paused</p>
+            </div>
+            <div className="rounded-xl bg-kawaii-lavender/20 dark:bg-dark-surface p-3">
+              <p className="font-extrabold text-sm text-kawaii-purple dark:text-kawaii-lavender">🌸 BLOOM</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">2 lessons/day · 5 sim · ranked</p>
+            </div>
+            <div className="rounded-xl bg-kawaii-pink/15 dark:bg-dark-surface/50 p-3">
+              <p className="font-extrabold text-sm">👑 Money Club</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Unlimited · top scout pool · verified</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

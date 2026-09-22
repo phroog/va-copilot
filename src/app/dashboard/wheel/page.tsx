@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { useLocale } from "@/lib/i18n/context";
 
 const SEGMENTS = [
-  { label: "+5", color: "#6C4E8F", type: "views" },
-  { label: "+1", color: "#E78FB3", type: "credits" },
-  { label: "+10", color: "#9A8CC9", type: "views" },
-  { label: "+2", color: "#F5C9A6", type: "credits" },
-  { label: "+20", color: "#E78FB3", type: "views" },
-  { label: "+5", color: "#6C4E8F", type: "credits" },
+  { label: "+1", color: "#6C4E8F", type: "lessons" },
+  { label: "+100", color: "#E78FB3", type: "xp" },
+  { label: "+2", color: "#9A8CC9", type: "lessons" },
+  { label: "+50", color: "#F5C9A6", type: "xp" },
+  { label: "+3", color: "#E78FB3", type: "lessons" },
+  { label: "+25", color: "#6C4E8F", type: "xp" },
 ];
 
 const SEG = Math.PI * 2 / SEGMENTS.length;
@@ -150,7 +150,7 @@ export default function WheelPage() {
                 <div className="rounded-2xl bg-kawaii-lavender/20 dark:bg-dark-surface/50 px-6 py-3">
                   <p className="text-xs uppercase tracking-wider text-slate-400 font-bold">{t("wheelResult")}</p>
                   <p className="text-xl font-extrabold text-kawaii-purple dark:text-kawaii-lavender">
-                    {result.type === "credits" ? `🪙 +${result.amount} Credits` : `📋 +${result.amount} Job Views`}
+                    {result.type === "lessons" ? `⚡ +${result.amount} Lesson${result.amount > 1 ? "s" : ""} today` : `🎯 +${result.amount} XP`}
                   </p>
                 </div>
               ) : (

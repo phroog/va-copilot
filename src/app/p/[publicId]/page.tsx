@@ -15,13 +15,17 @@ const TIER_META: Record<string, { label: string; emoji: string }> = {
 interface PublicBadge {
   name: string;
   publicId: string;
+  tagline: string;
+  plan: string;
+  verified: boolean;
+  scout: "top" | "pool" | "none";
   xp: number;
   level: number;
   rankEmoji: string;
   rankTitle: string;
   streak: number;
   overall: { pct: number; mastered: number; total: number };
-  specialties: { emoji: string; title: string; pct: number; sealed: boolean }[];
+  specialties: { emoji: string; title: string; pct: number; sealed: boolean; done: number; total: number; skills: string[] }[];
   stats: { lessonsDone: number; bestSpeedTier: string; bestAccuracyTier: string };
   portfolio: { activities: string[]; projects: string[] };
 }
@@ -92,9 +96,20 @@ export default function PublicBadgePage({ params }: { params: { publicId: string
 
         <div className="relative text-center">
           <div className="text-4xl mb-1">{data.rankEmoji}</div>
-          <p className="text-2xl font-extrabold text-white leading-tight">{data.name}</p>
+          <p className="text-2xl font-extrabold text-white leading-tight inline-flex items-center justify-center gap-2">
+            {data.name}
+            {data.verified && (
+              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-dl-green text-white text-[10px] font-extrabold">✓ Verified</span>
+            )}
+          </p>
           <p className="text-[13px] text-white/60">{data.rankTitle} · Level {data.level}</p>
+          {data.tagline && <p className="mt-2 text-[13px] italic text-white/70">{data.tagline}</p>}
           {data.streak > 0 && <p className="text-[11px] font-bold text-dl-orange mt-1">🔥 {data.streak}-day streak</p>}
+          {data.scout !== "none" && (
+            <p className={cn("mt-1.5 text-[10px] font-extrabold inline-flex items-center gap-1 px-2 py-0.5 rounded-full border", data.scout === "top" ? "bg-dl-gold/15 border-dl-gold/40 text-dl-gold" : "bg-kawaii-purple/15 border-kawaii-purple/40 text-kawaii-lavender")}>
+              🏢 {data.scout === "top" ? "Top Scout Pool" : "Scout Pool"}
+            </p>
+          )}
         </div>
 
         {/* specialties */}
@@ -111,6 +126,31 @@ export default function PublicBadgePage({ params }: { params: { publicId: string
                 {s.emoji} {s.title}
                 {s.sealed && " ✓"}
               </span>
+            ))}
+          </div>
+        )}
+
+        {/* breakdown */}
+        {data.specialties.length > 0 && (
+          <div className="relative mt-5 space-y-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-white/40 text-center">What they've mastered</p>
+            {data.specialties.map((s) => (
+              <div key={s.title} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[12px] font-extrabold text-white">{s.emoji} {s.title}</p>
+                  <span className="text-[10px] font-bold text-white/50">{s.done}/{s.total} {s.sealed && <span className="text-dl-green">✓ sealed</span>}</span>
+                </div>
+                <div className="mt-1.5 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-full rounded-full bg-dl-green" style={{ width: `${Math.round(s.pct * 100)}%` }} />
+                </div>
+                {s.skills.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {s.skills.map((sk) => (
+                      <span key={sk} className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-white/70">✓ {sk}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}

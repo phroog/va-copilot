@@ -39,7 +39,7 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
   const [xpReward, setXpReward] = useState(30);
   const [targetSeconds, setTargetSeconds] = useState(180);
   const [takeaway, setTakeaway] = useState("");
-  const [locked, setLocked] = useState<{ reason: string; requiresPaid: boolean } | null>(null);
+  const [locked, setLocked] = useState<{ reason: string; requiresPaid: boolean; energy?: { plan: string; lessonsLeft: number; lessonsLimit: number } } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CompleteResult | null>(null);
@@ -55,8 +55,8 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
           return;
         }
         const data = await res.json();
-        if (res.status === 402 || res.status === 403) {
-          setLocked({ reason: data.reason ?? "locked", requiresPaid: data.requiresPaid ?? false });
+        if (res.status === 402 || res.status === 403 || res.status === 429) {
+          setLocked({ reason: data.reason ?? "locked", requiresPaid: data.requiresPaid ?? false, energy: data.energy });
           setLoading(false);
           return;
         }
@@ -121,25 +121,35 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
   }
 
   if (locked) {
+    const energy = locked.reason === "energy";
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
-        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-kawaii-coral to-kawaii-pink flex items-center justify-center text-4xl mb-4 animate-glow-pulse">
-          <Lock className="w-9 h-9 text-white" />
+        <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center text-4xl mb-4 animate-glow-pulse", energy ? "bg-gradient-to-br from-dl-orange to-dl-gold" : "bg-gradient-to-br from-kawaii-coral to-kawaii-pink")}>
+          {energy ? "⚡" : <Lock className="w-9 h-9 text-white" />}
         </div>
         <h1 className="text-3xl font-extrabold text-white">
-          {locked.requiresPaid ? "This skill is locked" : "Complete the previous skill first"}
+          {energy ? "Out of energy!" : locked.requiresPaid ? "This skill is locked" : "Complete the previous skill first"}
         </h1>
         <p className="mt-2 text-white/60 max-w-md">
-          {locked.requiresPaid
+          {energy
+            ? locked.energy?.plan === "basic"
+              ? "You used your 2 daily lessons. They refill tomorrow — or go Money Club for unlimited training."
+              : "Free gets you 1 lesson a day. Upgrade to keep climbing today."
+            : locked.requiresPaid
             ? "You've mastered the free skills. Go pro to unlock the full skill tree and keep climbing toward agency-ready."
             : "Skills unlock in order. Finish the one before it and this one opens up."}
         </p>
+        {energy && locked.energy?.lessonsLimit !== Infinity && (
+          <p className="mt-2 text-[13px] font-bold text-dl-gold">
+            ⚡ {locked.energy?.lessonsLeft}/today used up · {locked.energy?.lessonsLimit} daily
+          </p>
+        )}
         <div className="mt-6 flex gap-3">
           <Link href="/learn"><Button variant="outline">Back to my tree</Button></Link>
-          {locked.requiresPaid && (
+          {(locked.requiresPaid || energy) && (
             <Link href="/pricing">
               <Button variant="primary" className="inline-flex items-center gap-2">
-                <Crown className="w-4 h-4" /> Unlock with Sari Money Club
+                <Crown className="w-4 h-4" /> {energy ? "Get Money Club · Unlimited" : "Unlock with Sari Money Club"}
               </Button>
             </Link>
           )}

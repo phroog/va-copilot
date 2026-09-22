@@ -10,6 +10,16 @@ import { getSoundSettings, subscribeSoundSettings } from "@/lib/sounds";
 
 export type Situation = "map" | "lesson" | "sim";
 
+// Background music master switch (persisted separately from sound effects).
+export function isMusicEnabled(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return localStorage.getItem("sari_bgmusic") !== "0";
+  } catch {
+    return true;
+  }
+}
+
 interface Bar {
   pad: string[];
   melody: (string | null)[];
@@ -174,6 +184,7 @@ function fadeTarget(v: number, secs: number) {
 }
 
 export async function startMusic(situation: Situation): Promise<void> {
+  if (!isMusicEnabled()) return;
   if (!getSoundSettings().sound) return;
   if (current === situation && running) return;
   stopMusic();

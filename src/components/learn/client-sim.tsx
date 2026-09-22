@@ -53,11 +53,24 @@ export function ClientSim({ path, onBack }: { path: PathWithNodes | null; onBack
   const [sessionXp, setSessionXp] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(ROUND_SECONDS);
   const [summary, setSummary] = useState<SessionSummary | null>(null);
+  const [scenariosLeft, setScenariosLeft] = useState<number>(Infinity);
+  const [plan, setPlan] = useState<string>("free");
   const chatRef = useRef<HTMLDivElement>(null);
   const msgId = useRef(1);
   const prevDifficulty = useRef<SimDifficulty>("easy");
 
   const catTitle = path?.title ?? "Virtual Assistant";
+
+  // Daily sim scenario allowance (BLOOM: 5/day, Money Club: ∞).
+  useEffect(() => {
+    fetch("/api/learn/energy")
+      .then((r) => r.json())
+      .then((d) => {
+        setScenariosLeft(d?.energy?.simLeft ?? Infinity);
+        setPlan(d?.energy?.plan ?? "free");
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (phase === "chat") {
@@ -106,7 +119,7 @@ export function ClientSim({ path, onBack }: { path: PathWithNodes | null; onBack
     push({ role: "client", text: r.message });
   };
 
-  const start = () => {
+  const start = async () => {
     playSound("chime");
     setHappiness(START_HAPPY);
     setStreak(0);
@@ -117,6 +130,14 @@ export function ClientSim({ path, onBack }: { path: PathWithNodes | null; onBack
     setMessages([]);
     msgId.current = 1;
     prevDifficulty.current = "easy";
+    try {
+      const res = await fetch("/api/learn/energy");
+      const d = await res.json();
+      setScenariosLeft(d?.energy?.simLeft ?? Infinity);
+      setPlan(d?.energy?.plan ?? "free");
+    } catch {
+      setScenariosLeft(Infinity);
+    }
     setPhase("chat");
     newRound();
   };
@@ -153,6 +174,7 @@ export function ClientSim({ path, onBack }: { path: PathWithNodes | null; onBack
     setCorrectCount((c) => c + (correct ? 1 : 0));
     setRoundCount((c) => c + 1);
     setSessionXp((x) => x + xp);
+    if (scenariosLeft !== Infinity) setScenariosLeft((s) => Math.max(0, s - 1));
 
     push({ role: "you", text: round.options[i] });
     push({
@@ -173,7 +195,7 @@ export function ClientSim({ path, onBack }: { path: PathWithNodes | null; onBack
 
   const next = () => {
     if (!round) return;
-    if (happiness <= 0) {
+    if (happiness <= 0 || (scenariosLeft <= 0 && scenariosLeft !== Infinity)) {
       endSession();
       return;
     }
@@ -218,6 +240,11 @@ export function ClientSim({ path, onBack }: { path: PathWithNodes | null; onBack
           <span className="px-3 py-1.5 rounded-full bg-[#2a2d3f]">⏱ {ROUND_SECONDS}s per reply</span>
           <span className="px-3 py-1.5 rounded-full bg-[#2a2d3f]">🔥 streak multiplier x{mult}</span>
         </div>
+        {plan !== "pro" && scenariosLeft !== Infinity && (
+          <p className="mt-3 text-[12px] font-extrabold text-dl-gold">
+            ⚡ {scenariosLeft} scenario{scenariosLeft === 1 ? "" : "s"} left today
+          </p>
+        )}
         <p className="mt-3 text-[11px] text-white/40 max-w-xs">
           ⚠️ Watch out — some replies look right but are traps. Let the happiness meter hit 0 and the client storms off.
         </p>
@@ -306,6 +333,11 @@ export function ClientSim({ path, onBack }: { path: PathWithNodes | null; onBack
             <span className="inline-flex items-center gap-1 text-xs font-extrabold text-dl-purpleLight">
               ⚡{sessionXp}
             </span>
+            {plan !== "pro" && scenariosLeft !== Infinity && (
+              <span className="inline-flex items-center gap-1 text-xs font-extrabold text-dl-gold" title="Scenarios left today">
+                📚{scenariosLeft}
+              </span>
+            )}
           </div>
         </div>
 
