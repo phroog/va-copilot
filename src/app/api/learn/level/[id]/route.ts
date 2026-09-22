@@ -52,6 +52,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     level: { ...level, content },
     node,
     path,
+    plan: energy.plan,
     user: { ...summarizeXp(profileRes.data?.xp ?? 0), streak: profileRes.data?.streak_count ?? 0 },
     paid,
   });

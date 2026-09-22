@@ -8,6 +8,7 @@ import { modeForLevel } from "@/lib/learn/modes";
 import type { PathWithNodes, NodeWithStatus } from "@/lib/learn/types";
 import type { HudUser } from "@/components/learn/rank-hud";
 import { ClientSim } from "@/components/learn/client-sim";
+import { UpgradeCta } from "@/components/learn/upgrade-cta";
 import { startMusic, stopMusic } from "@/lib/music";
 import { cn } from "@/lib/utils";
 
@@ -89,6 +90,8 @@ export default function LearnHome() {
     }
   });
   const lastLoadRef = useRef(0);
+  const [nudgePlan, setNudgePlan] = useState<string | null>(null);
+  const [nudgeVisible, setNudgeVisible] = useState(false);
 
   const load = async () => {
     lastLoadRef.current = Date.now();
@@ -160,6 +163,24 @@ export default function LearnHome() {
     if (mode === "rank") startMusic("map");
     return () => stopMusic();
   }, [mode]);
+
+  // One polite, dismissible upgrade nudge per session for Free users.
+  useEffect(() => {
+    (async () => {
+      try {
+        const seen = sessionStorage.getItem("sari_nudge_seen") === "1";
+        if (seen) return;
+        const d = await fetch("/api/learn/energy").then((r) => r.json());
+        const plan = d?.energy?.plan ?? "free";
+        setNudgePlan(plan);
+        if (plan !== "pro") {
+          sessionStorage.setItem("sari_nudge_seen", "1");
+          setTimeout(() => setNudgeVisible(true), 2500);
+        }
+      } catch {}
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const activePath = paths.find((p) => p.id === activePathId) ?? null;
 
@@ -288,6 +309,21 @@ export default function LearnHome() {
           </button>
         </div>
       </div>
+
+      {nudgeVisible && nudgePlan && nudgePlan !== "pro" && (
+        <div className="max-w-[480px] mx-auto px-4 mt-2">
+          <div className="relative">
+            <button
+              onClick={() => setNudgeVisible(false)}
+              className="absolute -top-1.5 -right-1.5 z-10 w-6 h-6 rounded-full bg-[#1f2233] border border-white/15 flex items-center justify-center text-white/60 hover:text-white text-xs"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+            <UpgradeCta plan={nudgePlan} />
+          </div>
+        </div>
+      )}
 
       {/* categories are switched via the header Courses menu (CourseSheet) */}
 

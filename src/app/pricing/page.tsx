@@ -78,10 +78,10 @@ export default function PricingPage() {
       orig: "$9.99",
       peso: formatPeso(4.99),
       coffee: coffeeCompare(4.99),
-      per: "/mo",
-      desc: t("planBasicDesc"),
+      per: " · 30 days",
+      desc: "Prepaid — pay once, no auto-renewal. Like topping up a SIM.",
       features: [t("planBasicFeature1"), t("planBasicFeature2"), t("planBasicFeature3"), t("planBasicFeature4")],
-      cta: t("planBasicCta"),
+      cta: "Top up · 30 days",
       highlight: false,
     },
     {
@@ -91,33 +91,18 @@ export default function PricingPage() {
       orig: "$19.99",
       peso: formatPeso(9.99),
       coffee: coffeeCompare(9.99),
-      per: "/mo",
-      desc: t("planProDesc"),
+      per: " · 30 days",
+      desc: "Prepaid — pay once, no auto-renewal. Unlimited training + Top Scout Pool.",
       features: [t("planProFeature1"), t("planProFeature2"), t("planProFeature3"), t("planProFeature4")],
-      cta: t("planProCta"),
+      cta: "Top up · 30 days",
       highlight: true,
     },
   ];
 
   const startPlan = async (plan: string) => {
     if (plan === "free") { router.push("/auth/signup"); return; }
-    trackEvent("AddPaymentInfo", { currency: "USD", value: plan === "pro" ? 9.99 : 4.99, content_type: "product" });
-    setLoadingPlan(plan);
-    setMsg("");
-    try {
-      const res = await fetch("/api/subscription-status");
-      if (res.status === 401) { router.push("/auth/login?next=/pricing"); return; }
-      const r = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data?.error || "Checkout failed");
-      if (data.url) window.location.href = data.url;
-    } catch (e: any) {
-      setMsg(e?.message || "Checkout failed");
-    } finally { setLoadingPlan(null); }
+    // Prepaid only — no subscriptions. A one-time top-up grants 30 days.
+    await startPass(plan === "pro" ? "pro_1m" : "basic_1m");
   };
 
   const startPass = async (passKey: PassKey | DailyPassKey) => {
@@ -252,17 +237,31 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Cancel-anytime guarantee */}
+        {/* Prepaid + scout guarantee */}
         <div className="mt-6 rounded-2xl border-2 border-kawaii-mint/50 dark:border-green-700/50 bg-green-50/70 dark:bg-green-900/10 px-5 py-4 flex items-center gap-3">
           <span className="text-2xl shrink-0">🛡️</span>
           <div>
             <p className="font-extrabold text-slate-800 dark:text-slate-100 text-sm">
-              Billed monthly until you cancel — cancel anytime, then it simply runs out.
+              Prepaid like a SIM — and a 100% money-back scout guarantee.
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Subscriptions renew automatically each month. You can cancel at any time with one click:
-              no renewal after your paid period, no hidden charges, no cancellation calls. You keep
-              full access until the period ends.
+              No subscriptions, no auto-renewal, no cancellation needed. You top up, you train, it runs out.
+              And if one of our <b>partner agencies scouts you</b> from your badge while you're on a paid plan,
+              we give you <b>100% of your money back</b>. That's how sure we are.
+            </p>
+          </div>
+        </div>
+
+        {/* Scout guarantee detail */}
+        <div className="mt-3 rounded-2xl border border-kawaii-purple/40 dark:border-dark-surface bg-kawaii-purple/10 dark:bg-kawaii-purple/10 px-5 py-4 flex items-center gap-3">
+          <span className="text-2xl shrink-0">🤝</span>
+          <div>
+            <p className="font-extrabold text-slate-800 dark:text-slate-100 text-sm">
+              Scouted by a partner agency? Money back.
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              We partner with real agencies that review our top VAs. If one of them picks up your profile,
+              your plan is refunded in full — no forms, no fine print games.
             </p>
           </div>
         </div>

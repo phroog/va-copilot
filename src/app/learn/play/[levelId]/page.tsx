@@ -13,6 +13,7 @@ import { playVictoryJingle } from "@/lib/music";
 import { modeForLevel } from "@/lib/learn/modes";
 import { formatTime } from "@/lib/learn/performance";
 import { RankHud, type HudUser } from "@/components/learn/rank-hud";
+import { UpgradeCta } from "@/components/learn/upgrade-cta";
 import type { LessonContent } from "@/lib/learn/types";
 import { Lock, Crown, Zap, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
   const [result, setResult] = useState<CompleteResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [quitOpen, setQuitOpen] = useState(false);
+  const [plan, setPlan] = useState<string>("free");
 
   useEffect(() => {
     (async () => {
@@ -67,6 +69,7 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
         setXpReward(data.level.xp_reward ?? 30);
         setTargetSeconds(Math.max((data.level.duration_minutes ?? 3), 1) * 60);
         setTakeaway(data.level.content?.takeaway ?? "");
+        setPlan(data.plan ?? "free");
         setLoading(false);
       } catch (e: any) {
         setError(e.message || "Something went wrong");
@@ -245,6 +248,10 @@ export default function PlayLevel({ params }: { params: { levelId: string } }) {
             <RankHud user={result.user} compact />
           </div>
         </div>
+
+        <div className="mt-6 max-w-md mx-auto">
+            <UpgradeCta plan={plan} />
+          </div>
 
         <div className="mt-8 flex flex-col items-center gap-3">
           <Button size="lg" onClick={() => router.push("/learn")} className="px-10">
