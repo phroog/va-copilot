@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { trackEvent, trackCustom } from "@/components/meta-pixel";
 import { SUGGESTED } from "@/lib/learn/funnel";
 import type { FunnelQ } from "@/lib/learn/funnel";
 
@@ -134,6 +135,9 @@ export default function DreamPage() {
     try {
       localStorage.setItem("sari_dream", JSON.stringify({ email, whatsapp, path: path?.title, persona: path?.persona }));
     } catch {}
+    // Meta Pixel: lead conversion on email+whatsapp capture.
+    trackEvent("Lead", { currency: "USD", value: 0 });
+    trackCustom("DreamContact", { email: email.trim(), path: path?.title, persona: path?.persona });
     // Server creates + signs the user in and writes the auth cookies — no click.
     if (email.trim()) {
       try {
