@@ -72,6 +72,7 @@ export default function DreamPage() {
   const [whatsapp, setWhatsapp] = useState("");
   const [confirmFree, setConfirmFree] = useState(false);
   const [pickedPlan, setPickedPlan] = useState<string | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
     if (step !== "pick") return;
@@ -136,14 +137,20 @@ export default function DreamPage() {
     try {
       localStorage.setItem("sari_dream", JSON.stringify({ email, whatsapp, path: path?.title, persona: path?.persona }));
     } catch {}
-    // Send the magic link right away so they're signed in the moment they click it.
+    // Create + sign the user in immediately (no magic-link click needed).
     if (email.trim()) {
       try {
-        const supabase = createClient();
-        await supabase.auth.signInWithOtp({
-          email: email.trim(),
-          options: { emailRedirectTo: `${window.location.origin}/pricing` },
+        const r = await fetch("/api/funnel/signin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, whatsapp }),
         });
+        const d = await r.json();
+        if (d?.token) {
+          const supabase = createClient();
+          const { error } = await supabase.auth.verifyOtp({ type: "magiclink", email: email.trim(), token: d.token });
+          setSignedIn(!error);
+        }
       } catch {}
     }
     setStep("plans");
@@ -158,12 +165,12 @@ export default function DreamPage() {
     try {
       localStorage.setItem("sari_dream_plan", key);
     } catch {}
-    router.push(`/auth/signup?returnUrl=${key === "pro" ? "/pricing" : "/pricing"}`);
+    router.push(signedIn ? "/pricing" : `/auth/signup?returnUrl=/pricing`);
   };
 
   const confirmFreeContinue = () => {
     setConfirmFree(false);
-    router.push("/auth/signup?returnUrl=/learn");
+    router.push(signedIn ? "/learn" : "/auth/signup?returnUrl=/learn");
   };
 
   const persona = path?.persona ?? "future VA";
@@ -431,8 +438,13 @@ export default function DreamPage() {
             <div className="max-w-3xl mx-auto mt-8 space-y-3 px-4">
               {email.trim() && (
                 <div className="rounded-2xl bg-white/5 border border-kawaii-purple/40 px-4 py-3 text-center">
-                  <p className="text-sm font-bold text-white/80">📩 Magic link sent to <b className="text-kawaii-lavender">{email.trim()}</b></p>
-                  <p className="text-[11px] text-white/45 mt-0.5">Click it when it lands and you're in — we'll bring you straight here.</p>
+                  <p className="text-sm font-bold text-white/80">
+                    {signedIn ? "✅ You're signed in as " : "📩 Check your email for the backup link · "}
+                    <b className="text-kawaii-lavender">{email.trim()}</b>
+                  </p>
+                  <p className="text-[11px] text-white/45 mt-0.5">
+                    {signedIn ? "Your account is live. Pick your plan — the agencies are waiting." : "We already logged you in — the email link is just a spare key."}
+                  </p>
                 </div>
               )}
               <div className="rounded-2xl bg-dl-gold/10 border border-dl-gold/30 px-4 py-3 text-center">
