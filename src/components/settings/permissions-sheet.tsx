@@ -14,6 +14,10 @@ export function PermissionsSheet({ open, onClose }: { open: boolean; onClose: ()
   const [msg, setMsg] = useState<string | null>(null);
   const [installed, setInstalled] = useState(false);
 
+  const isIOSDevice = isIOS();
+  const isAndroid = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+  const platformLabel = isIOSDevice ? "iPhone / iPad" : isAndroid ? "Android" : "Desktop";
+
   useEffect(() => {
     if (!open) return;
     getPushStatus().then(setPushState).catch(() => {});
@@ -104,6 +108,12 @@ export function PermissionsSheet({ open, onClose }: { open: boolean; onClose: ()
             </div>
 
             <div className="overflow-y-auto p-4 space-y-3">
+              {/* device */}
+              <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-2.5 flex items-center justify-between">
+                <p className="text-[12px] font-extrabold text-white/70">📱 Device</p>
+                <span className="text-[12px] font-bold text-dl-purpleLight">{platformLabel}</span>
+              </div>
+
               {/* Sound */}
               <PermRow
                 icon={settings.sound ? "🔊" : "🔇"}
@@ -142,6 +152,8 @@ export function PermissionsSheet({ open, onClose }: { open: boolean; onClose: ()
                     ? "Notifications are on"
                     : pushState?.permission === "denied"
                     ? "Blocked in browser settings"
+                    : isIOSDevice
+                    ? "Install Sari first, then enable (iOS 16.4+)"
                     : "Get alerts, drops and FOMO reminders"
                 }
                 status={
@@ -156,6 +168,17 @@ export function PermissionsSheet({ open, onClose }: { open: boolean; onClose: ()
                 onAction={onEnablePush}
                 actionLabel="Enable"
               >
+                {isIOSDevice && !isStandalone() && (
+                  <p className="text-[11px] text-white/45 leading-relaxed mt-2">
+                    On iPhone, notifications need Sari installed: <b>Share</b> <span className="text-dl-purpleLight">⎋</span> →
+                    <b> Add to Home Screen</b>, then open Sari and enable here.
+                  </p>
+                )}
+                {isAndroid && pushState?.permission !== "granted" && (
+                  <p className="text-[11px] text-white/45 leading-relaxed mt-2">
+                    Chrome/Android allows notifications right away — tap Enable and accept the prompt.
+                  </p>
+                )}
                 {pushState?.permission === "granted" && pushState.subscribed && (
                   <button
                     onClick={onSendTest}

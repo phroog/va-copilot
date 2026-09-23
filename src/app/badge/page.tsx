@@ -146,7 +146,7 @@ export default function BadgePage() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="py-6 px-4 max-w-[480px] mx-auto pb-12">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="py-6 px-4 max-w-[480px] lg:max-w-[680px] mx-auto pb-12">
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-2xl font-extrabold text-white">Your Badge</h1>
         <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-dl-purpleLight bg-dl-purple/15 px-2 py-1 rounded-full animate-twinkle">

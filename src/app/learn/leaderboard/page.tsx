@@ -48,7 +48,7 @@ export default function Leaderboard() {
   const podiumOrder = [podium[1], podium[0], podium[2]].filter(Boolean);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="py-8 px-4 max-w-[560px] mx-auto">
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="py-8 px-4 max-w-[560px] lg:max-w-[720px] mx-auto">
       <div className="text-center mb-6">
         <div className="text-5xl mb-2">🏆</div>
         <h1 className="text-3xl font-extrabold text-white">The Ranks</h1>

@@ -184,7 +184,7 @@ export default function FeedPage() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="py-6 px-4 max-w-[480px] mx-auto pb-10">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="py-6 px-4 max-w-[480px] lg:max-w-[680px] mx-auto pb-10">
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-2xl font-extrabold text-white">Feed</h1>
         <span className="text-xs font-bold text-white/40">{tab === "events" ? "live events" : "live updates"}</span>

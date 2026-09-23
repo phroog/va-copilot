@@ -92,6 +92,7 @@ export default function LearnHome() {
   const lastLoadRef = useRef(0);
   const [nudgePlan, setNudgePlan] = useState<string | null>(null);
   const [nudgeVisible, setNudgeVisible] = useState(false);
+  const [railEnergy, setRailEnergy] = useState<{ plan: string; lessonsLeft: number; lessonsLimit: number } | null>(null);
 
   const load = async () => {
     lastLoadRef.current = Date.now();
@@ -173,6 +174,7 @@ export default function LearnHome() {
         const d = await fetch("/api/learn/energy").then((r) => r.json());
         const plan = d?.energy?.plan ?? "free";
         setNudgePlan(plan);
+        setRailEnergy(d?.energy ?? null);
         if (plan !== "pro") {
           sessionStorage.setItem("sari_nudge_seen", "1");
           setTimeout(() => setNudgeVisible(true), 2500);
@@ -286,6 +288,8 @@ export default function LearnHome() {
 
   return (
     <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }} className="pb-6">
+      <div className="xl:flex xl:justify-center xl:items-start xl:gap-6 xl:max-w-[1180px] xl:mx-auto xl:px-4">
+      <div className="xl:flex-1 xl:min-w-0">
       {/* mode toggle: rank climb / client sim */}
       <div className="max-w-[480px] mx-auto px-4 pt-4">
         <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-[#1f2233] border border-white/10">
@@ -459,6 +463,9 @@ export default function LearnHome() {
       })()}
       </>)}
 
+      </div>
+      <LearnRail user={user} energy={railEnergy} />
+      </div>
     </motion.div>
   );
 }
@@ -567,6 +574,47 @@ function RewardTile({ x, y }: { x: number; y: number }) {
       </span>
       <span className="text-[11px] font-extrabold text-white">Claim</span>
     </Link>
+  );
+}
+
+// Desktop-only right rail (Duolingo-style side panel) for the Learn page.
+function LearnRail({
+  user,
+  energy,
+}: {
+  user: HudUser | null;
+  energy: { plan: string; lessonsLeft: number; lessonsLimit: number } | null;
+}) {
+  const plan = energy?.plan ?? "free";
+  const lessons = energy?.lessonsLeft === Infinity ? "∞" : String(energy?.lessonsLeft ?? "–");
+  return (
+    <aside className="hidden xl:block w-72 shrink-0 space-y-3 sticky top-20 pb-10">
+      <div className="rounded-3xl bg-[#1f2233] border border-white/10 p-4">
+        <p className="text-[10px] font-extrabold uppercase tracking-widest text-white/40">Daily energy</p>
+        <p className="mt-1 text-2xl font-extrabold text-white">
+          ⚡ {lessons} <span className="text-sm font-bold text-white/40">lessons left</span>
+        </p>
+        <p className="text-[11px] text-white/50 mt-0.5">
+          {plan === "pro" ? "👑 Money Club · unlimited" : plan === "basic" ? "🌸 BLOOM" : "🌱 Free"}
+        </p>
+      </div>
+      <div className="rounded-3xl bg-[#1f2233] border border-white/10 p-4 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-extrabold uppercase tracking-widest text-white/40">Streak</p>
+          <p className="text-xl font-extrabold text-white">🔥 {user?.streak ?? 0}</p>
+        </div>
+        <span className="text-3xl">{user?.rankEmoji ?? "🏅"}</span>
+      </div>
+      <Link href="/badge" className="block rounded-3xl bg-[#1f2233] border border-dl-gold/30 p-4 hover:border-dl-gold/60 transition-colors">
+        <p className="text-[10px] font-extrabold uppercase tracking-widest text-white/40">Your badge</p>
+        <p className="text-sm font-extrabold text-white mt-0.5">🏅 Put it in your bio</p>
+      </Link>
+      <Link href="/learn/leaderboard" className="block rounded-3xl bg-[#1f2233] border border-white/10 p-4 hover:border-white/25 transition-colors">
+        <p className="text-[10px] font-extrabold uppercase tracking-widest text-white/40">Ranks</p>
+        <p className="text-sm font-extrabold text-white mt-0.5">🏆 See where you stand</p>
+      </Link>
+      {plan !== "pro" && <UpgradeCta plan={plan} />}
+    </aside>
   );
 }
 

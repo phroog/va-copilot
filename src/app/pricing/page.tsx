@@ -302,6 +302,35 @@ export default function PricingPage() {
           </div>
         </div>
 
+        {/* Pay your way */}
+        <div className="mt-10 max-w-4xl mx-auto">
+          <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 text-center">Pay your way, securely</h2>
+          <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Cards, Google Pay, PayPal — no subscription needed.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3 mt-5">
+            <PayBadge type="visa" />
+            <PayBadge type="mc" />
+            <PayBadge type="amex" />
+            <PayBadge type="gpay" />
+            <PayBadge type="paypal" />
+          </div>
+          <div className="mt-4 rounded-2xl border border-kawaii-purple/40 dark:border-dark-surface bg-kawaii-purple/10 dark:bg-kawaii-purple/10 px-5 py-4">
+            <p className="font-extrabold text-slate-800 dark:text-slate-100 text-sm">🇵🇭 From the Philippines?</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+              You can pay with <b>GCash</b> or <b>Maya</b> — just choose <b>Google Pay</b> or <b>PayPal</b> at
+              checkout, both accept your wallet. No card needed.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <PayBadge type="gcash" />
+              <PayBadge type="maya" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-dl-green/15 text-dl-green text-xs font-extrabold">
+                🔒 Secure checkout · Stripe · 3-D Secure · 256-bit SSL
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* Rotating nudge for users on the free plan */}
         {!checking && (!currentPlan || currentPlan === "free") && (
           <p className="text-center text-sm font-semibold text-kawaii-purple dark:text-kawaii-lavender mt-6 italic transition-all">
@@ -341,5 +370,60 @@ export default function PricingPage() {
         <p className="text-center text-xs text-slate-400 mt-8">{t("pricingFooter")}</p>
       </div>
     </div>
+  );
+}
+
+function PayBadge({ type }: { type: "visa" | "mc" | "amex" | "gpay" | "paypal" | "gcash" | "maya" }) {
+  if (type === "mc") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-dark-card border border-kawaii-lavender/30 dark:border-dark-surface font-extrabold text-xs text-slate-700 dark:text-slate-200">
+        <span className="relative inline-flex">
+          <span className="w-4 h-4 rounded-full bg-[#EB001B]" />
+          <span className="w-4 h-4 rounded-full bg-[#F79E1B] -ml-1.5" />
+        </span>
+        Mastercard
+      </span>
+    );
+  }
+  const style: Record<string, string> = {
+    visa: "bg-[#1A1F71] text-white",
+    amex: "bg-[#2E77BC] text-white",
+    gcash: "bg-[#007DFE] text-white",
+    maya: "bg-gradient-to-r from-[#00a3ff] to-[#9b3df5] text-white",
+  };
+  const label: Record<string, string> = {
+    visa: "VISA",
+    amex: "AMEX",
+    gcash: "GCash",
+    maya: "Maya",
+  };
+  if (type === "visa" || type === "amex" || type === "gcash" || type === "maya") {
+    return (
+      <span className={`inline-flex items-center px-3 py-1.5 rounded-xl font-extrabold text-xs ${style[type]}`}>
+        {label[type]}
+      </span>
+    );
+  }
+  if (type === "gpay") {
+    return (
+      <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-white dark:bg-dark-card border border-kawaii-lavender/30 dark:border-dark-surface font-extrabold text-xs">
+        <span className="font-black">
+          <span className="text-[#4285F4]">G</span>
+          <span className="text-[#EA4335]">o</span>
+          <span className="text-[#FBBC05]">o</span>
+          <span className="text-[#4285F4]">g</span>
+          <span className="text-[#34A853]">l</span>
+          <span className="text-[#EA4335]">e</span>
+        </span>
+        <span className="text-slate-700 dark:text-slate-200 ml-1">Pay</span>
+      </span>
+    );
+  }
+  // paypal
+  return (
+    <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-white dark:bg-dark-card border border-kawaii-lavender/30 dark:border-dark-surface font-extrabold text-xs">
+      <span className="text-[#003087]">Pay</span>
+      <span className="text-[#009CDE]">Pal</span>
+    </span>
   );
 }
