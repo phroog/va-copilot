@@ -70,6 +70,7 @@ export default function PricingPage() {
       features: [t("planFreeFeature1"), t("planFreeFeature2"), t("planFreeFeature3"), t("planFreeFeature4")],
       cta: t("planFreeCta"),
       highlight: false,
+      scout: { pct: 0.5, vis: 1, hint: "Hidden from the scout pool — agencies can't see you yet." },
     },
     {
       key: "basic",
@@ -83,6 +84,7 @@ export default function PricingPage() {
       features: [t("planBasicFeature1"), t("planBasicFeature2"), t("planBasicFeature3"), t("planBasicFeature4")],
       cta: "Top up · 30 days",
       highlight: false,
+      scout: { pct: 12, vis: 3, hint: "In the Scout Pool — partner agencies can find your badge." },
     },
     {
       key: "pro",
@@ -96,6 +98,7 @@ export default function PricingPage() {
       features: [t("planProFeature1"), t("planProFeature2"), t("planProFeature3"), t("planProFeature4")],
       cta: "Top up · 30 days",
       highlight: true,
+      scout: { pct: 34, vis: 4, hint: "Top Scout Pool — agencies review Money Club profiles first." },
     },
   ];
 
@@ -161,6 +164,19 @@ export default function PricingPage() {
                     <li key={f} className="flex items-start gap-1.5"><span className="text-kawaii-purple">✓</span>{f}</li>
                   ))}
                 </ul>
+                {/* scout chance */}
+                <div className="mt-4 rounded-xl bg-kawaii-purple/10 dark:bg-kawaii-purple/10 border border-kawaii-lavender/30 dark:border-dark-surface p-2.5 text-left">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Scout chance</p>
+                    <span className="text-sm font-extrabold text-kawaii-purple dark:text-kawaii-lavender tabular-nums">{ti.scout.pct}%</span>
+                  </div>
+                  <div className="flex gap-1 mt-1.5">
+                    {[1, 2, 3, 4].map((i) => (
+                      <span key={i} className={`h-1.5 flex-1 rounded-full ${i <= ti.scout.vis ? "bg-gradient-to-r from-kawaii-purple to-kawaii-pink" : "bg-kawaii-lavender/30 dark:bg-dark-surface"}`} />
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1.5">{ti.scout.hint}</p>
+                </div>
                 {ti.coffee && <p className="mt-3 text-xs text-slate-400">☕ That's {ti.coffee}.</p>}
                 <Button
                   className={`w-full mt-5 ${ti.highlight ? "" : "bg-white text-kawaii-purple border border-kawaii-purple/40 hover:bg-kawaii-lavender/20"}`}
@@ -263,6 +279,26 @@ export default function PricingPage() {
               We partner with real agencies that review our top VAs. If one of them picks up your profile,
               your plan is refunded in full — no forms, no fine print games.
             </p>
+          </div>
+        </div>
+
+        {/* How you get hired */}
+        <div className="mt-8 max-w-4xl mx-auto">
+          <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 text-center">How you get hired</h2>
+          <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-1">Play to get hired — our world-first model.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-5">
+            {[
+              { emoji: "🎮", t: "1 · Play missions", d: "Learn real VA skills by playing, not watching." },
+              { emoji: "🏅", t: "2 · Build your badge", d: "Seal skills into a live, shareable profile." },
+              { emoji: "🔎", t: "3 · Get scouted", d: "Partner agencies review top VAs in the pool." },
+              { emoji: "💰", t: "4 · Get hired — or refunded", d: "Scouted? 100% of your plan back." },
+            ].map((s) => (
+              <div key={s.t} className="rounded-2xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white/70 dark:bg-dark-card/70 p-4 text-center">
+                <span className="text-3xl">{s.emoji}</span>
+                <p className="mt-2 font-extrabold text-slate-800 dark:text-slate-100 text-sm">{s.t}</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-snug">{s.d}</p>
+              </div>
+            ))}
           </div>
         </div>
 

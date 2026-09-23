@@ -7,15 +7,15 @@ import { motion } from "framer-motion";
 // the same message never gets stale.
 
 const FREE_LINES = [
-  { title: "1 lesson a day is just a taste", sub: "BLOOM unlocks 2 lessons/day + the Client Sim grind + a live, shareable badge." },
-  { title: "Your badge is sleeping on Free", sub: "BLOOM wakes it up — sealed skills, scout pool, and a link you can put in your bio." },
-  { title: "Free = 1 mission. BLOOM = more.", sub: "Double the lessons, the Client Sim, and your badge goes live. From $4.99, pay once." },
+  { title: "Agencies can't scout what they can't see", sub: "Free profiles stay out of the scout pool. BLOOM puts your badge where partner agencies actually look." },
+  { title: "Don't give up — your shot is one step away", sub: "Partner agencies are reviewing profiles right now. BLOOM gets you into the pool and your badge goes live." },
+  { title: "Dream big? Then give your badge a chance", sub: "One prepaid top-up puts you in the Scout Pool. From $4.99, pay once — no subscription." },
 ];
 
 const PRO_LINES = [
-  { title: "BLOOM is great. Money Club is how you get seen", sub: "Unlimited lessons, unlimited Client Sim, top scout pool, verified badge, 1:1 support." },
-  { title: "Why stop at 2 lessons?", sub: "Money Club = unlimited training + unlimited grind mode. Pay once, no subscription." },
-  { title: "The Top Scout Pool is a Money Club perk", sub: "Partner agencies see verified badges first. Go unlimited, get seen." },
+  { title: "The agencies are looking right now", sub: "Money Club puts you at the front of the line: Top Scout Pool, verified badge, unlimited training to finish the job." },
+  { title: "This is the dream — don't stop halfway", sub: "Unlimited lessons + unlimited Client Sim + Top Scout Pool. That's how you get hired." },
+  { title: "Be the one they scout", sub: "Partner agencies see Top Scout Pool profiles first. Go unlimited." },
 ];
 
 function dayPick(list: { title: string; sub: string }[]): { title: string; sub: string } {
