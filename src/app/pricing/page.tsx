@@ -225,7 +225,7 @@ export default function PricingPage() {
               { emoji: "🎮", t: "1 · Play missions", d: "Learn real VA skills by playing, not watching." },
               { emoji: "🏅", t: "2 · Build your badge", d: "Seal skills into a live, shareable profile." },
               { emoji: "🔎", t: "3 · Get scouted", d: "Partner agencies review top VAs in the pool." },
-              { emoji: "💰", t: "4 · Get hired — or refunded", d: "Scouted? 100% of your plan back." },
+              { emoji: "💰", t: "4 · Get hired — plan refunded", d: "Scouted? 100% of your plan back." },
             ].map((s) => (
               <div key={s.t} className="rounded-2xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white/70 dark:bg-dark-card/70 p-4 text-center">
                 <span className="text-3xl">{s.emoji}</span>

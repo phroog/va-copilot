@@ -82,7 +82,7 @@ export default function Home() {
                 { emoji: "🎮", t: "You play", d: "Train on real missions & client sims" },
                 { emoji: "🏅", t: "We rank you", d: "Live badge + leaderboard of 2,100+" },
                 { emoji: "🏢", t: "Our agencies scout", d: "Recruiters review top profiles" },
-                { emoji: "💼", t: "You get hired", d: "Or we refund 100% of your plan" },
+                { emoji: "💼", t: "You get hired", d: "Scouted? Your plan is refunded." },
               ].map((s, i) => (
                 <div key={s.t} className="relative">
                   <div className="h-full rounded-3xl border-2 border-black dark:border-dark-surface bg-white dark:bg-dark-card p-5 text-center">
