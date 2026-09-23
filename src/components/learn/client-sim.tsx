@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import type { PathWithNodes } from "@/lib/learn/types";
 import { cn } from "@/lib/utils";
@@ -248,12 +249,22 @@ export function ClientSim({ path, onBack }: { path: PathWithNodes | null; onBack
         <p className="mt-3 text-[11px] text-white/40 max-w-xs">
           ⚠️ Watch out — some replies look right but are traps. Let the happiness meter hit 0 and the client storms off.
         </p>
-        <button
-          onClick={start}
-          className="mt-8 px-10 py-4 rounded-2xl bg-dl-green text-white shadow-btn-green font-extrabold text-lg transition-all squishy hover:brightness-105 active:translate-y-1 active:shadow-none"
-        >
-          Start grinding →
-        </button>
+        {plan === "free" || (scenariosLeft !== Infinity && scenariosLeft <= 0) ? (
+          <div className="mt-8 rounded-2xl border border-dl-gold/40 bg-dl-gold/10 px-5 py-4 max-w-sm">
+            <p className="font-extrabold text-white text-sm">🔒 The Client Sim is a BLOOM+ feature</p>
+            <p className="mt-1 text-[12px] text-white/60">Free profiles don't get the grind mode. BLOOM gives you 5 scenarios a day.</p>
+            <Link href="/pricing" className="mt-3 inline-block px-4 py-2 rounded-xl bg-dl-green text-white text-sm font-extrabold shadow-btn-green hover:brightness-105 transition-all squishy">
+              Unlock the grind →
+            </Link>
+          </div>
+        ) : (
+          <button
+            onClick={start}
+            className="mt-8 px-10 py-4 rounded-2xl bg-dl-green text-white shadow-btn-green font-extrabold text-lg transition-all squishy hover:brightness-105 active:translate-y-1 active:shadow-none"
+          >
+            Start grinding →
+          </button>
+        )}
         <button onClick={onBack} className="mt-3 text-sm font-bold text-white/50 hover:text-white transition-colors">← Back to my tree</button>
       </div>
     );

@@ -30,7 +30,7 @@ export default function Home() {
         {/* ── HERO — the punch ─────────────────────────────────── */}
         <section className="text-center px-4 pt-14 pb-10 max-w-4xl mx-auto">
           <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black text-white text-sm font-extrabold">
-            🎮 PLAY TO GET HIRED
+            🎮 PLAY TO GET HIRED — do you have what it takes?
           </span>
           <h1 className="mt-6 text-4xl sm:text-6xl font-black leading-[1.02] text-slate-900 dark:text-white">
             We own the agencies.
@@ -46,10 +46,10 @@ export default function Home() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
-              href="/auth/signup"
+              href="/dream"
               className="px-9 py-4 rounded-2xl bg-black text-white font-black text-lg hover:scale-[1.03] active:scale-[0.98] transition-all squishy shadow-xl"
             >
-              🎮 Start playing free
+              🎮 Start your dream
             </Link>
             <a
               href="#deal"
