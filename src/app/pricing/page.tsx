@@ -6,7 +6,6 @@ import Link from "next/link";
 import { LanguageDropdown } from "@/components/language-dropdown";
 import { useLocale } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
-import { formatPeso, coffeeCompare } from "@/lib/sale";
 import { PASSES, DAILY_PASS_POINTS, type PassKey, type DailyPassKey } from "@/lib/payments";
 import { trackEvent } from "@/components/meta-pixel";
 
@@ -29,40 +28,36 @@ export default function PricingPage() {
   const TIERS = [
     {
       key: "free",
-      name: t("planFreeName"),
-      price: t("planFreePrice"),
+      name: "Free",
+      price: "$0",
       orig: null,
       per: "",
-      desc: t("planFreeDesc"),
-      features: [t("planFreeFeature1"), t("planFreeFeature2"), t("planFreeFeature3"), t("planFreeFeature4")],
-      cta: t("planFreeCta"),
+      desc: "Try the dream on",
+      features: ["1 new chapter a day", "All your tools, unlocked", "Watch the leaderboard", "Play to Get Hired missions"],
+      cta: "Start free",
       highlight: false,
       scout: { pct: 0.5, vis: 1, hint: "Hidden from the scout pool — agencies can't see you yet." },
     },
     {
       key: "basic",
-      name: t("planBasicName"),
+      name: "BLOOM",
       price: "$4.99",
-      orig: "$9.99",
-      peso: formatPeso(4.99),
-      coffee: coffeeCompare(4.99),
+      orig: null,
       per: " · 30 days",
-      desc: "Prepaid — pay once, no auto-renewal. Like topping up a SIM.",
-      features: [t("planBasicFeature1"), t("planBasicFeature2"), t("planBasicFeature3"), t("planBasicFeature4")],
+      desc: "Where dreams start to feel real",
+      features: ["2 new chapters a day", "Client Sim grind (5 a day)", "Your badge goes live", "Into the Scout Pool", "Ranked on the board"],
       cta: "Top up · 30 days",
       highlight: false,
       scout: { pct: 12, vis: 3, hint: "In the Scout Pool — partner agencies can find your badge." },
     },
     {
       key: "pro",
-      name: t("planProName"),
+      name: "Money Club",
       price: "$9.99",
-      orig: "$19.99",
-      peso: formatPeso(9.99),
-      coffee: coffeeCompare(9.99),
+      orig: null,
       per: " · 30 days",
-      desc: "Prepaid — pay once, no auto-renewal. Unlimited training + Top Scout Pool.",
-      features: [t("planProFeature1"), t("planProFeature2"), t("planProFeature3"), t("planProFeature4")],
+      desc: "The stage. The spotlight. You.",
+      features: ["Unlimited chapters", "Unlimited Client Sim", "Top Scout Pool — agencies see you first", "✓ Verified badge", "1:1 WhatsApp support"],
       cta: "Top up · 30 days",
       highlight: true,
       scout: { pct: 34, vis: 4, hint: "Top Scout Pool — agencies review Money Club profiles first." },
