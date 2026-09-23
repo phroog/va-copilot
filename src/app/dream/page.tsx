@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
 import { SUGGESTED } from "@/lib/learn/funnel";
 import type { FunnelQ } from "@/lib/learn/funnel";
 
@@ -60,7 +58,6 @@ const FAQS = [
 ];
 
 export default function DreamPage() {
-  const router = useRouter();
   const [step, setStep] = useState<Step>("hero");
   const [paths, setPaths] = useState<PathOption[]>([]);
   const [path, setPath] = useState<PathOption | null>(null);
@@ -137,7 +134,7 @@ export default function DreamPage() {
     try {
       localStorage.setItem("sari_dream", JSON.stringify({ email, whatsapp, path: path?.title, persona: path?.persona }));
     } catch {}
-    // Create + sign the user in immediately (no magic-link click needed).
+    // Server creates + signs the user in and writes the auth cookies — no click.
     if (email.trim()) {
       try {
         const r = await fetch("/api/funnel/signin", {
@@ -146,11 +143,7 @@ export default function DreamPage() {
           body: JSON.stringify({ email, whatsapp }),
         });
         const d = await r.json();
-        if (d?.token) {
-          const supabase = createClient();
-          const { error } = await supabase.auth.verifyOtp({ type: "magiclink", email: email.trim(), token: d.token });
-          setSignedIn(!error);
-        }
+        setSignedIn(!!d?.signedIn);
       } catch {}
     }
     setStep("plans");
@@ -165,12 +158,13 @@ export default function DreamPage() {
     try {
       localStorage.setItem("sari_dream_plan", key);
     } catch {}
-    router.push(signedIn ? "/pricing" : `/auth/signup?returnUrl=/pricing`);
+    // Hard navigation so the freshly-written auth cookies are definitely sent.
+    window.location.href = signedIn ? "/pricing" : "/auth/signup?returnUrl=/pricing";
   };
 
   const confirmFreeContinue = () => {
     setConfirmFree(false);
-    router.push(signedIn ? "/learn" : "/auth/signup?returnUrl=/learn");
+    window.location.href = signedIn ? "/learn" : "/auth/signup?returnUrl=/learn";
   };
 
   const persona = path?.persona ?? "future VA";
