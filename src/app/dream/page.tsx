@@ -164,6 +164,9 @@ export default function DreamPage() {
 
   const confirmFreeContinue = () => {
     setConfirmFree(false);
+    try {
+      localStorage.setItem("sari_dream_plan", "free");
+    } catch {}
     window.location.href = signedIn ? "/learn" : "/auth/signup?returnUrl=/learn";
   };
 

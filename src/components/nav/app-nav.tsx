@@ -9,6 +9,7 @@ import { CourseSheet } from "@/components/learn/course-sheet";
 import { PermissionsSheet } from "@/components/settings/permissions-sheet";
 import { ReminderToast } from "@/components/nav/reminder-toast";
 import { SariIntro } from "@/components/nav/sari-intro";
+import { RealHustlersSheet } from "@/components/learn/real-hustlers";
 import { useSoundSettings, registerAudioUnlock } from "@/lib/sounds";
 import { playSound } from "@/lib/sounds";
 import { setupPWA } from "@/lib/pwa";
@@ -256,6 +257,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Mochi />
       <ReminderToast />
       <SariIntro />
+      <RealHustlersSheet />
 
       <CourseSheet open={coursesOpen} onClose={() => setCoursesOpen(false)} onCourseChanged={loadHud} />
       <PermissionsSheet open={permsOpen} onClose={() => setPermsOpen(false)} />
