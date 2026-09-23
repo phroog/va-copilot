@@ -46,7 +46,7 @@ export default function Home() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
-              href="/dream"
+              href="/dream?start=1"
               className="px-9 py-4 rounded-2xl bg-black text-white font-black text-lg hover:scale-[1.03] active:scale-[0.98] transition-all squishy shadow-xl"
             >
               🎮 Start your dream

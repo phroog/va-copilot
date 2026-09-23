@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { LanguageDropdown } from "@/components/language-dropdown";
 import { useLocale } from "@/lib/i18n/context";
+import { cn } from "@/lib/utils";
 import { UPGRADE_SLOGANS } from "@/lib/upgrade-slogans";
 import { daysLeft, formatPeso, coffeeCompare } from "@/lib/sale";
 import { PASSES, DAILY_PASS_POINTS, type PassKey, type DailyPassKey } from "@/lib/payments";
@@ -143,51 +143,69 @@ export default function PricingPage() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-5">
-          {TIERS.map((ti: any) => (
-            <Card key={ti.key} className={`relative ${ti.highlight ? "border-2 border-kawaii-purple dark:border-kawaii-lavender shadow-sari" : "border-kawaii-lavender/30 dark:border-dark-surface"}`}>
-              {ti.highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-extrabold px-3 py-1 rounded-full bg-kawaii-purple text-white whitespace-nowrap">
-                  ⭐ {t("mostPopular")}
-                </span>
-              )}
-              <CardContent className="p-6 text-center">
-                <p className="text-sm font-bold uppercase tracking-wider text-slate-400">{ti.name}</p>
-                <p className="mt-3 text-4xl font-extrabold text-slate-800 dark:text-slate-100">
-                  {ti.price}
-                  {ti.orig && <span className="text-base font-medium text-slate-400 line-through ml-2">{ti.orig}</span>}
-                  <span className="text-sm font-medium text-slate-400">{ti.per}</span>
-                </p>
-                {ti.peso && <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">{ti.peso}/mo</p>}
-                <p className="text-xs text-slate-400 mt-1">{ti.desc}</p>
-                <ul className="mt-4 space-y-1.5 text-left text-sm text-slate-600 dark:text-slate-300">
-                  {ti.features.map((f: string) => (
-                    <li key={f} className="flex items-start gap-1.5"><span className="text-kawaii-purple">✓</span>{f}</li>
-                  ))}
-                </ul>
-                {/* scout chance */}
-                <div className="mt-4 rounded-xl bg-kawaii-purple/10 dark:bg-kawaii-purple/10 border border-kawaii-lavender/30 dark:border-dark-surface p-2.5 text-left">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Scout chance</p>
-                    <span className="text-sm font-extrabold text-kawaii-purple dark:text-kawaii-lavender tabular-nums">{ti.scout.pct}%</span>
-                  </div>
-                  <div className="flex gap-1 mt-1.5">
-                    {[1, 2, 3, 4].map((i) => (
-                      <span key={i} className={`h-1.5 flex-1 rounded-full ${i <= ti.scout.vis ? "bg-gradient-to-r from-kawaii-purple to-kawaii-pink" : "bg-kawaii-lavender/30 dark:bg-dark-surface"}`} />
+          {TIERS.map((ti: any) => {
+            const isPro = ti.key === "pro";
+            const isBasic = ti.key === "basic";
+            return (
+              <div
+                key={ti.key}
+                className={cn(
+                  "relative rounded-[28px] p-6 overflow-hidden",
+                  isPro
+                    ? "bg-black text-white border border-white/20 shadow-[0_0_80px_rgba(255,200,0,0.18)]"
+                    : isBasic
+                    ? "bg-[#1c1833] text-white border border-kawaii-purple/50"
+                    : "bg-[#101020] text-white border border-white/10"
+                )}
+              >
+                {isPro && (
+                  <>
+                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-gradient-to-b from-kawaii-pink/30 to-transparent blur-2xl pointer-events-none" />
+                    <span className="absolute top-3 right-3 px-2 py-1 rounded-full bg-white text-black text-[10px] font-black">SPOTLIGHT</span>
+                  </>
+                )}
+                <div className="text-center relative">
+                  <p className="text-sm font-bold uppercase tracking-wider text-white/50">{ti.name}</p>
+                  <p className="mt-3 text-4xl font-extrabold text-white">
+                    {ti.price}
+                    {ti.orig && <span className="text-base font-medium text-white/40 line-through ml-2">{ti.orig}</span>}
+                    <span className="text-sm font-medium text-white/40">{ti.per}</span>
+                  </p>
+                  {ti.peso && <p className="text-xs font-bold text-white/50 mt-1">{ti.peso}/mo</p>}
+                  <p className="text-xs text-white/55 mt-1">{ti.desc}</p>
+                  <ul className="mt-4 space-y-1.5 text-left text-sm text-white/80">
+                    {ti.features.map((f: string) => (
+                      <li key={f} className="flex items-start gap-1.5"><span className={isPro ? "text-kawaii-pink" : "text-kawaii-purple"}>✦</span>{f}</li>
                     ))}
+                  </ul>
+                  {/* scout chance */}
+                  <div className="mt-4 rounded-xl bg-white/10 border border-white/15 p-2.5 text-left">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-white/40">Scout chance</p>
+                      <span className="text-sm font-extrabold text-white tabular-nums">{ti.scout.pct}%</span>
+                    </div>
+                    <div className="flex gap-1 mt-1.5">
+                      {[1, 2, 3, 4].map((i) => (
+                        <span key={i} className={`h-1.5 flex-1 rounded-full ${i <= ti.scout.vis ? "bg-gradient-to-r from-kawaii-purple to-kawaii-pink" : "bg-white/20"}`} />
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-white/45 mt-1.5">{ti.scout.hint}</p>
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1.5">{ti.scout.hint}</p>
+                  {ti.coffee && <p className="mt-3 text-xs text-white/40">☕ That's {ti.coffee}.</p>}
+                  <button
+                    onClick={() => startPlan(ti.key)}
+                    disabled={loadingPlan === ti.key}
+                    className={cn(
+                      "w-full mt-5 py-3.5 rounded-2xl font-black transition-all squishy disabled:opacity-50",
+                      isPro ? "bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white shadow-xl shadow-kawaii-purple/30" : "bg-white text-black hover:bg-kawaii-lavender"
+                    )}
+                  >
+                    {loadingPlan === ti.key ? t("pricingCheckout") + "…" : ti.cta}
+                  </button>
                 </div>
-                {ti.coffee && <p className="mt-3 text-xs text-slate-400">☕ That's {ti.coffee}.</p>}
-                <Button
-                  className={`w-full mt-5 ${ti.highlight ? "" : "bg-white text-kawaii-purple border border-kawaii-purple/40 hover:bg-kawaii-lavender/20"}`}
-                  onClick={() => startPlan(ti.key)}
-                  disabled={loadingPlan === ti.key}
-                >
-                  {loadingPlan === ti.key ? t("pricingCheckout") + "…" : ti.cta}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
         {msg && <p className="text-center text-sm mt-4 text-slate-600 dark:text-slate-300">{msg}</p>}

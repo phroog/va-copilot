@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import { SUGGESTED } from "@/lib/learn/funnel";
 import type { FunnelQ } from "@/lib/learn/funnel";
 
@@ -16,7 +17,7 @@ interface PathOption {
   persona: string;
 }
 
-type Step = "hero" | "pick" | "suggest" | "play" | "verdict" | "contact" | "plans";
+type Step = "hero" | "pick" | "suggest" | "ready" | "play" | "verdict" | "contact" | "plans";
 
 const PLANS = [
   {
@@ -80,9 +81,16 @@ export default function DreamPage() {
       .catch(() => {});
   }, [step]);
 
+  // ?start=1 from the landing CTA skips the hero.
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("start") === "1") {
+      setStep("pick");
+    }
+  }, []);
+
   const choosePath = (p: PathOption) => {
     setPath(p);
-    setStep("play");
+    setStep("ready");
   };
 
   useEffect(() => {
@@ -124,10 +132,20 @@ export default function DreamPage() {
     setStep("contact");
   };
 
-  const submitContact = () => {
+  const submitContact = async () => {
     try {
       localStorage.setItem("sari_dream", JSON.stringify({ email, whatsapp, path: path?.title, persona: path?.persona }));
     } catch {}
+    // Send the magic link right away so they're signed in the moment they click it.
+    if (email.trim()) {
+      try {
+        const supabase = createClient();
+        await supabase.auth.signInWithOtp({
+          email: email.trim(),
+          options: { emailRedirectTo: `${window.location.origin}/pricing` },
+        });
+      } catch {}
+    }
     setStep("plans");
   };
 
@@ -231,6 +249,21 @@ export default function DreamPage() {
           </motion.div>
         )}
 
+        {step === "ready" && path && (
+          <motion.div key="ready" initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, y: -20 }} className="min-h-screen flex flex-col items-center justify-center text-center px-6">
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 14 }} className="text-7xl">
+              {path.emoji}
+            </motion.div>
+            <h2 className="mt-6 text-4xl sm:text-5xl font-black">{path.persona}</h2>
+            <p className="mt-3 text-white/70 text-lg max-w-md">
+              See if you're worthy. Three quick questions — no pressure, no nonsense.
+            </p>
+            <button onClick={() => setStep("play")} className="mt-8 px-10 py-4 rounded-2xl bg-dl-green text-white font-black text-lg shadow-btn-green hover:brightness-105 active:translate-y-1 active:shadow-none transition-all squishy">
+              Let's go →
+            </button>
+          </motion.div>
+        )}
+
         {step === "play" && questions.length > 0 && (
           <motion.div key="play" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
             <div className="w-full max-w-lg">
@@ -293,7 +326,11 @@ export default function DreamPage() {
                 : "Every master started right where you are. The path is open — let's build you up."}
             </p>
             <p className="mt-3 text-sm text-kawaii-lavender font-bold">{correct}/{questions.length} on point as a {persona}.</p>
-            <button onClick={goContact} className="mt-8 px-10 py-4 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-black text-lg shadow-2xl shadow-kawaii-purple/40 hover:scale-[1.03] transition-all squishy">
+            <div className="mt-4 rounded-2xl bg-dl-gold/10 border border-dl-gold/30 px-4 py-2.5">
+              <p className="text-sm font-extrabold text-dl-gold">🎓 Your live certificate is being minted.</p>
+              <p className="text-[11px] text-white/60 mt-0.5">Seal skills → your badge grows. That certificate is what agencies read.</p>
+            </div>
+            <button onClick={goContact} className="mt-6 px-10 py-4 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-black text-lg shadow-2xl shadow-kawaii-purple/40 hover:scale-[1.03] transition-all squishy">
               Claim your path →
             </button>
           </motion.div>
@@ -388,6 +425,23 @@ export default function DreamPage() {
                   </button>
                 </div>
               ))}
+            </div>
+
+            {/* magic link + gcash + certificate */}
+            <div className="max-w-3xl mx-auto mt-8 space-y-3 px-4">
+              {email.trim() && (
+                <div className="rounded-2xl bg-white/5 border border-kawaii-purple/40 px-4 py-3 text-center">
+                  <p className="text-sm font-bold text-white/80">📩 Magic link sent to <b className="text-kawaii-lavender">{email.trim()}</b></p>
+                  <p className="text-[11px] text-white/45 mt-0.5">Click it when it lands and you're in — we'll bring you straight here.</p>
+                </div>
+              )}
+              <div className="rounded-2xl bg-dl-gold/10 border border-dl-gold/30 px-4 py-3 text-center">
+                <p className="text-sm font-extrabold text-dl-gold">🎓 Your live certificate = your badge</p>
+                <p className="text-[11px] text-white/60 mt-0.5">Every sealed skill grows it. That's the certificate agencies actually read.</p>
+              </div>
+              <p className="text-center text-[12px] text-white/45">
+                🇵🇭 From the Philippines? Pay with <b className="text-white/70">GCash</b> or <b className="text-white/70">Maya</b> via <b className="text-white/70">Google Pay</b> or <b className="text-white/70">PayPal</b> at checkout.
+              </p>
             </div>
 
             {/* FAQ */}
