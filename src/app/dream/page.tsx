@@ -135,8 +135,9 @@ export default function DreamPage() {
     try {
       localStorage.setItem("sari_dream", JSON.stringify({ email, whatsapp, path: path?.title, persona: path?.persona }));
     } catch {}
-    // Meta Pixel: lead conversion on email+whatsapp capture.
-    trackEvent("Lead", { currency: "USD", value: 0 });
+    // Meta Pixel: registration completed once the email is captured (sign-up is
+    // done server-side — no magic-link click required).
+    trackEvent("CompleteRegistration", { currency: "USD", value: 0 });
     trackCustom("DreamContact", { email: email.trim(), path: path?.title, persona: path?.persona });
     // Server creates + signs the user in and writes the auth cookies — no click.
     if (email.trim()) {
@@ -455,6 +456,14 @@ export default function DreamPage() {
               <p className="text-center text-[12px] text-white/45">
                 🇵🇭 From the Philippines? Pay with <b className="text-white/70">GCash</b> or <b className="text-white/70">Maya</b> via <b className="text-white/70">Google Pay</b> or <b className="text-white/70">PayPal</b> at checkout.
               </p>
+              <a
+                href="https://wa.me/436645597889"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center text-[12px] font-bold text-white/60 hover:text-white transition-colors"
+              >
+                💬 Interested but not sure? WhatsApp us — <span className="underline">+43 664 559 7889</span>
+              </a>
             </div>
 
             {/* FAQ */}
