@@ -103,7 +103,7 @@ export default function Home() {
         </section>
 
         {/* ── PLAY TO GET HIRED steps ──────────────────────────── */}
-        <section className="px-4 py-12 bg-black dark:bg-dark-card/80 text-white">
+        <section id="how" className="px-4 py-12 bg-black dark:bg-dark-card/80 text-white">
           <div className="max-w-4xl mx-auto text-center">
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 text-white text-sm font-extrabold">
               🎮 THE MODEL
@@ -130,7 +130,7 @@ export default function Home() {
         </section>
 
         {/* ── TOOLS ────────────────────────────────────────────── */}
-        <section className="px-4 py-12">
+        <section id="tools" className="px-4 py-12">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl sm:text-4xl font-black text-center text-slate-900 dark:text-white">
               All the tools you'll ever need. One tab.
@@ -152,7 +152,7 @@ export default function Home() {
         </section>
 
         {/* ── PRICING — prepaid + scout chance ─────────────────── */}
-        <section className="px-4 py-12 bg-white/50 dark:bg-dark-card/50">
+        <section id="pricing" className="px-4 py-12 bg-white/50 dark:bg-dark-card/50">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl sm:text-4xl font-black text-center text-slate-900 dark:text-white">
               Pick your lane

@@ -20,10 +20,10 @@ export default function Header() {
   }, [supabase]);
 
   const navLinks = [
-    { href: "#features", label: t("navFeatures") },
-    { href: "#how-it-works", label: t("navHowItWorks") },
-    { href: "#pricing", label: t("navPricing") },
-    { href: "/academy", label: "🎓 " + t("navAcademy") },
+    { href: "#deal", label: "The deal" },
+    { href: "#how", label: "Play to Get Hired" },
+    { href: "#tools", label: "Tools" },
+    { href: "#pricing", label: "Pricing" },
     { href: user ? "/dashboard" : "/", label: "🍠 Sari" },
   ];
 
@@ -54,16 +54,18 @@ export default function Header() {
             <LanguageDropdown />
             <ThemeToggle />
             {user ? (
-              <Link href="/dashboard">
-                <Button variant="primary" size="sm">📊 {t("dashboard")}</Button>
-              </Link>
+              <>
+                <Link href="/dashboard">
+                  <Button variant="primary" size="sm">📊 {t("dashboard")}</Button>
+                </Link>
+              </>
             ) : (
               <>
                 <Link href="/auth/login">
                   <Button variant="ghost" size="sm">{t("logIn")}</Button>
                 </Link>
-                <Link href="/start">
-                  <Button variant="primary" size="sm">{t("getStarted")} ✨</Button>
+                <Link href="/dream">
+                  <Button variant="primary" size="sm">🎮 {t("getStarted")}</Button>
                 </Link>
               </>
             )}
@@ -94,8 +96,8 @@ export default function Header() {
                 <Link href="/auth/login" className="flex-1">
                   <Button variant="ghost" className="w-full" size="sm">{t("logIn")}</Button>
                 </Link>
-                <Link href="/start" className="flex-1">
-                  <Button variant="primary" className="w-full" size="sm">{t("getStarted")} ✨</Button>
+                <Link href="/dream" className="flex-1">
+                  <Button variant="primary" className="w-full" size="sm">🎮 {t("getStarted")}</Button>
                 </Link>
               </>
             )}
