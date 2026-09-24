@@ -177,15 +177,15 @@ export default function Home() {
                       <li key={f} className="flex items-start gap-1.5"><span className="text-kawaii-pink">✓</span>{f}</li>
                     ))}
                   </ul>
-                  {/* scout chance */}
+                  {/* scout visibility — visual only */}
                   <div className={`mt-4 rounded-xl p-2.5 ${p.dark ? "bg-white/10" : "bg-kawaii-purple/10"}`}>
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider opacity-60">Scout chance</p>
-                      <span className="text-sm font-black tabular-nums">{p.scout}%</span>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider opacity-60">Scout visibility</p>
+                      <span className="text-sm font-black">{p.vis === 4 ? "🎯" : p.vis === 3 ? "🔎" : "🙈"}</span>
                     </div>
                     <div className="flex gap-1 mt-1.5">
                       {[1, 2, 3, 4].map((i) => (
-                        <span key={i} className={`h-1.5 flex-1 rounded-full ${i <= p.vis ? "bg-gradient-to-r from-kawaii-purple to-kawaii-pink" : "opacity-20 bg-slate-400"}`} />
+                        <span key={i} className={`h-2 flex-1 rounded-full ${i <= p.vis ? "bg-gradient-to-r from-kawaii-purple to-kawaii-pink" : "opacity-20 bg-slate-400"}`} />
                       ))}
                     </div>
                     <p className="text-[10px] opacity-60 mt-1">{p.hint}</p>

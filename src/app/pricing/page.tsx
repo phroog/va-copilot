@@ -96,12 +96,10 @@ export default function PricingPage() {
     <div className="min-h-screen bg-[#FFF0F5] dark:bg-dark-bg">
       {/* Interested but not sure — small, not the main focus */}
       <a
-        href={`https://wa.me/${WHATSAPP}`}
-        target="_blank"
-        rel="noopener noreferrer"
+        href="#call"
         className="block w-full bg-black text-white text-center text-[12px] font-bold py-2 hover:bg-slate-900 transition-colors"
       >
-        💬 Interested but not sure? WhatsApp us — <span className="underline">{WHATSAPP_DISPLAY}</span>
+        🤝 Interested but not sure? <span className="underline">Book a free audit call</span> →
       </a>
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="text-center mb-6">
@@ -161,15 +159,17 @@ export default function PricingPage() {
                       <li key={f} className="flex items-start gap-1.5"><span className={isPro ? "text-kawaii-pink" : "text-kawaii-purple"}>✦</span>{f}</li>
                     ))}
                   </ul>
-                  {/* scout chance */}
+                  {/* scout chance — visual only, no numbers */}
                   <div className="mt-4 rounded-xl bg-white/10 border border-white/15 p-2.5 text-left">
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-white/40">Scout chance</p>
-                      <span className="text-sm font-extrabold text-white tabular-nums">{ti.scout.pct}%</span>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-white/40">Scout visibility</p>
+                      <span className="text-sm font-black">
+                        {ti.scout.vis === 4 ? "🎯" : ti.scout.vis === 3 ? "🔎" : "🙈"}
+                      </span>
                     </div>
                     <div className="flex gap-1 mt-1.5">
                       {[1, 2, 3, 4].map((i) => (
-                        <span key={i} className={`h-1.5 flex-1 rounded-full ${i <= ti.scout.vis ? "bg-gradient-to-r from-kawaii-purple to-kawaii-pink" : "bg-white/20"}`} />
+                        <span key={i} className={`h-2 flex-1 rounded-full ${i <= ti.scout.vis ? "bg-gradient-to-r from-kawaii-purple to-kawaii-pink" : "bg-white/20"}`} />
                       ))}
                     </div>
                     <p className="text-[10px] text-white/45 mt-1.5">{ti.scout.hint}</p>
@@ -194,7 +194,7 @@ export default function PricingPage() {
         {msg && <p className="text-center text-sm mt-4 text-slate-600 dark:text-slate-300">{msg}</p>}
 
         {/* Free audit call — very visible */}
-        <div className="mt-10 rounded-3xl border-2 border-dl-gold/50 dark:border-dl-gold/40 bg-gradient-to-r from-dl-gold/15 via-kawaii-purple/10 to-kawaii-pink/10 p-6 sm:p-8">
+        <div id="call" className="mt-10 scroll-mt-20 rounded-3xl border-2 border-dl-gold/50 dark:border-dl-gold/40 bg-gradient-to-r from-dl-gold/15 via-kawaii-purple/10 to-kawaii-pink/10 p-6 sm:p-8">
           <div className="text-center">
             <div className="text-5xl">🎥</div>
             <h2 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
@@ -209,6 +209,12 @@ export default function PricingPage() {
               <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ No obligation</span>
               <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ Honest, practical advice</span>
             </div>
+            <p className="mt-3 text-[12px] text-slate-500 dark:text-slate-400">
+              Prefer chat? WhatsApp us —{" "}
+              <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noopener noreferrer" className="font-bold text-green-600 dark:text-green-400 underline">
+                {WHATSAPP_DISPLAY}
+              </a>
+            </p>
           </div>
           <div className="mt-6 max-w-2xl mx-auto">
             <CalendlyWidget height={540} />

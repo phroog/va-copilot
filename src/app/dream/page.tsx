@@ -537,15 +537,16 @@ export default function DreamPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="pointer-events-auto w-full max-w-sm rounded-3xl bg-[#1f2233] border border-white/10 p-6 text-center"
               >
-                <div className="text-5xl">🤔</div>
-                <h3 className="mt-3 text-xl font-black text-white">Are you sure?</h3>
+                <div className="text-5xl">🎥</div>
+                <h3 className="mt-3 text-xl font-black text-white">Good choice — but don't disappear.</h3>
                 <p className="mt-2 text-sm text-white/65 leading-relaxed">
-                  On Free, you'll <b className="text-white">never be found</b> — you don't even land in the Scout Pool.
-                  The agencies that want you? They'll never see you. Is that really the dream?
+                  Free is a great way to start — but on Free you stay <b className="text-white">invisible to agencies</b>.
+                  Let's fix that: book a <b className="text-white">free audit call</b> and we'll show you the exact
+                  path to get hired. No obligation, just honesty.
                 </p>
                 <div className="mt-5 space-y-2">
-                  <button onClick={() => setConfirmFree(false)} className="w-full py-3 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-black">
-                    Wait — I want to be found →
+                  <button onClick={() => { setConfirmFree(false); setStep("call"); }} className="w-full py-3 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-black">
+                    🎥 Book my free audit call →
                   </button>
                   <button onClick={confirmFreeContinue} className="w-full py-2.5 rounded-2xl bg-white/5 border border-white/15 text-white/70 font-bold hover:bg-white/10 transition-all">
                     Free is fine for now
