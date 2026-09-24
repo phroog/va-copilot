@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { trackEvent, trackCustom } from "@/components/meta-pixel";
+import { CalendlyWidget } from "@/components/calendly-widget";
 import { SUGGESTED } from "@/lib/learn/funnel";
 import type { FunnelQ } from "@/lib/learn/funnel";
 
@@ -16,7 +17,7 @@ interface PathOption {
   persona: string;
 }
 
-type Step = "hero" | "pick" | "suggest" | "ready" | "play" | "verdict" | "contact" | "plans";
+type Step = "hero" | "pick" | "suggest" | "ready" | "play" | "verdict" | "contact" | "call" | "plans";
 
 const PLANS = [
   {
@@ -151,8 +152,10 @@ export default function DreamPage() {
         setSignedIn(!!d?.signedIn);
       } catch {}
     }
-    setStep("plans");
+    setStep("call");
   };
+
+  const goPlans = () => setStep("plans");
 
   const recordPlan = (key: string) => {
     try {
@@ -391,6 +394,35 @@ export default function DreamPage() {
           </motion.div>
         )}
 
+        {step === "call" && (
+          <motion.div key="call" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
+            <div className="w-full max-w-2xl">
+              <div className="text-center">
+                <div className="text-5xl">🎥</div>
+                <h2 className="mt-3 text-3xl sm:text-4xl font-black">A free audit call — no strings attached</h2>
+                <p className="mt-2 text-white/60 max-w-xl mx-auto leading-relaxed">
+                  Not sure which lane fits you? Grab a <b>free, no-obligation</b> chat with a real human. We'll look
+                  at where you are, where you want to be, and tell you honestly what makes sense. You'll leave the
+                  call knowing exactly what to do next.
+                </p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs font-extrabold">
+                  <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ Free</span>
+                  <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ No obligation</span>
+                  <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ Honest, practical advice</span>
+                </div>
+              </div>
+              <div className="mt-6">
+                <CalendlyWidget height={540} />
+              </div>
+              <div className="mt-4 flex justify-center">
+                <button onClick={goPlans} className="px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-white/80 font-bold hover:bg-white/15 transition-all squishy">
+                  No thanks — show me the plans →
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {step === "plans" && (
           <motion.div key="plans" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="py-14 px-4">
             <div className="text-center mb-8">
@@ -474,6 +506,9 @@ export default function DreamPage() {
               >
                 💬 Interested but not sure? WhatsApp us — <span className="underline">+43 664 559 7889</span>
               </a>
+              <button onClick={() => setStep("call")} className="block mx-auto text-center text-[12px] font-bold text-white/60 hover:text-white transition-colors">
+                🎥 Prefer to talk it through? Book a free audit call →
+              </button>
             </div>
 
             {/* FAQ */}

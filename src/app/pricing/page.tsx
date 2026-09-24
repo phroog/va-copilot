@@ -8,6 +8,7 @@ import { useLocale } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { PASSES, DAILY_PASS_POINTS, type PassKey, type DailyPassKey } from "@/lib/payments";
 import { trackEvent } from "@/components/meta-pixel";
+import { CalendlyWidget } from "@/components/calendly-widget";
 
 const WHATSAPP = "436645597889";
 const WHATSAPP_DISPLAY = "+43 664 559 7889";
@@ -191,6 +192,28 @@ export default function PricingPage() {
         </div>
 
         {msg && <p className="text-center text-sm mt-4 text-slate-600 dark:text-slate-300">{msg}</p>}
+
+        {/* Free audit call — very visible */}
+        <div className="mt-10 rounded-3xl border-2 border-dl-gold/50 dark:border-dl-gold/40 bg-gradient-to-r from-dl-gold/15 via-kawaii-purple/10 to-kawaii-pink/10 p-6 sm:p-8">
+          <div className="text-center">
+            <div className="text-5xl">🎥</div>
+            <h2 className="mt-3 text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              Not sure which lane fits you?
+            </h2>
+            <p className="mt-2 text-slate-600 dark:text-slate-300 max-w-xl mx-auto leading-relaxed">
+              Book a <b>free audit call</b> — completely <b>no-obligation</b>. We'll look at where you are, where you
+              want to be, and tell you honestly what makes sense. You'll leave knowing exactly what to do next.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs font-extrabold">
+              <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ Free</span>
+              <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ No obligation</span>
+              <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ Honest, practical advice</span>
+            </div>
+          </div>
+          <div className="mt-6 max-w-2xl mx-auto">
+            <CalendlyWidget height={540} />
+          </div>
+        </div>
 
         {/* FAQ — visible without scrolling */}
         <div className="mt-10 max-w-3xl mx-auto grid sm:grid-cols-2 gap-3">
