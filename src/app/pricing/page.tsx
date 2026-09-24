@@ -8,7 +8,7 @@ import { useLocale } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { PASSES, DAILY_PASS_POINTS, type PassKey, type DailyPassKey } from "@/lib/payments";
 import { trackEvent } from "@/components/meta-pixel";
-import { CalendlyWidget } from "@/components/calendly-widget";
+import { BookCallButton } from "@/components/book-call-button";
 
 const WHATSAPP = "436645597889";
 const WHATSAPP_DISPLAY = "+43 664 559 7889";
@@ -215,9 +215,10 @@ export default function PricingPage() {
                 {WHATSAPP_DISPLAY}
               </a>
             </p>
-          </div>
-          <div className="mt-6 max-w-2xl mx-auto">
-            <CalendlyWidget height={540} />
+            <div className="mt-6 flex flex-col items-center gap-2">
+              <BookCallButton className="px-10 py-4 text-lg" />
+              <p className="text-[11px] text-slate-400">Opens Calendly in a new tab — pick a time that suits you.</p>
+            </div>
           </div>
         </div>
 

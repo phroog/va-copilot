@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { trackEvent, trackCustom } from "@/components/meta-pixel";
-import { CalendlyWidget } from "@/components/calendly-widget";
+import { BookCallButton } from "@/components/book-call-button";
 import { SUGGESTED } from "@/lib/learn/funnel";
 import type { FunnelQ } from "@/lib/learn/funnel";
 
@@ -355,6 +355,9 @@ export default function DreamPage() {
             <button onClick={goContact} className="mt-6 px-10 py-4 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-black text-lg shadow-2xl shadow-kawaii-purple/40 hover:scale-[1.03] transition-all squishy">
               Claim your path →
             </button>
+            <button onClick={() => setStep("call")} className="mt-3 text-sm font-bold text-white/50 hover:text-white transition-colors">
+              🎥 Not sure yet? Book a free audit call instead →
+            </button>
           </motion.div>
         )}
 
@@ -396,29 +399,25 @@ export default function DreamPage() {
 
         {step === "call" && (
           <motion.div key="call" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
-            <div className="w-full max-w-2xl">
-              <div className="text-center">
-                <div className="text-5xl">🎥</div>
-                <h2 className="mt-3 text-3xl sm:text-4xl font-black">A free audit call — no strings attached</h2>
-                <p className="mt-2 text-white/60 max-w-xl mx-auto leading-relaxed">
-                  Not sure which lane fits you? Grab a <b>free, no-obligation</b> chat with a real human. We'll look
-                  at where you are, where you want to be, and tell you honestly what makes sense. You'll leave the
-                  call knowing exactly what to do next.
-                </p>
-                <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs font-extrabold">
-                  <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ Free</span>
-                  <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ No obligation</span>
-                  <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ Honest, practical advice</span>
-                </div>
+            <div className="w-full max-w-xl text-center">
+              <div className="text-5xl">🎥</div>
+              <h2 className="mt-3 text-3xl sm:text-4xl font-black">A free audit call — no strings attached</h2>
+              <p className="mt-2 text-white/60 leading-relaxed">
+                Not sure which lane fits you? Grab a <b>free, no-obligation</b> chat with a real human. We'll look
+                at where you are, where you want to be, and tell you honestly what makes sense.
+              </p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs font-extrabold">
+                <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ Free</span>
+                <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ No obligation</span>
+                <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ Honest advice</span>
               </div>
-              <div className="mt-6">
-                <CalendlyWidget height={540} />
+              <div className="mt-8">
+                <BookCallButton className="w-full px-8 py-5 text-lg" />
+                <p className="mt-2 text-xs text-white/40">Opens Calendly in a new tab — pick a time that suits you.</p>
               </div>
-              <div className="mt-4 flex justify-center">
-                <button onClick={goPlans} className="px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-white/80 font-bold hover:bg-white/15 transition-all squishy">
-                  No thanks — show me the plans →
-                </button>
-              </div>
+              <button onClick={goPlans} className="mt-6 px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-white/80 font-bold hover:bg-white/15 transition-all squishy">
+                No thanks — show me the plans →
+              </button>
             </div>
           </motion.div>
         )}
