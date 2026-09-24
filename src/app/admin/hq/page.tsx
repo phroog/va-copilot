@@ -7,11 +7,13 @@ import { Badge } from "@/components/ui/badge";
 
 interface HqData {
   generated_at: string;
-  counts: { signups: number; purchases: number; letters: number; scams: number };
+  counts: { signups: number; purchases: number; letters: number; scams: number; leads: number; messages: number };
   signups: { user_id: string; name: string | null; email: string | null; created_at: string; phone: string | null; skills: string[] | null; goal: string | null; job_vector: number[] | null }[];
   purchases: { id: string; email: string | null; plan: string; status: string; current_period_end: string | null; created_at: string }[];
   letters: { id: string; email: string | null; category: string; urgency: string; message: string; status: string; created_at: string }[];
   scams: { id: string; domain: string; company_name: string; risk: string; status: string; reporter: string | null; created_at: string }[];
+  leads: { id: string; email: string; whatsapp: string | null; path: string | null; persona: string | null; plan: string | null; created_at: string }[];
+  messages: { id: string; recipient: string; sender_name: string; title: string; body: string; created_at: string }[];
 }
 
 const URGENCY: Record<string, { emoji: string; cls: string }> = {
@@ -38,6 +40,14 @@ export default function AdminHq() {
   const [data, setData] = useState<HqData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // message composer
+  const [recipient, setRecipient] = useState("all");
+  const [senderName, setSenderName] = useState("Sari Team");
+  const [msgTitle, setMsgTitle] = useState("");
+  const [msgBody, setMsgBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState("");
+
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/hq");
@@ -52,6 +62,34 @@ export default function AdminHq() {
   }, [router]);
 
   useEffect(() => { load(); }, [load]);
+
+  const sendMessage = async () => {
+    if (!msgTitle.trim() || !msgBody.trim() || !senderName.trim()) {
+      setSent("⚠️ sender, title and message are required");
+      return;
+    }
+    setSending(true);
+    setSent("");
+    try {
+      const res = await fetch("/api/admin/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipient, sender_name: senderName, title: msgTitle, body: msgBody }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "Failed");
+      }
+      setMsgTitle("");
+      setMsgBody("");
+      setSent("✅ Sent — users will see it in their feed.");
+      load();
+    } catch (e: any) {
+      setSent("❌ " + (e.message || "Failed"));
+    } finally {
+      setSending(false);
+    }
+  };
 
   if (loading) {
     return <div className="p-6"><p className="text-slate-400">Loading…</p></div>;
@@ -69,6 +107,89 @@ export default function AdminHq() {
         </div>
         <button onClick={load} className="px-4 py-2 rounded-xl bg-kawaii-purple text-white text-sm font-bold">🔄 Refresh</button>
       </div>
+
+      {/* ── Leads (dream funnel) ────────────────────────────────── */}
+      <Card>
+        <CardHeader><CardTitle className="text-lg">🎯 Funnel Leads ({data.counts.leads})</CardTitle></CardHeader>
+        <CardContent className="space-y-2 max-h-[24rem] overflow-y-auto">
+          {data.leads.length === 0 ? <p className="text-slate-400 text-sm">No leads yet — run the dream funnel.</p> : data.leads.map((l) => (
+            <div key={l.id} className="p-3 rounded-xl border border-kawaii-lavender/20 dark:border-dark-surface">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{l.email}</p>
+                  <p className="text-xs text-slate-400 truncate">
+                    {[l.path, l.persona].filter(Boolean).join(" · ") || "—"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {l.whatsapp ? (
+                    <a href={`https://wa.me/${l.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-green-600 dark:text-green-400 hover:underline" title="Open WhatsApp chat">
+                      💬 +{l.whatsapp}
+                    </a>
+                  ) : (
+                    <span className="text-xs text-slate-300 dark:text-slate-600">no #</span>
+                  )}
+                  {l.plan ? (
+                    <Badge variant={l.plan === "pro" ? "success" : l.plan === "basic" ? "secondary" : "outline"}>{l.plan}</Badge>
+                  ) : (
+                    <span className="text-xs text-slate-300 dark:text-slate-600">no plan</span>
+                  )}
+                  <span className="text-xs text-slate-400">{fmt(l.created_at)}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* ── Send feed message ───────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">📨 Send feed message</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Recipient</label>
+              <input
+                value={recipient === "all" ? "" : recipient}
+                onChange={(e) => setRecipient(e.target.value.trim() ? e.target.value : "all")}
+                placeholder="type email, or 'all' for everyone"
+                className="w-full h-10 px-3 rounded-xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200"
+              />
+              <p className="text-[10px] text-slate-400 mt-0.5">{recipient === "all" ? "Sending to everyone" : `Sending to ${recipient}`}</p>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Sender name (shown to user)</label>
+              <input
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+                placeholder="e.g. Sari Team, Your Recruiter"
+                className="w-full h-10 px-3 rounded-xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200"
+              />
+            </div>
+          </div>
+          <input
+            value={msgTitle}
+            onChange={(e) => setMsgTitle(e.target.value)}
+            placeholder="Title — e.g. You're in the scout pool 🎉"
+            className="w-full h-10 px-3 rounded-xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200"
+          />
+          <textarea
+            value={msgBody}
+            onChange={(e) => setMsgBody(e.target.value)}
+            placeholder="Message body…"
+            rows={3}
+            className="w-full px-3 py-2 rounded-xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm text-slate-700 dark:text-slate-200"
+          />
+          <div className="flex items-center gap-3">
+            <button onClick={sendMessage} disabled={sending} className="px-4 py-2 rounded-xl bg-dl-green text-white text-sm font-bold disabled:opacity-50">
+              {sending ? "Sending…" : "📨 Send"}
+            </button>
+            {sent && <span className="text-sm text-slate-500">{sent}</span>}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ── Signups ─────────────────────────────────────────────── */}
       <Card>

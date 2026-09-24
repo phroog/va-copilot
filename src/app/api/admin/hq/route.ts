@@ -43,12 +43,14 @@ export async function GET() {
   }
   const emailFor = (id?: string | null) => (id ? emailById.get(id) ?? null : null);
 
-  const [subs, letterRows, scamRows, profiles, settingsRows] = await Promise.all([
+  const [subs, letterRows, scamRows, profiles, settingsRows, leadsRes, messagesRes] = await Promise.all([
     supabase.from("subscriptions").select("*").order("created_at", { ascending: false }).limit(200),
     supabase.from("support_letters").select("*").order("created_at", { ascending: false }).limit(200),
     supabase.from("scam_registry").select("*").order("created_at", { ascending: false }).limit(200),
     supabase.from("profiles").select("user_id, full_name, skills, job_vector, goal, desired_rate").limit(2000),
     supabase.from("user_settings").select("user_id, phone").limit(2000),
+    supabase.from("funnel_leads").select("*").order("created_at", { ascending: false }).limit(300),
+    supabase.from("feed_messages").select("*").order("created_at", { ascending: false }).limit(200),
   ]);
 
   // Signups: from auth.users directly (every signup, even if onboarding was
@@ -114,6 +116,25 @@ export async function GET() {
     created_at: s.created_at,
   }));
 
+  const leads = (leadsRes.data ?? []).map((l: any) => ({
+    id: l.id,
+    email: l.email,
+    whatsapp: l.whatsapp,
+    path: l.path,
+    persona: l.persona,
+    plan: l.plan,
+    created_at: l.created_at,
+  }));
+
+  const messages = (messagesRes.data ?? []).map((m: any) => ({
+    id: m.id,
+    recipient: m.recipient_email ?? "all",
+    sender_name: m.sender_name,
+    title: m.title,
+    body: m.body,
+    created_at: m.created_at,
+  }));
+
   return NextResponse.json({
     generated_at: new Date().toISOString(),
     counts: {
@@ -121,10 +142,14 @@ export async function GET() {
       purchases: purchases.length,
       letters: letters.length,
       scams: scams.length,
+      leads: leads.length,
+      messages: messages.length,
     },
     signups,
     purchases,
     letters,
     scams,
+    leads,
+    messages,
   });
 }

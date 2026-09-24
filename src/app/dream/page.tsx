@@ -145,7 +145,7 @@ export default function DreamPage() {
         const r = await fetch("/api/funnel/signin", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, whatsapp }),
+          body: JSON.stringify({ email, whatsapp, path: path?.title, persona: path?.persona }),
         });
         const d = await r.json();
         setSignedIn(!!d?.signedIn);
@@ -154,24 +154,34 @@ export default function DreamPage() {
     setStep("plans");
   };
 
+  const recordPlan = (key: string) => {
+    try {
+      localStorage.setItem("sari_dream_plan", key);
+    } catch {}
+    const dream = email.trim() || (() => { try { return JSON.parse(localStorage.getItem("sari_dream") || "{}").email || ""; } catch { return ""; } })();
+    if (dream) {
+      fetch("/api/funnel/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: dream, plan: key }),
+      }).catch(() => {});
+    }
+  };
+
   const choosePlan = (key: string) => {
     if (key === "free") {
       setPickedPlan("free");
       setConfirmFree(true);
       return;
     }
-    try {
-      localStorage.setItem("sari_dream_plan", key);
-    } catch {}
+    recordPlan(key);
     // Hard navigation so the freshly-written auth cookies are definitely sent.
     window.location.href = signedIn ? "/pricing" : "/auth/signup?returnUrl=/pricing";
   };
 
   const confirmFreeContinue = () => {
     setConfirmFree(false);
-    try {
-      localStorage.setItem("sari_dream_plan", "free");
-    } catch {}
+    recordPlan("free");
     window.location.href = signedIn ? "/learn" : "/auth/signup?returnUrl=/learn";
   };
 

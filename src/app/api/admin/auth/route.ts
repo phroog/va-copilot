@@ -17,7 +17,10 @@ export async function POST(request: Request) {
   const expectedPass = process.env.ADMIN_DASHBOARD_PASSWORD || "";
 
   if (!expectedUser || !expectedPass) {
-    return NextResponse.json({ error: "Admin dashboard not configured" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Admin dashboard not configured — set ADMIN_DASHBOARD_USERNAME and ADMIN_DASHBOARD_PASSWORD in your Vercel environment." },
+      { status: 500 }
+    );
   }
 
   // Constant-time-ish comparison to avoid trivial timing signals

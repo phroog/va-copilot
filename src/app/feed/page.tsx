@@ -32,6 +32,7 @@ export default function FeedPage() {
   const [rank, setRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"feed" | "events">("feed");
+  const [adminMsgs, setAdminMsgs] = useState<{ id: string; sender_name: string; title: string; body: string; created_at: string; read: boolean }[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -47,6 +48,21 @@ export default function FeedPage() {
         try {
           const lb = await fetch("/api/learn/leaderboard").then((r) => r.json());
           setRank(lb?.user?.rank ?? null);
+        } catch {
+          // ignore
+        }
+        try {
+          const m = await fetch("/api/feed/messages").then((r) => r.json());
+          const msgs = m?.messages ?? [];
+          setAdminMsgs(msgs);
+          const unread = msgs.filter((x: any) => !x.read).map((x: any) => x.id);
+          if (unread.length > 0) {
+            fetch("/api/feed/messages", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids: unread }),
+            }).catch(() => {});
+          }
         } catch {
           // ignore
         }
@@ -242,6 +258,21 @@ export default function FeedPage() {
           </p>
         </>
       ) : (
+      <>
+      {adminMsgs.length > 0 && (
+        <div className="space-y-2.5 mb-4">
+          {adminMsgs.map((m) => (
+            <div key={m.id} className={cn("relative rounded-3xl border p-4", m.read ? "border-white/10 bg-[#1f2233]" : "border-kawaii-purple/50 bg-gradient-to-r from-kawaii-purple/15 to-kawaii-pink/10")}>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-white/40">
+                ✉️ {m.sender_name}
+                {!m.read && <span className="ml-2 text-kawaii-lavender">NEW</span>}
+              </p>
+              <p className="mt-1 text-sm font-extrabold text-white">{m.title}</p>
+              <p className="mt-1 text-[13px] text-white/60 whitespace-pre-wrap">{m.body}</p>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="space-y-2.5">
         {items.map((it, i) => {
           const a = ACCENT[it.accent];
@@ -274,6 +305,7 @@ export default function FeedPage() {
           );
         })}
       </div>
+      </>
       )}
     </motion.div>
   );

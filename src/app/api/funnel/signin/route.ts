@@ -6,13 +6,24 @@ import { createClient } from "@/lib/supabase/server";
 // token, and exchanges it for a REAL session on the server — writing the auth
 // cookies directly. No email click, no client-side token juggling.
 export async function POST(request: Request) {
-  const { email, whatsapp } = await request.json().catch(() => ({}));
+  const { email, whatsapp, path, persona } = await request.json().catch(() => ({}));
   const e = (email || "").trim().toLowerCase();
   if (!e || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) {
     return NextResponse.json({ error: "A valid email is required" }, { status: 400 });
   }
 
   const admin = createServiceRoleClient();
+
+  // Record the lead for the operator (upsert on email).
+  await admin.from("funnel_leads").upsert(
+    {
+      email: e,
+      whatsapp: (whatsapp || "").trim() || null,
+      path: (path || "").trim() || null,
+      persona: (persona || "").trim() || null,
+    },
+    { onConflict: "email" }
+  );
 
   async function linkData(): Promise<{ token?: string; tokenHash?: string; otp?: string } | null> {
     const { data, error } = await admin.auth.admin.generateLink({ type: "magiclink", email: e });
