@@ -123,6 +123,12 @@ export default function PricingPage() {
           </div>
         </div>
 
+        {/* Call CTA above the prices — visible without scrolling */}
+        <div className="flex flex-col items-center gap-2 mb-8">
+          <BookCallButton className="px-9 py-4 text-base" />
+          <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Free audit · no obligation · decide after the call</p>
+        </div>
+
         <div className="grid md:grid-cols-3 gap-5">
           {TIERS.map((ti: any) => {
             const isPro = ti.key === "pro";

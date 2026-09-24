@@ -429,6 +429,10 @@ export default function DreamPage() {
               <p className="mt-3 text-white/60 max-w-xl mx-auto">
                 One deposit a month. No subscriptions. The more you give, the louder the agencies hear you.
               </p>
+              <div className="mt-5 flex flex-col items-center gap-2">
+                <BookCallButton className="px-8 py-3.5 text-sm" label="Not sure? Book a free audit call" />
+                <p className="text-[11px] text-white/40">Free · no obligation</p>
+              </div>
             </div>
 
             {/* swipeable plans */}
