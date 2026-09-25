@@ -48,14 +48,17 @@ export async function ensureDaily(supabase: any, userId: string): Promise<void> 
 
 export async function getEnergy(supabase: any, userId: string): Promise<EnergyState> {
   const today = utcToday();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("daily_date,lessons_today,sim_today,bonus_lessons_today")
-    .eq("user_id", userId)
-    .maybeSingle();
-  const { data: sub } = await supabase.from("subscriptions").select("plan,status,access_until").eq("user_id", userId).maybeSingle();
+  const [profileRes, subRes, grantRes] = await Promise.all([
+    supabase.from("profiles").select("daily_date,lessons_today,sim_today,bonus_lessons_today").eq("user_id", userId).maybeSingle(),
+    supabase.from("subscriptions").select("plan,status,access_until").eq("user_id", userId).maybeSingle(),
+    supabase.from("user_grants").select("unlimited_playtime").eq("user_id", userId).maybeSingle(),
+  ]);
+  const profile = profileRes.data;
+  const sub = subRes.data;
 
-  const plan = planFromSubscription(sub);
+  let plan = planFromSubscription(sub);
+  // Operator grant: unlimited playtime overrides everything (acts like pro).
+  if (grantRes.data?.unlimited_playtime) plan = "pro";
   const stale = profile?.daily_date !== today;
   const lessonsUsed = stale ? 0 : profile?.lessons_today ?? 0;
   const simUsed = stale ? 0 : profile?.sim_today ?? 0;

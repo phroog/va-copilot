@@ -38,7 +38,7 @@ export function botXp(bot: BotRow): number {
   const climb = ((day + phase) * (9 + (hash(bot.id) % 47))) % 173;
   const week = Math.floor(day / 7);
   const surge = (week + phase) % 5 === 0 ? (day * 13 + hash(bot.id)) % 420 : 0;
-  return bot.base_xp + climb + surge;
+  return bot.base_xp + (climb + surge) * 50;
 }
 
 export function botDisplay(bot: BotRow): BotDisplay {
@@ -68,7 +68,7 @@ export function dailyNewBots(count = 12): BotDisplay[] {
       id: `bot:daily:${day}:${name}`,
       name,
       avatar: AVATARS[(day + i) % AVATARS.length],
-      xp: 60 + ((day * 23 + i * 97 + hash(name)) % 5400),
+      xp: (60 + ((day * 23 + i * 97 + hash(name)) % 5400)) * 50,
       isBot: true,
       isNew: i < 2,
     });

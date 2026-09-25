@@ -1149,5 +1149,5 @@ export function streakMultiplier(streak: number): number {
 export function xpForRound(correct: boolean, streakAfter: number, secondsLeft: number): number {
   if (!correct) return 0;
   const timeBonus = secondsLeft >= ROUND_SECONDS / 2 ? 5 : 2;
-  return (10 + timeBonus) * streakMultiplier(streakAfter);
+  return (10 + timeBonus) * streakMultiplier(streakAfter) * 50;
 }

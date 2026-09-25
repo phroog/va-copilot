@@ -4,6 +4,7 @@ import { summarizeXp } from "@/lib/learn/ranks";
 import { ensureProfile } from "@/lib/learn/profile";
 import { ensureDaily, getEnergy, consumeLessons } from "@/lib/learn/energy";
 import { accuracyTier, speedTier, speedBonusXp, speedRatio } from "@/lib/learn/performance";
+import { XP_SCALE } from "@/lib/learn/ranks";
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), hi);
@@ -45,7 +46,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const sTier = speedTier(ratio);
   const baseXp = Math.max(Math.round(level.xp_reward * (0.5 + 0.5 * accuracy)), Math.round(level.xp_reward * 0.5));
   const speedBonus = speedBonusXp(level.xp_reward, ratio);
-  const xpAward = baseXp + speedBonus;
+  const xpAward = Math.round((baseXp + speedBonus) * XP_SCALE);
 
   const newStars = Math.max(stars, existing?.stars ?? 0);
   const newBestAccuracy = Math.max(accuracy, existing?.best_accuracy ?? 0);

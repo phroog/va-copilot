@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { summarizeXp } from "@/lib/learn/ranks";
 import { ensureProfile } from "@/lib/learn/profile";
 import { ensureDaily, getEnergy, consumeSimScenarios } from "@/lib/learn/energy";
+import { XP_SCALE } from "@/lib/learn/ranks";
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), hi);
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));
-  const xpRaw = clamp(Math.round(Number(body.xp_earned) || 0), 0, 2000);
+  const xpRaw = clamp(Math.round(Number(body.xp_earned) || 0), 0, 2000 * XP_SCALE);
   const rounds = clamp(Math.round(Number(body.rounds) || 0), 0, 200);
   const correct = clamp(Math.round(Number(body.correct) || 0), 0, rounds);
   const bestStreak = clamp(Math.round(Number(body.best_streak) || 0), 0, 999);

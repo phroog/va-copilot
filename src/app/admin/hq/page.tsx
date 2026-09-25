@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -203,6 +204,7 @@ export default function AdminHq() {
                   {s.name && <p className="text-xs text-slate-400">{s.name}</p>}
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
+                  <Link href={`/admin/user/${s.user_id}`} className="text-xs font-bold text-kawaii-purple dark:text-kawaii-lavender hover:underline">⚙️ Manage</Link>
                   {s.phone ? (
                     <a
                       href={`https://wa.me/${s.phone}`}

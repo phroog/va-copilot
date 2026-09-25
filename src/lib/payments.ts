@@ -107,11 +107,11 @@ export type WheelReward = { type: "lessons" | "xp"; amount: number; label: strin
 
 const WHEEL_SEGMENTS: { type: WheelReward["type"]; amount: number; label: string; weight: number }[] = [
   { type: "lessons", amount: 1, label: "+1 Lesson", weight: 24 },
-  { type: "xp", amount: 100, label: "+100 XP", weight: 20 },
+  { type: "xp", amount: 5000, label: "+5,000 XP", weight: 20 },
   { type: "lessons", amount: 2, label: "+2 Lessons", weight: 18 },
-  { type: "xp", amount: 50, label: "+50 XP", weight: 18 },
+  { type: "xp", amount: 2500, label: "+2,500 XP", weight: 18 },
   { type: "lessons", amount: 3, label: "+3 Lessons", weight: 12 },
-  { type: "xp", amount: 25, label: "+25 XP", weight: 8 },
+  { type: "xp", amount: 1250, label: "+1,250 XP", weight: 8 },
 ];
 
 export function spinWheel(): WheelReward {
