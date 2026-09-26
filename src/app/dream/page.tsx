@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { trackEvent, trackCustom } from "@/components/meta-pixel";
-import { BookCallButton } from "@/components/book-call-button";
 import { SUGGESTED } from "@/lib/learn/funnel";
 import type { FunnelQ } from "@/lib/learn/funnel";
 
@@ -17,7 +16,7 @@ interface PathOption {
   persona: string;
 }
 
-type Step = "hero" | "pick" | "suggest" | "ready" | "play" | "verdict" | "contact" | "call" | "plans";
+type Step = "hero" | "pick" | "suggest" | "ready" | "play" | "verdict" | "contact" | "plans";
 
 const PLANS = [
   {
@@ -152,10 +151,8 @@ export default function DreamPage() {
         setSignedIn(!!d?.signedIn);
       } catch {}
     }
-    setStep("call");
+    setStep("plans");
   };
-
-  const goPlans = () => setStep("plans");
 
   const recordPlan = (key: string) => {
     try {
@@ -355,9 +352,6 @@ export default function DreamPage() {
             <button onClick={goContact} className="mt-6 px-10 py-4 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-black text-lg shadow-2xl shadow-kawaii-purple/40 hover:scale-[1.03] transition-all squishy">
               Claim your path →
             </button>
-            <button onClick={() => setStep("call")} className="mt-3 text-sm font-bold text-white/50 hover:text-white transition-colors">
-              🎥 Not sure yet? Book a free audit call instead →
-            </button>
           </motion.div>
         )}
 
@@ -397,31 +391,6 @@ export default function DreamPage() {
           </motion.div>
         )}
 
-        {step === "call" && (
-          <motion.div key="call" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
-            <div className="w-full max-w-xl text-center">
-              <div className="text-5xl">🎥</div>
-              <h2 className="mt-3 text-3xl sm:text-4xl font-black">A free audit call — no strings attached</h2>
-              <p className="mt-2 text-white/60 leading-relaxed">
-                Not sure which lane fits you? Grab a <b>free, no-obligation</b> chat with a real human. We'll look
-                at where you are, where you want to be, and tell you honestly what makes sense.
-              </p>
-              <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs font-extrabold">
-                <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ Free</span>
-                <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ No obligation</span>
-                <span className="px-3 py-1.5 rounded-full bg-dl-green/15 border border-dl-green/40 text-dl-green">✅ Honest advice</span>
-              </div>
-              <div className="mt-8">
-                <BookCallButton className="w-full px-8 py-5 text-lg" />
-                <p className="mt-2 text-xs text-white/40">Opens Calendly in a new tab — pick a time that suits you.</p>
-              </div>
-              <button onClick={goPlans} className="mt-6 px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-white/80 font-bold hover:bg-white/15 transition-all squishy">
-                No thanks — show me the plans →
-              </button>
-            </div>
-          </motion.div>
-        )}
-
         {step === "plans" && (
           <motion.div key="plans" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="py-14 px-4">
             <div className="text-center mb-8">
@@ -429,10 +398,6 @@ export default function DreamPage() {
               <p className="mt-3 text-white/60 max-w-xl mx-auto">
                 One deposit a month. No subscriptions. The more you give, the louder the agencies hear you.
               </p>
-              <div className="mt-5 flex flex-col items-center gap-2">
-                <BookCallButton className="px-8 py-3.5 text-sm" label="Not sure? Book a free audit call" />
-                <p className="text-[11px] text-white/40">Free · no obligation</p>
-              </div>
             </div>
 
             {/* swipeable plans */}
@@ -509,9 +474,6 @@ export default function DreamPage() {
               >
                 💬 Interested but not sure? WhatsApp us — <span className="underline">+43 664 559 7889</span>
               </a>
-              <button onClick={() => setStep("call")} className="block mx-auto text-center text-[12px] font-bold text-white/60 hover:text-white transition-colors">
-                🎥 Prefer to talk it through? Book a free audit call →
-              </button>
             </div>
 
             {/* FAQ */}
@@ -548,7 +510,7 @@ export default function DreamPage() {
                   path to get hired. No obligation, just honesty.
                 </p>
                 <div className="mt-5 space-y-2">
-                  <button onClick={() => { setConfirmFree(false); setStep("call"); }} className="w-full py-3 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-black">
+                  <button onClick={() => { setConfirmFree(false); window.location.href = "/pricing#call"; }} className="w-full py-3 rounded-2xl bg-gradient-to-r from-kawaii-purple to-kawaii-pink text-white font-black">
                     🎥 Book my free audit call →
                   </button>
                   <button onClick={confirmFreeContinue} className="w-full py-2.5 rounded-2xl bg-white/5 border border-white/15 text-white/70 font-bold hover:bg-white/10 transition-all">

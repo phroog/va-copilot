@@ -125,7 +125,7 @@ export default function PricingPage() {
 
         {/* Call CTA above the prices — visible without scrolling */}
         <div className="flex flex-col items-center gap-2 mb-8">
-          <BookCallButton className="px-9 py-4 text-base" />
+          <BookCallButton requireConfirm className="px-9 py-4 text-base w-full max-w-md" />
           <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Free audit · no obligation · decide after the call</p>
         </div>
 
@@ -222,7 +222,7 @@ export default function PricingPage() {
               </a>
             </p>
             <div className="mt-6 flex flex-col items-center gap-2">
-              <BookCallButton className="px-10 py-4 text-lg" />
+              <BookCallButton requireConfirm className="px-10 py-4 text-lg w-full max-w-md" />
               <p className="text-[11px] text-slate-400">Opens Calendly in a new tab — pick a time that suits you.</p>
             </div>
           </div>

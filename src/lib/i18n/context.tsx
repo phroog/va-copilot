@@ -31,9 +31,13 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<TranslationRecord>({});
 
   useEffect(() => {
-    const stored = localStorage.getItem("va-copilot-locale") as Locale | null;
-    if (stored && ["en", "vi", "ph", "th"].includes(stored)) {
-      setLocaleState(stored);
+    try {
+      const stored = localStorage.getItem("va-copilot-locale") as Locale | null;
+      if (stored && ["en", "vi", "ph", "th"].includes(stored)) {
+        setLocaleState(stored);
+      }
+    } catch {
+      // storage blocked — keep English
     }
   }, []);
 
@@ -43,7 +47,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
-    localStorage.setItem("va-copilot-locale", newLocale);
+    try { localStorage.setItem("va-copilot-locale", newLocale); } catch {}
   }, []);
 
   const t = useCallback(

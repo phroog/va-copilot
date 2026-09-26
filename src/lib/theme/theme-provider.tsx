@@ -18,19 +18,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    const stored = localStorage.getItem("va-copilot-theme") as Theme | null;
-    const preferred = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    setThemeState(preferred);
-    if (preferred === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
+    try {
+      const stored = localStorage.getItem("va-copilot-theme") as Theme | null;
+      const preferred = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      setThemeState(preferred);
+      if (preferred === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    } catch {
+      // storage blocked (private mode) — keep default light theme
     }
   }, []);
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem("va-copilot-theme", newTheme);
+    try { localStorage.setItem("va-copilot-theme", newTheme); } catch {}
     if (newTheme === "dark") {
       document.documentElement.classList.add("dark");
     } else {
