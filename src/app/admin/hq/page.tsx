@@ -49,6 +49,10 @@ export default function AdminHq() {
   const [msgBody, setMsgBody] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState("");
+  // whatsapp test
+  const [waTestNum, setWaTestNum] = useState("");
+  const [waTesting, setWaTesting] = useState(false);
+  const [waResult, setWaResult] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -90,6 +94,26 @@ export default function AdminHq() {
       setSent("❌ " + (e.message || "Failed"));
     } finally {
       setSending(false);
+    }
+  };
+
+  const waTest = async (kind: "text" | "template") => {
+    if (!waTestNum.trim()) { setWaResult("⚠️ Enter a phone number"); return; }
+    setWaTesting(true);
+    setWaResult("");
+    try {
+      const res = await fetch("/api/admin/whatsapp-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: waTestNum, kind }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error || "Failed");
+      setWaResult(`✅ Sent ${d.detail} to +${d.sentTo}`);
+    } catch (e: any) {
+      setWaResult("❌ " + (e.message || "Failed"));
+    } finally {
+      setWaTesting(false);
     }
   };
 
@@ -227,6 +251,34 @@ export default function AdminHq() {
               </details>
             ))
           )}
+        </CardContent>
+      </Card>
+
+      {/* ── WhatsApp test send ──────────────────────────────────── */}
+      <Card>
+        <CardHeader><CardTitle className="text-lg">📲 WhatsApp test send</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="text-xs text-slate-500 block mb-1">Recipient number (international, e.g. 436645597889)</label>
+              <input
+                value={waTestNum}
+                onChange={(e) => setWaTestNum(e.target.value)}
+                placeholder="e.g. 436645597889"
+                className="w-full h-10 px-3 rounded-xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-sm"
+              />
+            </div>
+            <button onClick={() => waTest("text")} disabled={waTesting} className="px-4 py-2.5 rounded-xl bg-dl-green text-white text-sm font-bold disabled:opacity-50">
+              {waTesting ? "…" : "Send text"}
+            </button>
+            <button onClick={() => waTest("template")} disabled={waTesting} className="px-4 py-2.5 rounded-xl bg-kawaii-purple text-white text-sm font-bold disabled:opacity-50">
+              Send hello_world
+            </button>
+          </div>
+          {waResult && <p className="text-sm text-slate-500">{waResult}</p>}
+          <p className="text-xs text-slate-400">
+            Note: in Meta test mode, sending only works to <b>test recipients</b>. Add this number in WhatsApp Manager → Test recipients.
+          </p>
         </CardContent>
       </Card>
 

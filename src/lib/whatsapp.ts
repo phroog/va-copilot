@@ -7,7 +7,7 @@
    - WHATSAPP_PHONE_NUMBER_ID the WhatsApp Business phone-number id
    - WHATSAPP_VERIFY_TOKEN    webhook verification token (get/webhook only) */
 
-const GRAPH = "https://graph.facebook.com/v18.0";
+const GRAPH = "https://graph.facebook.com/v25.0";
 
 export function whatsappConfigured(): boolean {
   return !!process.env.WHATSAPP_TOKEN && !!process.env.WHATSAPP_PHONE_NUMBER_ID;
