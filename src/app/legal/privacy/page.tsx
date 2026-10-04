@@ -31,6 +31,7 @@ export default function PrivacyPage() {
           <li><b>Usage data:</b> jobs viewed/saved/applied, credit usage, feature usage.</li>
           <li><b>Content you provide:</b> CVs, notes, invoices, time entries, finance records, chat messages.</li>
           <li><b>Optional integrations:</b> Telegram chat ID (if you connect Telegram), Google account (if you log in with Google).</li>
+          <li><b>WhatsApp:</b> your phone number and message content, when you contact us via WhatsApp (see section 11).</li>
           <li><b>Payment data:</b> we do <b>not</b> store your card details. Payments are handled by Stripe.</li>
         </ul>
       </Section>
@@ -53,7 +54,8 @@ export default function PrivacyPage() {
           <li><b>Vercel</b> – application hosting.</li>
           <li><b>Stripe</b> – payment processing (their own privacy policy applies to payment data).</li>
           <li><b>Google</b> – optional sign-in (OAuth).</li>
-          <li><b>DeepSeek</b> – AI features (pitch generation, scam analysis). Content you submit to AI features may be sent to DeepSeek for processing.</li>
+          <li><b>DeepSeek</b> – AI features (pitch generation, scam analysis, WhatsApp assistant). Content you submit to AI features may be sent to DeepSeek for processing.</li>
+          <li><b>Meta Platforms (WhatsApp Business Platform)</b> – messaging when you contact us via WhatsApp. Meta processes the messages as a separate controller under its own privacy policies.</li>
           <li><b>Telegram</b> – notifications, if you opt in.</li>
         </ul>
         <p className="mt-2">
@@ -120,7 +122,26 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
-      <Section title="11. Contact">
+      <Section title="11. WhatsApp & Meta (Click-to-WhatsApp)">
+        <p>
+          We offer contact via WhatsApp through Meta's WhatsApp Business Platform, including from
+          "Click-to-WhatsApp" ads. This section explains how your data is handled there.
+        </p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li><b>What we receive:</b> your phone number, display name, your message content and metadata (timestamps, delivery/read status).</li>
+          <li><b>Why:</b> to answer your enquiry, qualify you (e.g. as a potential VA, client or partner) and book a free audit call. When you message us, parts of the conversation may be processed by our AI assistant (DeepSeek) so we can reply and qualify you quickly.</li>
+          <li><b>Legal basis:</b> taking steps at your request before entering into a contract and our legitimate interest in responding to enquiries (GDPR Art. 6(1)(b) and (f)); where we send promotional messages, we rely on your consent. Equivalent grounds apply under the Philippine DPA, Thai PDPA and Vietnamese PDPD.</li>
+          <li><b>Data shared with Meta:</b> WhatsApp is operated by Meta Platforms, Inc. When you message us, Meta processes your data as a separate controller under the{" "}
+            <a href="https://www.whatsapp.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-kawaii-purple underline">WhatsApp Privacy Policy</a>{" "}
+            and the{" "}
+            <a href="https://www.facebook.com/privacy/policy" target="_blank" rel="noopener noreferrer" className="text-kawaii-purple underline">Meta Privacy Policy</a>.
+            We do not store your WhatsApp messages beyond the conversation needed to answer you (see Retention).</li>
+          <li><b>Ads &amp; measurement:</b> if you reached us through a Click-to-WhatsApp ad, Meta may use interaction and conversion data to measure and optimise our ads. Where required (e.g. in the EEA/UK), we only load the Meta Pixel and enable such signals after you accept cookies in our banner.</li>
+          <li><b>Your choices:</b> you can ask us to delete the conversation, stop AI processing, or opt out of any promotional messages at any time (see "Your rights"). You can also block or report us directly in WhatsApp.</li>
+        </ul>
+      </Section>
+
+      <Section title="12. Contact">
         <p>
           Data protection enquiries:{" "}
           <a href="mailto:hello@getsari.com" className="text-kawaii-purple underline">hello@getsari.com</a>
@@ -178,6 +199,10 @@ export default function PrivacyPage() {
             Because all cookies we set are essential, we do not need to block them; we still show a
             consent banner to inform you and to confirm your choice. If we ever introduce non-essential
             cookies (e.g. analytics), we will require your consent before loading them.
+          </p>
+          <p className="mt-2">
+            For ad measurement (including Click-to-WhatsApp interactions), the Meta Pixel and related
+            signals are only activated after you accept cookies — see section 11 on WhatsApp &amp; Meta.
           </p>
         </Section>
         <Section title="C. Managing cookies">

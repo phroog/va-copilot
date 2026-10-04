@@ -1,6 +1,6 @@
 /* WhatsApp Business Cloud API helper.
    Sends outbound WhatsApp messages via the Meta Graph API — used for
-   "speed-to-lead": message every new signup the moment they register.
+   "speed-to-lead" (welcome on signup) and the inbound webhook bot.
 
    Env required:
    - WHATSAPP_TOKEN           Meta app access token
@@ -48,6 +48,9 @@ export async function sendWhatsApp(to: string, body: string): Promise<boolean> {
   }
 }
 
+// Alias used by the inbound webhook bot.
+export const sendWhatsAppText = sendWhatsApp;
+
 /* Send a WhatsApp template message — the only way to message a user who has
    NOT messaged the business first (no open 24h window). The template must be
    approved in the Meta WhatsApp manager. */
@@ -93,3 +96,6 @@ export function whatsappWelcomeMessage(firstName?: string): string {
     `Reply "yes" and I'll send your top 3 matches right here in WhatsApp.`
   );
 }
+
+export const WHATSAPP_VERIFY = process.env.WHATSAPP_VERIFY_TOKEN || "";
+export const WHATSAPP_CALENDLY = "https://calendly.com/hello-vascora/sari-dream-call";
