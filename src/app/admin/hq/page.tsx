@@ -8,13 +8,14 @@ import { Badge } from "@/components/ui/badge";
 
 interface HqData {
   generated_at: string;
-  counts: { signups: number; purchases: number; letters: number; scams: number; leads: number; messages: number };
+  counts: { signups: number; purchases: number; letters: number; scams: number; leads: number; messages: number; whatsapp: number };
   signups: { user_id: string; name: string | null; email: string | null; created_at: string; phone: string | null; skills: string[] | null; goal: string | null; job_vector: number[] | null }[];
   purchases: { id: string; email: string | null; plan: string; status: string; current_period_end: string | null; created_at: string }[];
   letters: { id: string; email: string | null; category: string; urgency: string; message: string; status: string; created_at: string }[];
   scams: { id: string; domain: string; company_name: string; risk: string; status: string; reporter: string | null; created_at: string }[];
   leads: { id: string; email: string; whatsapp: string | null; path: string | null; persona: string | null; plan: string | null; created_at: string }[];
   messages: { id: string; recipient: string; sender_name: string; title: string; body: string; created_at: string }[];
+  whatsapp: { phone: string; updated_at: string; messages: { role: string; content: string }[] }[];
 }
 
 const URGENCY: Record<string, { emoji: string; cls: string }> = {
@@ -189,6 +190,43 @@ export default function AdminHq() {
             </button>
             {sent && <span className="text-sm text-slate-500">{sent}</span>}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ── WhatsApp sessions ───────────────────────────────────── */}
+      <Card>
+        <CardHeader><CardTitle className="text-lg">💬 WhatsApp Bot ({data.counts.whatsapp})</CardTitle></CardHeader>
+        <CardContent className="space-y-2 max-h-[30rem] overflow-y-auto">
+          {data.whatsapp.length === 0 ? (
+            <p className="text-slate-400 text-sm">No conversations yet — messages sent to the WhatsApp number appear here.</p>
+          ) : (
+            data.whatsapp.map((s) => (
+              <details key={s.phone} className="rounded-xl border border-kawaii-lavender/20 dark:border-dark-surface p-3 group">
+                <summary className="cursor-pointer list-none">
+                  <div className="flex items-center justify-between gap-2">
+                    <a href={`https://wa.me/${s.phone}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-green-600 dark:text-green-400 hover:underline">
+                      💬 +{s.phone}
+                    </a>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400">{s.messages.length} msgs · {fmt(s.updated_at)}</span>
+                      <span className="text-slate-300 dark:text-slate-600 group-open:rotate-90 transition-transform">›</span>
+                    </div>
+                  </div>
+                  {s.messages.length > 0 && (
+                    <p className="mt-1 text-xs text-slate-400 truncate">{s.messages[s.messages.length - 1].content}</p>
+                  )}
+                </summary>
+                <div className="mt-2 space-y-1.5 border-t border-kawaii-lavender/20 dark:border-dark-surface pt-2 max-h-60 overflow-y-auto">
+                  {s.messages.map((m, i) => (
+                    <div key={i} className={`px-3 py-1.5 rounded-xl text-xs whitespace-pre-wrap ${m.role === "user" ? "bg-kawaii-lavender/20 dark:bg-dark-surface/50 text-slate-700 dark:text-slate-200" : "bg-dl-green/10 text-slate-600 dark:text-slate-300"}`}>
+                      <span className="font-bold uppercase text-[9px] mr-1">{m.role === "user" ? "→ user" : "← bot"}</span>
+                      {m.content}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ))
+          )}
         </CardContent>
       </Card>
 

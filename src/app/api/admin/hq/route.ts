@@ -43,7 +43,7 @@ export async function GET() {
   }
   const emailFor = (id?: string | null) => (id ? emailById.get(id) ?? null : null);
 
-  const [subs, letterRows, scamRows, profiles, settingsRows, leadsRes, messagesRes] = await Promise.all([
+  const [subs, letterRows, scamRows, profiles, settingsRows, leadsRes, messagesRes, waRes] = await Promise.all([
     supabase.from("subscriptions").select("*").order("created_at", { ascending: false }).limit(200),
     supabase.from("support_letters").select("*").order("created_at", { ascending: false }).limit(200),
     supabase.from("scam_registry").select("*").order("created_at", { ascending: false }).limit(200),
@@ -51,6 +51,7 @@ export async function GET() {
     supabase.from("user_settings").select("user_id, phone").limit(2000),
     supabase.from("funnel_leads").select("*").order("created_at", { ascending: false }).limit(300),
     supabase.from("feed_messages").select("*").order("created_at", { ascending: false }).limit(200),
+    supabase.from("whatsapp_sessions").select("phone, messages, updated_at").order("updated_at", { ascending: false }).limit(50),
   ]);
 
   // Signups: from auth.users directly (every signup, even if onboarding was
@@ -135,6 +136,12 @@ export async function GET() {
     created_at: m.created_at,
   }));
 
+  const whatsapp = (waRes.data ?? []).map((s: any) => ({
+    phone: s.phone,
+    updated_at: s.updated_at,
+    messages: (s.messages ?? []) as { role: string; content: string }[],
+  }));
+
   return NextResponse.json({
     generated_at: new Date().toISOString(),
     counts: {
@@ -144,6 +151,7 @@ export async function GET() {
       scams: scams.length,
       leads: leads.length,
       messages: messages.length,
+      whatsapp: whatsapp.length,
     },
     signups,
     purchases,
@@ -151,5 +159,6 @@ export async function GET() {
     scams,
     leads,
     messages,
+    whatsapp,
   });
 }
