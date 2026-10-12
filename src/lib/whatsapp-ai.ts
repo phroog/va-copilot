@@ -11,6 +11,7 @@ export interface AiContext {
   bookedUrl?: string | null;
   bookedStart?: string | null;
   bookedTz?: string | null;
+  people?: number | null;
   stage?: string;
 }
 
@@ -29,10 +30,22 @@ Keep it genuinely helpful.`;
 export async function aiFallbackReply(text: string, stage: string, ctx?: AiContext): Promise<string> {
   const booked = stage === "booked";
   const startLabel = formatBookingTime(ctx?.bookedStart, ctx?.bookedTz);
-  const recent = (ctx?.history ?? [])
-    .slice(-10)
-    .map((m) => `${m.role}: ${m.content}`.replace(/https?:\/\/\S+/g, "[link]"))
-    .join("\n");
+  // Full chat context (capped by total length, not by message count) so DeepSeek
+  // remembers earlier statements — e.g. team size, what was asked, booking flow.
+  const rawHistory = ctx?.history ?? [];
+  const textOf = (m: { role: string; content: string }) => {
+    const c = String(m.content || "").replace(/https?:\/\/\S+/g, "[link]");
+    return c.length > 600 ? c.slice(0, 600) : c;
+  };
+  const lines: string[] = [];
+  let used = 0;
+  for (let i = rawHistory.length - 1; i >= 0 && lines.length < 40; i--) {
+    const line = `${rawHistory[i].role}: ${textOf(rawHistory[i])}`;
+    if (used + line.length > 6000) break;
+    lines.unshift(line);
+    used += line.length;
+  }
+  const recent = lines.join("\n");
   // Only expose the booking link to the AI when the user explicitly asks about
   // the link/time/slot — otherwise it tends to re-share it (e.g. on cost Qs).
   const wantsLinkTime = /(link|when|time|slot|termin|bestätigen|confirm)/i.test(text);
@@ -40,9 +53,10 @@ export async function aiFallbackReply(text: string, stage: string, ctx?: AiConte
   const prompt = [
     `Stage: ${booked ? "call already booked" : stage === "awaiting_booking" ? "invite sent, not booked yet" : "conversation winding down"}`,
     booked ? "IMPORTANT: The user has ALREADY booked. NEVER suggest booking again and NEVER say 'grab a slot'. If they ask for the time or the link, answer directly from the booking context below. If they want to reschedule, you may share the link once." : "",
+    `Team size: ${ctx?.people ?? "unknown"} people`,
     includeBookingLine ? `Booking link: ${ctx?.bookedUrl ?? "unknown"}` : "",
     `Booking date/time: ${startLabel ? `${startLabel}${ctx?.bookedTz ? ` (${ctx.bookedTz} time)` : ""}` : "unknown"}`,
-    recent ? `Recent conversation:\n${recent}` : "",
+    recent ? `Full conversation so far:\n${recent}` : "",
     `User's latest WhatsApp message:\n"${text}"`,
     "Reply as Julian (WhatsApp, casual):",
   ]
@@ -52,7 +66,7 @@ export async function aiFallbackReply(text: string, stage: string, ctx?: AiConte
   const result = await callDeepSeek("whatsapp-fallback", prompt, {
     systemPrompt: SYSTEM,
     temperature: 0.75,
-    maxTokens: 180,
+    maxTokens: 260,
     free: true, // platform absorbs bot cost
   });
   const reply = (result.text || "").trim();

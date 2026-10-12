@@ -111,6 +111,7 @@ export async function POST(request: Request) {
                 bookedUrl: row?.booked_url ?? null,
                 bookedStart: row?.booked_start ?? null,
                 bookedTz: row?.booked_tz ?? null,
+                people: row?.people ?? null,
               });
             } catch {
               ai = "";
