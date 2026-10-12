@@ -79,7 +79,12 @@ async function fetchBookingInfo(uidish: string | null): Promise<{ phone: string 
   const describe = (j: any): { phone: string | null; url: string | null } => {
     const b = j?.booking ?? j?.data ?? j;
     const uid = b?.uid ?? null;
-    return { phone: scrapePhone(b), url: b?.url ?? (uid ? `https://cal.com/bookings/${uid}` : null) };
+    const location =
+      Array.isArray(b?.locations) ? (b.locations[0]?.link ?? b.locations[0]?.value ?? null) : typeof b?.location === "string" ? b.location : null;
+    return {
+      phone: scrapePhone(b),
+      url: b?.url ?? location ?? (uid ? `https://cal.com/bookings/${uid}` : null),
+    };
   };
 
   let j = await attempt(`https://api.cal.com/v2/bookings/${uidish}`, { Authorization: `Bearer ${key}` });
@@ -121,7 +126,14 @@ export async function POST(request: Request) {
   const payload = body.payload ?? {};
   const bookingUid = payload?.booking?.uid ?? null;
   const bookingId = payload?.booking?.id ?? payload?.bookingId ?? payload?.id ?? null;
-  let bookingUrl = payload?.booking?.url ?? null;
+  const locationLink = Array.isArray(payload?.booking?.locations)
+    ? (payload.booking.locations[0]?.link ?? payload.booking.locations[0]?.value ?? null)
+    : typeof payload?.booking?.location === "string"
+    ? payload.booking.location
+    : null;
+  let bookingUrl = payload?.booking?.url ?? locationLink ?? null;
+
+  console.log("[cal] webhook", JSON.stringify({ trigger: body?.triggerEvent, uid: bookingUid, id: bookingId, url: bookingUrl, meet: locationLink, apiKey: !!process.env.CALCOM_API_KEY }));
 
   const admin = createServiceRoleClient();
   let phone = scrapePhone(payload);
@@ -132,6 +144,7 @@ export async function POST(request: Request) {
       if (!bookingUrl) bookingUrl = info.url;
     }
   }
+  console.log("[cal] resolved", JSON.stringify({ phone: !!phone, url: bookingUrl }));
   if (!phone) {
     // Phone-free fallback: a booking right after an invite almost certainly
     // belongs to the MOST RECENT awaiting_booking conversation (within 45 min).
