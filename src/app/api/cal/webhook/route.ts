@@ -24,31 +24,35 @@ function signatureOk(rawBody: string, header: string | null): boolean {
   }
 }
 
+// True for date-like digit runs (e.g. 20261013) that are NOT phone numbers.
+function isDateDigits(d: string): boolean {
+  return /^\d{4}[01]\d[0-3]\d$/.test(d); // YYYYMMDD
+}
+
 // Walk an object/array tree and return the first value that looks like a
-// phone number (key "phone/whatsapp/mobile" OR a string with 8–15 digits).
+// REAL phone number (8–15 digits, not a date). Explicit phone keys win; the
+// generic string scan requires 9+ digits so booking dates don't get picked up.
 function scrapePhone(obj: any, seen = new Set<any>()): string | null {
   if (!obj || typeof obj !== "object" || seen.has(obj)) return null;
   seen.add(obj);
+  const kids: unknown[] = [];
   if (Array.isArray(obj)) {
-    for (const x of obj) {
-      const p = scrapePhone(x, seen);
-      if (p) return p;
-    }
-    return null;
-  }
-  for (const key of ["phone", "phoneNumber", "mobile", "tel", "whatsapp", "msisdn"]) {
-    const v = obj[key];
-    if (typeof v === "string") {
-      const d = v.replace(/\D/g, "");
-      if (d.length >= 8 && d.length <= 15) return d;
+    kids.push(...obj);
+  } else {
+    for (const [key, value] of Object.entries(obj)) {
+      if (/phone|mobile|tel|whatsapp|msisdn/i.test(key) && typeof value === "string") {
+        const d = value.replace(/\D/g, "");
+        if (d.length >= 8 && d.length <= 15 && !isDateDigits(d)) return d;
+      }
+      kids.push(value);
     }
   }
-  for (const v of Object.values(obj)) {
+  for (const v of kids) {
     if (typeof v === "string" && /[0-9]/.test(v)) {
-      const m = v.match(/\+?\d[\d\s\-().]{7,}/);
+      const m = v.match(/\+?\d[\d\s\-().]{8,}/);
       if (m) {
         const d = m[0].replace(/\D/g, "");
-        if (d.length >= 8 && d.length <= 15) return d;
+        if (d.length >= 9 && d.length <= 15 && !isDateDigits(d)) return d;
       }
     }
     const p = scrapePhone(v, seen);
