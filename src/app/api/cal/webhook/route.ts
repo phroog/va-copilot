@@ -127,17 +127,18 @@ export async function POST(request: Request) {
   const b = payload.booking ?? payload; // handle both nested and flat webhook shapes
   const bookingUid = b.uid ?? payload.uid ?? null;
   const bookingId = b.id ?? payload.bookingId ?? payload.id ?? null;
+
+  // Cal.com location values ("integrations:google.meet") are provider IDs, not
+  // links — only accept real http(s) URLs.
+  const pickUrl = (v: unknown): string | null =>
+    typeof v === "string" && /^https?:\/\//i.test(v) ? v : null;
   const locations = b.locations ?? payload.locations ?? [];
   const locationLink = Array.isArray(locations)
-    ? (locations[0]?.link ?? locations[0]?.value ?? null)
-    : typeof locations === "string"
-    ? locations
-    : typeof b.location === "string"
-    ? b.location
-    : null;
-  let bookingUrl = b.url ?? payload.url ?? locationLink ?? null;
+    ? pickUrl(locations[0]?.link) ?? pickUrl(locations[0]?.value)
+    : pickUrl(locations);
+  let bookingUrl = pickUrl(b.url) ?? pickUrl(payload.url) ?? locationLink ?? null;
 
-  console.log("[cal] webhook", JSON.stringify({ trigger: body?.triggerEvent, uid: bookingUid, id: bookingId, url: bookingUrl, meet: locationLink, apiKey: !!process.env.CALCOM_API_KEY }));
+  console.log("[cal] webhook", JSON.stringify({ trigger: body?.triggerEvent, uid: bookingUid, id: bookingId, url: bookingUrl, apiKey: !!process.env.CALCOM_API_KEY }));
 
   const admin = createServiceRoleClient();
   let phone = scrapePhone(payload);

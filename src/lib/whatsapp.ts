@@ -138,18 +138,7 @@ export const WHATSAPP_VERIFY = process.env.WHATSAPP_VERIFY_TOKEN || "";
 export const WHATSAPP_CALENDLY = "https://calendly.com/hello-vascora/sari-dream-call";
 // Cal.com booking page for the audit call (with phone/email prefill params).
 export const CAL_BOOKING_URL = "https://cal.com/julian.sari-mwpfcf/15min";
-export function calBookingLink(phone?: string, email?: string): string {
-  const params = new URLSearchParams();
-  const p = (phone || "").replace(/\D/g, "");
-  if (p && p.length >= 8 && p.length <= 15) {
-    // Cal.com prefills whichever field slug matches — this event's field is
-    // attendeePhoneNumber; keep the others as safety.
-    params.set("attendeePhoneNumber", p);
-    params.set("phone", p);
-    params.set("phoneNumber", p);
-    params.set("whatsapp", p);
-  }
-  if (email) params.set("email", email);
-  const q = params.toString();
-  return q ? `${CAL_BOOKING_URL}?${q}` : CAL_BOOKING_URL;
+// Clean booking link — no phone prefill needed (matching happens server-side).
+export function calBookingLink(phone?: string): string {
+  return CAL_BOOKING_URL;
 }
