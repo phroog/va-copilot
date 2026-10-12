@@ -115,10 +115,14 @@ export async function POST(request: Request) {
             } catch {
               ai = "";
             }
+            // Stage-aware built-in fallback (used when the AI is offline/empty)
+            // so a BOOKED user never gets a "grab a slot" link again.
             const defaultText =
-              state.stage === "awaiting_booking"
-                ? `Love that question — that's honestly exactly what the call is for 🙂 Grab a 15-min slot and we'll go through it:\n\n${calBookingLink(from)}`
-                : `Happy to help! The best place for real answers is a quick 15-min call — I'll make sure it's worth your time 🙂\n\n${calBookingLink(from)}`;
+              state.stage === "booked"
+                ? "Happy to help! 🙌 The real cases we solve best on our call — anything specific you want me to prep for you?"
+                : state.stage === "awaiting_booking"
+                ? `Love that question — the call is the easiest place to answer it properly 🙂 Grab a 15-min slot here:\n\n${calBookingLink(from)}`
+                : `Happy to help! Easiest way to get real answers is a quick call — here's the slot:\n\n${calBookingLink(from)}`;
             out = [{ kind: "text", text: ai || defaultText }];
           }
           await sendOuts(from, out);
