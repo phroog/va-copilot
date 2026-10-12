@@ -61,42 +61,43 @@ function scrapePhone(obj: any, seen = new Set<any>()): string | null {
   return null;
 }
 
-// Fallback: read the phone from the booking via the Cal.com API (the same data
-// that lands in the confirmation email). Tries v2 by uid, then v1 by id/list.
-async function fetchPhoneFromApi(uid: string | null): Promise<string | null> {
+// Fallback: read phone + booking URL from the booking via the Cal.com API
+// (the same data that lands in the confirmation email). Tries v2 by uid,
+// then v1 by id, then the v1 list.
+async function fetchBookingInfo(uidish: string | null): Promise<{ phone: string | null; url: string | null }> {
   const key = process.env.CALCOM_API_KEY;
-  if (!key || !uid) return null;
-  const attempt = async (url: string, headers: Record<string, string>): Promise<string | null> => {
+  if (!key || !uidish) return { phone: null, url: null };
+  const attempt = async (url: string, headers: Record<string, string>): Promise<any | null> => {
     try {
       const r = await fetch(url, { headers, cache: "no-store" });
       if (!r.ok) return null;
-      const j = await r.json();
-      return scrapePhone(j?.booking ?? j?.data ?? j);
+      return await r.json();
     } catch {
       return null;
     }
   };
+  const describe = (j: any): { phone: string | null; url: string | null } => {
+    const b = j?.booking ?? j?.data ?? j;
+    const uid = b?.uid ?? null;
+    return { phone: scrapePhone(b), url: b?.url ?? (uid ? `https://cal.com/bookings/${uid}` : null) };
+  };
 
-  const p2 = await attempt(`https://api.cal.com/v2/bookings/${uid}`, { Authorization: `Bearer ${key}` });
-  if (p2) return p2;
-  const p1 = await attempt(`https://api.cal.com/v1/bookings/${uid}?apiKey=${encodeURIComponent(key)}`, {});
-  if (p1) return p1;
-  const p1b = await attempt(`https://api.cal.com/v1/bookings/${uid}`, { Authorization: `Bearer ${key}` });
-  if (p1b) return p1b;
+  let j = await attempt(`https://api.cal.com/v2/bookings/${uidish}`, { Authorization: `Bearer ${key}` });
+  if (j) return describe(j);
+  j = await attempt(`https://api.cal.com/v1/bookings/${uidish}?apiKey=${encodeURIComponent(key)}`, {});
+  if (j) return describe(j);
+  j = await attempt(`https://api.cal.com/v1/bookings/${uidish}`, { Authorization: `Bearer ${key}` });
+  if (j) return describe(j);
 
-  // v1 list fallback (older accounts only expose the collection).
   try {
     const r = await fetch(`https://api.cal.com/v1/bookings?apiKey=${encodeURIComponent(key)}`, { cache: "no-store" });
     if (r.ok) {
-      const j = await r.json();
-      const found = (j?.bookings ?? []).find((b: any) => b.uid === uid || b.id === uid);
-      if (found) {
-        const p = scrapePhone(found);
-        if (p) return p;
-      }
+      const list = await r.json();
+      const found = (list?.bookings ?? []).find((b: any) => b.uid === uidish || String(b.id) === uidish);
+      if (found) return describe(found);
     }
   } catch {}
-  return null;
+  return { phone: null, url: null };
 }
 
 export async function POST(request: Request) {
@@ -119,11 +120,18 @@ export async function POST(request: Request) {
 
   const payload = body.payload ?? {};
   const bookingUid = payload?.booking?.uid ?? null;
-  const bookingUrl = payload?.booking?.url ?? (bookingUid ? `https://cal.com/booking/${bookingUid}` : null);
+  const bookingId = payload?.booking?.id ?? payload?.bookingId ?? payload?.id ?? null;
+  let bookingUrl = payload?.booking?.url ?? null;
 
   const admin = createServiceRoleClient();
   let phone = scrapePhone(payload);
-  if (!phone) phone = await fetchPhoneFromApi(bookingUid);
+  if (!phone || !bookingUrl) {
+    const info = await fetchBookingInfo(bookingUid ?? (bookingId != null ? String(bookingId) : null));
+    if (info) {
+      if (!phone) phone = info.phone;
+      if (!bookingUrl) bookingUrl = info.url;
+    }
+  }
   if (!phone) {
     // Phone-free fallback: a booking right after an invite almost certainly
     // belongs to the MOST RECENT awaiting_booking conversation (within 45 min).
@@ -152,14 +160,15 @@ export async function POST(request: Request) {
   const firstSeen = row?.first_seen_at ? new Date(row.first_seen_at) : now;
   const followupAt = new Date(Math.min(firstSeen.getTime() + 20 * 3_600_000, now.getTime() + 60 * 60_000)).toISOString();
 
-  const confirmedText = bookingUrl ? `${BOOKING_CONFIRMED_TEXT}\n\n📅 ${bookingUrl}` : BOOKING_CONFIRMED_TEXT;
+  const finalBookingUrl = bookingUrl ?? (bookingUid ? `https://cal.com/bookings/${bookingUid}` : null);
+  const confirmedText = finalBookingUrl ? `${BOOKING_CONFIRMED_TEXT}\n\n📅 ${finalBookingUrl}` : BOOKING_CONFIRMED_TEXT;
   await sendWhatsAppText(phone, confirmedText);
 
   await admin.from("whatsapp_sessions").upsert(
     {
       phone,
       stage: "booked",
-      booked_url: bookingUrl ?? null,
+      booked_url: finalBookingUrl ?? null,
       booked_at: now.toISOString(),
       followup_at: followupAt,
       followup_sent: false,

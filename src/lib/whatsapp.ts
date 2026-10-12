@@ -141,7 +141,12 @@ export const CAL_BOOKING_URL = "https://cal.com/julian.sari-mwpfcf/15min";
 export function calBookingLink(phone?: string, email?: string): string {
   const params = new URLSearchParams();
   const p = (phone || "").replace(/\D/g, "");
-  if (p && p.length >= 8 && p.length <= 15) params.set("phone", p);
+  if (p && p.length >= 8 && p.length <= 15) {
+    // Cal.com prefills whichever field slug matches — try the common ones.
+    params.set("phone", p);
+    params.set("phoneNumber", p);
+    params.set("whatsapp", p);
+  }
   if (email) params.set("email", email);
   const q = params.toString();
   return q ? `${CAL_BOOKING_URL}?${q}` : CAL_BOOKING_URL;
