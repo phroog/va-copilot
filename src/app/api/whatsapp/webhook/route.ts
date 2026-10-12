@@ -100,6 +100,7 @@ export async function POST(request: Request) {
             text,
             from
           );
+          console.log("[wa flow]", from, "| stage:", row?.stage ?? "new", "->", state.stage, "| in:", JSON.stringify(text), "| fallback:", fallback, "| people:", state.people);
 
           let out: WaOut[] = flowOut;
           if (fallback) {
