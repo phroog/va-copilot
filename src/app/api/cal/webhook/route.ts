@@ -79,11 +79,19 @@ async function fetchBookingInfo(uidish: string | null): Promise<{ phone: string 
   const describe = (j: any): { phone: string | null; url: string | null } => {
     const b = j?.booking ?? j?.data ?? j;
     const uid = b?.uid ?? null;
+    const pick = (v: unknown) => (typeof v === "string" && /^https?:\/\//i.test(v) ? v : null);
     const location =
-      Array.isArray(b?.locations) ? (b.locations[0]?.link ?? b.locations[0]?.value ?? null) : typeof b?.location === "string" ? b.location : null;
+      Array.isArray(b?.locations)
+        ? pick(b.locations[0]?.link ?? b.locations[0]?.value)
+        : pick(b?.location);
     return {
       phone: scrapePhone(b),
-      url: b?.url ?? location ?? (uid ? `https://cal.com/bookings/${uid}` : null),
+      url:
+        pick(b?.url) ??
+        pick(b?.metadata?.videoCallUrl) ??
+        pick(b?.videoCallUrl) ??
+        location ??
+        (uid ? `https://app.cal.com/booking/${uid}` : null),
     };
   };
 
@@ -129,14 +137,21 @@ export async function POST(request: Request) {
   const bookingId = b.id ?? payload.bookingId ?? payload.id ?? null;
 
   // Cal.com location values ("integrations:google.meet") are provider IDs, not
-  // links — only accept real http(s) URLs.
+  // links — the real codec URL lives in metadata.videoCallUrl. Only accept http(s).
   const pickUrl = (v: unknown): string | null =>
     typeof v === "string" && /^https?:\/\//i.test(v) ? v : null;
   const locations = b.locations ?? payload.locations ?? [];
   const locationLink = Array.isArray(locations)
     ? pickUrl(locations[0]?.link) ?? pickUrl(locations[0]?.value)
     : pickUrl(locations);
-  let bookingUrl = pickUrl(b.url) ?? pickUrl(payload.url) ?? locationLink ?? null;
+  let bookingUrl =
+    pickUrl(b.url) ??
+    pickUrl(payload.url) ??
+    pickUrl(b?.videoCallUrl) ??
+    pickUrl(b?.metadata?.videoCallUrl) ??
+    pickUrl(payload?.metadata?.videoCallUrl) ??
+    locationLink ??
+    null;
 
   console.log("[cal] webhook", JSON.stringify({ trigger: body?.triggerEvent, uid: bookingUid, id: bookingId, url: bookingUrl, apiKey: !!process.env.CALCOM_API_KEY }));
 
