@@ -196,12 +196,31 @@ export async function POST(request: Request) {
   const finalBookingUrl =
     bookingUrl ?? (bookingUid ? `https://app.cal.com/booking/${bookingUid}` : null) ?? CAL_BOOKING_URL;
   const startRaw = b?.startTime ?? payload?.startTime ?? null;
+
+  // Attendee/event timezone (e.g. Asia/Manila). Broad capture: known keys + a
+  // shallow tree scan for any IANA-style timezone string (e.g. custom payload).
+  const tzPattern = /^[A-Za-z_+-]+\/[A-Za-z_+-]+$/;
+  const pickTz = (v: unknown): string | null => (typeof v === "string" && tzPattern.test(v) ? v : null);
+  const scanTz = (obj: any, depth = 0, seen = new Set<any>()): string | null => {
+    if (!obj || typeof obj !== "object" || depth > 4 || seen.has(obj)) return null;
+    seen.add(obj);
+    for (const [k, v] of Object.entries(obj)) {
+      if (/time.?zone|tz/i.test(k)) {
+        const t = pickTz(v);
+        if (t) return t;
+      }
+      const nested = scanTz(v, depth + 1, seen);
+      if (nested) return nested;
+    }
+    return null;
+  };
   const tz =
-    payload?.attendees?.[0]?.timeZone ??
-    b?.attendees?.[0]?.timeZone ??
-    b?.timeZone ??
-    b?.eventType?.timeZone ??
-    payload?.eventType?.timeZone ??
+    pickTz(payload?.attendees?.[0]?.timeZone) ??
+    pickTz(b?.attendees?.[0]?.timeZone) ??
+    pickTz(b?.timeZone) ??
+    pickTz(b?.eventType?.timeZone) ??
+    pickTz(payload?.eventType?.timeZone) ??
+    scanTz(payload) ??
     null;
   const startLabel = formatBookingTime(startRaw, tz);
   const confirmedText = [
