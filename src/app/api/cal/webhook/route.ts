@@ -247,6 +247,9 @@ export async function POST(request: Request) {
       messages: [...((row?.messages ?? []) as any[]), { role: "assistant", content: confirmedText }],
     },
     { onConflict: "phone" }
+  ).then(
+    () => console.log("[cal] session saved as booked"),
+    (e) => console.error("[cal] SAVE FAILED (booked_start/booked_tz columns missing?):", (e as Error).message)
   );
 
   return NextResponse.json({ status: "ok" });
