@@ -61,19 +61,39 @@ function scrapePhone(obj: any, seen = new Set<any>()): string | null {
   return null;
 }
 
-// Fallback: read the booking via the Cal.com API (v2 booking by uid, then v1).
+// Fallback: read the phone from the booking via the Cal.com API (the same data
+// that lands in the confirmation email). Tries v2 by uid, then v1 by id/list.
 async function fetchPhoneFromApi(uid: string | null): Promise<string | null> {
   const key = process.env.CALCOM_API_KEY;
   if (!key || !uid) return null;
+  const attempt = async (url: string, headers: Record<string, string>): Promise<string | null> => {
+    try {
+      const r = await fetch(url, { headers, cache: "no-store" });
+      if (!r.ok) return null;
+      const j = await r.json();
+      return scrapePhone(j?.booking ?? j?.data ?? j);
+    } catch {
+      return null;
+    }
+  };
+
+  const p2 = await attempt(`https://api.cal.com/v2/bookings/${uid}`, { Authorization: `Bearer ${key}` });
+  if (p2) return p2;
+  const p1 = await attempt(`https://api.cal.com/v1/bookings/${uid}?apiKey=${encodeURIComponent(key)}`, {});
+  if (p1) return p1;
+  const p1b = await attempt(`https://api.cal.com/v1/bookings/${uid}`, { Authorization: `Bearer ${key}` });
+  if (p1b) return p1b;
+
+  // v1 list fallback (older accounts only expose the collection).
   try {
-    const r = await fetch(`https://api.cal.com/v2/bookings/${uid}`, {
-      headers: { Authorization: `Bearer ${key}` },
-      cache: "no-store",
-    });
+    const r = await fetch(`https://api.cal.com/v1/bookings?apiKey=${encodeURIComponent(key)}`, { cache: "no-store" });
     if (r.ok) {
       const j = await r.json();
-      const p = scrapePhone(j?.booking ?? j);
-      if (p) return p;
+      const found = (j?.bookings ?? []).find((b: any) => b.uid === uid || b.id === uid);
+      if (found) {
+        const p = scrapePhone(found);
+        if (p) return p;
+      }
     }
   } catch {}
   return null;
