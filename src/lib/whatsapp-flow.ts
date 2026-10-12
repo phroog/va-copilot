@@ -67,7 +67,7 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
       [
         {
           kind: "list",
-          text: "Hey! Julian here from Sari 👋 Thanks for reaching out 🙌 Quick one before I tell you more: are you the owner or manager of a BPO/VA agency?",
+          text: "Hey! Julian here from Sari 👋 Thanks for reaching out 🙌 We help BPO/VA agencies cut tool costs by up to 50%. Quick one before I tell you more: are you the owner or manager of a BPO/VA agency?",
           rows: [
             { id: "yes", title: "✅ Yes" },
             { id: "no", title: "❌ No" },
@@ -102,7 +102,7 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
         [
           {
             kind: "text",
-            text: "Ah, got it! 👌 Right now we focus on established BPO/VA agencies — that's where we can really move the needle. But thanks for reaching out! If you know a larger company that could use this, point them my way — you'd even get a referral commission (depends on deal size, happy to explain on a quick call 🙂).",
+            text: "No stress! 👌 If you know someone who runs a BPO/VA agency, send them my way on WhatsApp — they'd save real money on tools, and you'd get a referral bonus too 🙂",
           },
         ],
         { stage: "done", people: null }
@@ -131,7 +131,7 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
         [
           {
             kind: "text",
-            text: "Got it 👍 — right now we focus on agencies with a team behind them, since that's where our tools make the most sense. But I'm glad you reached out! If you know a larger operation that could use this, send them my way — there's a referral bonus in it for you 👀",
+            text: "Got it 👍 Right now we focus on agencies with a team behind them — but honestly, in the future when you've scaled, we'd love to help. And if you know a bigger operation, just send them my way on WhatsApp — there's a referral bonus in it for you 👀",
           },
         ],
         { stage: "done", people: 1 }
@@ -142,7 +142,7 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
         [
           {
             kind: "text",
-            text: `That's exactly the sweet spot we love working with 🙌 Let's get you on a quick 15-minute call — no pressure, we'll just look at your setup and what makes sense:\n\n${calBookingLink(phone)}`,
+            text: `That's exactly the sweet spot we love working with 🙌 Let's do a free call — we'll go through your tools together and see where you can actually save. Grab a 15-min slot:\n\n${calBookingLink(phone)}`,
           },
         ],
         { stage: "awaiting_booking", people }
