@@ -15,7 +15,7 @@ interface HqData {
   scams: { id: string; domain: string; company_name: string; risk: string; status: string; reporter: string | null; created_at: string }[];
   leads: { id: string; email: string; whatsapp: string | null; path: string | null; persona: string | null; plan: string | null; created_at: string }[];
   messages: { id: string; recipient: string; sender_name: string; title: string; body: string; created_at: string }[];
-  whatsapp: { phone: string; updated_at: string; messages: { role: string; content: string }[] }[];
+  whatsapp: { phone: string; stage: string; people: number | null; booked_at: string | null; booked_url: string | null; updated_at: string; messages: { role: string; content: string }[] }[];
 }
 
 const URGENCY: Record<string, { emoji: string; cls: string }> = {
@@ -232,6 +232,10 @@ export default function AdminHq() {
                       💬 +{s.phone}
                     </a>
                     <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${s.booked_at ? "bg-dl-green/15 text-dl-green" : "bg-white/10 text-white/50"}`}>
+                        {s.booked_at ? "✔ booked" : s.stage}
+                      </span>
+                      {s.people ? <span className="text-[10px] text-white/40">👥 {s.people}+</span> : null}
                       <span className="text-xs text-slate-400">{s.messages.length} msgs · {fmt(s.updated_at)}</span>
                       <span className="text-slate-300 dark:text-slate-600 group-open:rotate-90 transition-transform">›</span>
                     </div>

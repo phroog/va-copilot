@@ -51,7 +51,7 @@ export async function GET() {
     supabase.from("user_settings").select("user_id, phone").limit(2000),
     supabase.from("funnel_leads").select("*").order("created_at", { ascending: false }).limit(300),
     supabase.from("feed_messages").select("*").order("created_at", { ascending: false }).limit(200),
-    supabase.from("whatsapp_sessions").select("phone, messages, updated_at").order("updated_at", { ascending: false }).limit(50),
+    supabase.from("whatsapp_sessions").select("phone, stage, people, booked_at, booked_url, messages, updated_at").order("updated_at", { ascending: false }).limit(50),
   ]);
 
   // Signups: from auth.users directly (every signup, even if onboarding was
@@ -138,6 +138,10 @@ export async function GET() {
 
   const whatsapp = (waRes.data ?? []).map((s: any) => ({
     phone: s.phone,
+    stage: s.stage,
+    people: s.people,
+    booked_at: s.booked_at,
+    booked_url: s.booked_url,
     updated_at: s.updated_at,
     messages: (s.messages ?? []) as { role: string; content: string }[],
   }));
