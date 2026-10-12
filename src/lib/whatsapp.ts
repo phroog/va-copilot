@@ -142,7 +142,9 @@ export function calBookingLink(phone?: string, email?: string): string {
   const params = new URLSearchParams();
   const p = (phone || "").replace(/\D/g, "");
   if (p && p.length >= 8 && p.length <= 15) {
-    // Cal.com prefills whichever field slug matches — try the common ones.
+    // Cal.com prefills whichever field slug matches — this event's field is
+    // attendeePhoneNumber; keep the others as safety.
+    params.set("attendeePhoneNumber", p);
     params.set("phone", p);
     params.set("phoneNumber", p);
     params.set("whatsapp", p);
