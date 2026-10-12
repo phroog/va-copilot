@@ -144,6 +144,19 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
     );
   }
 
+  // ── Booked: "no" to the follow-up → reschedule gracefully with the link ──
+  if (stage === "booked" && isNo(text)) {
+    return def(
+      [
+        {
+          kind: "text",
+          text: `No problem at all 🙂 Just grab a new slot whenever it suits you — here's the link:\n\n${calBookingLink()}`,
+        },
+      ],
+      { stage, people: current.people }
+    );
+  }
+
   // ── After invite / done: ANY free text → human AI fallback. ──
   return isFallback({ stage, people: current.people });
 }
