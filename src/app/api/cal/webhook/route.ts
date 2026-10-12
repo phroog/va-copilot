@@ -124,14 +124,18 @@ export async function POST(request: Request) {
   }
 
   const payload = body.payload ?? {};
-  const bookingUid = payload?.booking?.uid ?? null;
-  const bookingId = payload?.booking?.id ?? payload?.bookingId ?? payload?.id ?? null;
-  const locationLink = Array.isArray(payload?.booking?.locations)
-    ? (payload.booking.locations[0]?.link ?? payload.booking.locations[0]?.value ?? null)
-    : typeof payload?.booking?.location === "string"
-    ? payload.booking.location
+  const b = payload.booking ?? payload; // handle both nested and flat webhook shapes
+  const bookingUid = b.uid ?? payload.uid ?? null;
+  const bookingId = b.id ?? payload.bookingId ?? payload.id ?? null;
+  const locations = b.locations ?? payload.locations ?? [];
+  const locationLink = Array.isArray(locations)
+    ? (locations[0]?.link ?? locations[0]?.value ?? null)
+    : typeof locations === "string"
+    ? locations
+    : typeof b.location === "string"
+    ? b.location
     : null;
-  let bookingUrl = payload?.booking?.url ?? locationLink ?? null;
+  let bookingUrl = b.url ?? payload.url ?? locationLink ?? null;
 
   console.log("[cal] webhook", JSON.stringify({ trigger: body?.triggerEvent, uid: bookingUid, id: bookingId, url: bookingUrl, meet: locationLink, apiKey: !!process.env.CALCOM_API_KEY }));
 
@@ -173,7 +177,7 @@ export async function POST(request: Request) {
   const firstSeen = row?.first_seen_at ? new Date(row.first_seen_at) : now;
   const followupAt = new Date(Math.min(firstSeen.getTime() + 20 * 3_600_000, now.getTime() + 60 * 60_000)).toISOString();
 
-  const finalBookingUrl = bookingUrl ?? (bookingUid ? `https://cal.com/bookings/${bookingUid}` : null);
+  const finalBookingUrl = bookingUrl ?? (bookingUid ? `https://app.cal.com/booking/${bookingUid}` : null);
   const confirmedText = finalBookingUrl ? `${BOOKING_CONFIRMED_TEXT}\n\n📅 ${finalBookingUrl}` : BOOKING_CONFIRMED_TEXT;
   await sendWhatsAppText(phone, confirmedText);
 
