@@ -100,14 +100,30 @@ export async function POST(request: Request) {
   const payload = body.payload ?? {};
   const bookingUid = payload?.booking?.uid ?? null;
   const bookingUrl = payload?.booking?.url ?? (bookingUid ? `https://cal.com/booking/${bookingUid}` : null);
+
+  const admin = createServiceRoleClient();
   let phone = scrapePhone(payload);
   if (!phone) phone = await fetchPhoneFromApi(bookingUid);
   if (!phone) {
-    console.warn(`[cal] booking created without extractable phone (uid=${bookingUid}) — can't confirm via WhatsApp.`);
+    // Phone-free fallback: a booking right after an invite almost certainly
+    // belongs to the MOST RECENT awaiting_booking conversation (within 45 min).
+    const { data: recent } = await admin
+      .from("whatsapp_sessions")
+      .select("phone")
+      .eq("stage", "awaiting_booking")
+      .gte("updated_at", new Date(Date.now() - 45 * 60_000).toISOString())
+      .order("updated_at", { ascending: false })
+      .limit(1);
+    if (recent?.[0]?.phone) {
+      phone = recent[0].phone;
+      console.log(`[cal] no phone in payload — matched recent booking to awaiting conversation ${phone}`);
+    }
+  }
+  if (!phone) {
+    console.warn(`[cal] booking created but no matching conversation (uid=${bookingUid}) — can't confirm via WhatsApp.`);
     return NextResponse.json({ status: "ok" });
   }
 
-  const admin = createServiceRoleClient();
   const { data: row } = await admin.from("whatsapp_sessions").select("*").eq("phone", phone).maybeSingle();
   const now = new Date();
 
