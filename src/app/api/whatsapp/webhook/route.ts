@@ -27,6 +27,14 @@ function replyText(msg: any): string {
   return "";
 }
 
+// Hidden codewords that wipe the conversation so you can test fresh cases.
+const RESET_WORDS = ["reset", "restart", "start over", "startover", "fresh", "neustart", "neu"];
+function isReset(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (t.startsWith("::")) return RESET_WORDS.includes(t.slice(2).trim());
+  return RESET_WORDS.includes(t) || t.endsWith(" reset") || t.startsWith("reset ");
+}
+
 async function sendOuts(to: string, outs: WaOut[]): Promise<void> {
   for (const out of outs) {
     if (out.kind === "buttons") await sendWhatsAppButtons(to, out.text, out.buttons);
@@ -51,6 +59,12 @@ export async function POST(request: Request) {
         if (!text) continue;
 
         try {
+          // Reset codeword → wipe the session and start a fresh case.
+          if (isReset(text)) {
+            await admin.from("whatsapp_sessions").delete().eq("phone", from);
+            await sendWhatsAppText(from, "🔄 Fresh start — let's go again from the top 👋");
+          }
+
           const { data: row } = await admin.from("whatsapp_sessions").select("*").eq("phone", from).maybeSingle();
           const now = new Date().toISOString();
           const firstSeen = row?.first_seen_at ?? now;
