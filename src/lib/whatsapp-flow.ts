@@ -14,13 +14,12 @@ export interface FlowState {
 }
 
 function isYes(t: string): boolean {
-  const s = t.trim().toLowerCase();
-  return /^(yes|ja|yep|yup|sure|absolutely|yeah|confirmed)/.test(s);
+  const s = t.trim().toLowerCase().replace(/\s+/g, "");
+  return s.includes("yes") && !s.includes("no");
 }
 
 function isNo(t: string): boolean {
-  const s = t.trim().toLowerCase();
-  return /^(no|nope|nein|nah)/.test(s);
+  return /(^|[^a-z])no/.test(t.trim().toLowerCase());
 }
 
 export function parsePeople(t: string): number | null {
@@ -40,11 +39,11 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
     return {
       out: [
         {
-          kind: "buttons",
+          kind: "list",
           text: "Hey! Julian here from Sari 👋 Thanks for reaching out 🙌 Quick one before I tell you more: are you the owner or manager of a BPO/VA agency?",
-          buttons: [
-            { id: "yes", title: "Yes" },
-            { id: "no", title: "No" },
+          rows: [
+            { id: "yes", title: "✅ Yes" },
+            { id: "no", title: "❌ No" },
           ],
         },
       ],
@@ -85,11 +84,11 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
     return {
       out: [
         {
-          kind: "buttons",
+          kind: "list",
           text: "Just to make sure I understand — are you the owner or manager of a BPO/VA agency? 🙏",
-          buttons: [
-            { id: "yes", title: "Yes" },
-            { id: "no", title: "No" },
+          rows: [
+            { id: "yes", title: "✅ Yes" },
+            { id: "no", title: "❌ No" },
           ],
         },
       ],
