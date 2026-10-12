@@ -13,6 +13,7 @@ export interface AiContext {
   bookedTz?: string | null;
   people?: number | null;
   stage?: string;
+  booked?: boolean;
 }
 
 const SYSTEM = `You are the WhatsApp assistant for Sari, texting as Julian (the founder), for a BPO/VA agency platform. You come across as a real, busy but friendly human — casual, warm, honest, NOT salesy, never pushy. Replies are short (1–3 sentences), no markdown.
@@ -29,7 +30,7 @@ Context:
 Keep it genuinely helpful.`;
 
 export async function aiFallbackReply(text: string, stage: string, ctx?: AiContext): Promise<string> {
-  const booked = stage === "booked";
+  const booked = ctx?.booked ?? stage === "booked";
   const startLabel = formatBookingTime(ctx?.bookedStart, ctx?.bookedTz);
   // Full chat context (capped by total length, not by message count) so DeepSeek
   // remembers earlier statements — e.g. team size, what was asked, booking flow.

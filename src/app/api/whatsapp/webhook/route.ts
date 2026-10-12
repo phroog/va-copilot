@@ -89,24 +89,30 @@ export async function POST(request: Request) {
             continue;
           }
 
-          const { data: row } = await admin.from("whatsapp_sessions").select("*").eq("phone", from).maybeSingle();
+const { data: row } = await admin.from("whatsapp_sessions").select("*").eq("phone", from).maybeSingle();
           const now = new Date().toISOString();
           const firstSeen = row?.first_seen_at ?? now;
 
+          // Booking is grounded on DATA (booked_at/booked_url), independent of
+          // whatever stage string a stray write left behind — and it self-heals.
+          const booked = !!(row?.booked_at || row?.booked_url || row?.stage === "booked");
+          const stage = booked ? "booked" : row?.stage ?? "new";
+
           // Run the deterministic qualification flow; free text after the invite/done
-// stages gets a human DeepSeek answer instead of a canned reply.
+          // stages gets a human DeepSeek answer instead of a canned reply.
           const { out: flowOut, state, fallback } = runFlow(
-            { stage: row?.stage ?? "new", people: row?.people ?? null },
+            { stage, people: row?.people ?? null },
             text,
             from
           );
-          console.log("[wa flow]", from, "| stage:", row?.stage ?? "new", "->", state.stage, "| in:", JSON.stringify(text), "| fallback:", fallback, "| people:", state.people);
+          console.log("[wa flow]", from, "| booked:", booked, "| stage:", stage, "->", state.stage, "| in:", JSON.stringify(text), "| fallback:", fallback, "| people:", state.people);
 
           let out: WaOut[] = flowOut;
           if (fallback) {
             let ai = "";
             try {
               ai = await aiFallbackReply(text, state.stage, {
+                booked,
                 history: (row?.messages ?? []) as { role: string; content: string }[],
                 bookedUrl: row?.booked_url ?? null,
                 bookedStart: row?.booked_start ?? null,
@@ -116,10 +122,11 @@ export async function POST(request: Request) {
             } catch {
               ai = "";
             }
+            const isBookedCtx = booked || state.stage === "booked";
             // Stage-aware built-in fallback (used when the AI is offline/empty)
             // so a BOOKED user never gets a "grab a slot" link again.
             const defaultText =
-              state.stage === "booked"
+              isBookedCtx
                 ? "Happy to help! 🙌 The real cases we solve best on our call — anything specific you want me to prep for you?"
                 : state.stage === "awaiting_booking"
                 ? `Love that question — the call is the easiest place to answer it properly 🙂 Grab a 15-min slot here:\n\n${calBookingLink(from)}`
