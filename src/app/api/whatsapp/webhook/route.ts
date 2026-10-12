@@ -19,11 +19,15 @@ export async function GET(request: Request) {
 }
 
 // Extract the reply text from a message regardless of how it arrived
-// (plain text, quick-reply button, or list reply).
+// (plain text, quick-reply button, or list reply). Checks every shape Meta uses.
 function replyText(msg: any): string {
-  if (msg.type === "button" && msg.button?.text) return msg.button.text;
-  if (msg.type === "list_reply" && msg.list_reply?.title) return msg.list_reply.title;
-  if (msg.text?.body) return msg.text.body;
+  if (typeof msg?.text?.body === "string" && msg.text.body) return msg.text.body;
+  if (msg?.button?.text) return msg.button.text;
+  if (msg?.button?.title) return msg.button.title;
+  if (msg?.list_reply?.title) return msg.list_reply.title;
+  if (msg?.list_reply?.description) return msg.list_reply.description;
+  if (msg?.interactive?.type_reply?.title) return msg.interactive.type_reply.title;
+  if (msg?.interactive?.list_reply?.title) return msg.interactive.list_reply.title;
   return "";
 }
 
@@ -56,7 +60,10 @@ export async function POST(request: Request) {
         const from = msg.from;
         if (!from) continue;
         const text = replyText(msg);
-        if (!text) continue;
+        if (!text) {
+          console.warn("[whatsapp] unreadable message:", msg.type, JSON.stringify(msg).slice(0, 400));
+          continue;
+        }
 
         try {
           // Reset codeword → wipe the session and start a fresh case.
