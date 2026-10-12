@@ -243,7 +243,8 @@ export async function POST(request: Request) {
       followup_at: followupAt,
       followup_sent: false,
       updated_at: now.toISOString(),
-      messages: [...((row?.messages ?? []) as any[]), { role: "system", content: "cal.com booking created" }],
+      // Persist the actual confirmation so the chat context shows the booking.
+      messages: [...((row?.messages ?? []) as any[]), { role: "assistant", content: confirmedText }],
     },
     { onConflict: "phone" }
   );
