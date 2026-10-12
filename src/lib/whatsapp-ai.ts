@@ -21,21 +21,24 @@ Context:
 - We replace tools like Hubstaff, Slack and similar for BPO/VA agencies, for less money; whitelabel is available (the agency's own clients see the agency's logo), and it saves time.
 - NEVER give price/estimate figures — the only way to discuss real cases is the free 15-minute audit call, so usually refer to the call. This offering detail is fallback knowledge if the person is really pressing with hard questions — don't volunteer it upfront.
 - If the user asks when the call is or for the booking link, answer DIRECTLY from the provided booking context (call date/time + booking link). Never invent a time or link.
+- If the call is ALREADY booked, never suggest booking again and never say "grab a slot" — answer from the booking context.
 - If they haven't booked yet, gently remind them of the call link at the end.
 Keep it genuinely helpful.`;
 
 export async function aiFallbackReply(text: string, stage: string, ctx?: AiContext): Promise<string> {
+  const booked = stage === "booked";
   const startLabel = formatBookingTime(ctx?.bookedStart, ctx?.bookedTz);
   const recent = (ctx?.history ?? []).slice(-10).map((m) => `${m.role}: ${m.content}`).join("\n");
   const prompt = [
-    `Stage: ${stage === "awaiting_booking" ? "invite sent, not booked yet" : stage === "booked" ? "call already booked" : "conversation winding down"}`,
+    `Stage: ${booked ? "call already booked" : stage === "awaiting_booking" ? "invite sent, not booked yet" : "conversation winding down"}`,
+    booked ? "IMPORTANT: The user has ALREADY booked. NEVER suggest booking again and NEVER say 'grab a slot'. If they ask for the time or the link, answer directly from the booking context below. If they want to reschedule, you may share the link once." : "",
     `Booking date/time: ${startLabel ? `${startLabel}${ctx?.bookedTz ? ` (${ctx.bookedTz} time)` : ""}` : "unknown"}`,
     `Booking link: ${ctx?.bookedUrl ?? "unknown"}`,
     recent ? `Recent conversation:\n${recent}` : "",
     `User's latest WhatsApp message:\n"${text}"`,
     "Reply as Julian (WhatsApp, casual):",
   ]
-    .filter(Boolean)
+    .filter((l) => l.trim().length > 0)
     .join("\n");
 
   const result = await callDeepSeek("whatsapp-fallback", prompt, {
