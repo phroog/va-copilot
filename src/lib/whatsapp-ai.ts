@@ -28,7 +28,7 @@ export async function aiFallbackReply(text: string, stage: string, ctx?: AiConte
   const recent = (ctx?.history ?? []).slice(-10).map((m) => `${m.role}: ${m.content}`).join("\n");
   const prompt = [
     `Stage: ${stage === "awaiting_booking" ? "invite sent, not booked yet" : stage === "booked" ? "call already booked" : "conversation winding down"}`,
-    `Booking date/time: ${startLabel ?? "unknown"}`,
+    `Booking date/time: ${startLabel ? `${startLabel}${ctx?.bookedTz ? ` (${ctx.bookedTz} time)` : ""}` : "unknown"}`,
     `Booking link: ${ctx?.bookedUrl ?? "unknown"}`,
     recent ? `Recent conversation:\n${recent}` : "",
     `User's latest WhatsApp message:\n"${text}"`,

@@ -225,7 +225,7 @@ export async function POST(request: Request) {
   const startLabel = formatBookingTime(startRaw, tz);
   const confirmedText = [
     BOOKING_CONFIRMED_TEXT,
-    startLabel ? `🗓 Your call: ${startLabel}${tz ? ` (${tz})` : ""}` : null,
+    startLabel ? `🗓 Your call: ${startLabel}${tz ? ` · ${tz} time` : ""}` : null,
     finalBookingUrl ? `📅 ${finalBookingUrl}` : null,
   ]
     .filter(Boolean)
