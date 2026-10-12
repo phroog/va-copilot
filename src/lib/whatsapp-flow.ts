@@ -153,4 +153,4 @@ export const BOOKING_CONFIRMED_TEXT =
   "You're booked! 🙌 Thanks — see you there. If you can have your key software subscriptions & rough numbers handy, we can dig right in and figure out what actually helps. (You'll get the calendar invite by email too — this is just the WhatsApp heads-up 👋)";
 
 export const FOLLOWUP_TEXT =
-  "Hey — quick one before our call 🙂 Any questions you want me to prep properly for? And just to make sure: you'll be there right? (Does the time still work for you?)";
+  "Hey 🙂 quick one from my side — I just want to make sure we're still good for the call. Any questions you want me to prep properly for? And you'll for sure be there, right? (Does the time still work?)";

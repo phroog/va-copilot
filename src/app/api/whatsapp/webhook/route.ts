@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { sendWhatsAppText, sendWhatsAppButtons, sendWhatsAppList, WHATSAPP_VERIFY, calBookingLink } from "@/lib/whatsapp";
-import { runFlow, type WaOut } from "@/lib/whatsapp-flow";
+import { runFlow, type WaOut, FOLLOWUP_TEXT } from "@/lib/whatsapp-flow";
 import { aiFallbackReply } from "@/lib/whatsapp-ai";
 
 export const runtime = "nodejs";
@@ -40,6 +40,14 @@ function isReset(text: string): boolean {
   return RESET_WORDS.includes(t) || t.endsWith(" reset") || t.startsWith("reset ");
 }
 
+// Test codeword that sends the 24h follow-up immediately.
+const FOLLOWUP_WORDS = ["followup", "test followup", "follow up", "reminder", "test reminder"];
+function isFollowupCmd(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (t.startsWith("::")) return FOLLOWUP_WORDS.includes(t.slice(2).trim());
+  return FOLLOWUP_WORDS.includes(t);
+}
+
 async function sendOuts(to: string, outs: WaOut[]): Promise<void> {
   for (const out of outs) {
     if (out.kind === "buttons") await sendWhatsAppButtons(to, out.text, out.buttons);
@@ -71,6 +79,14 @@ export async function POST(request: Request) {
           if (isReset(text)) {
             await admin.from("whatsapp_sessions").delete().eq("phone", from);
             await sendWhatsAppText(from, "🔄 Fresh start — let's go again from the top 👋");
+          }
+
+          // Follow-up test → send the 24h follow-up right now (mark as sent so
+          // the real cron doesn't send it again).
+          if (isFollowupCmd(text)) {
+            await sendWhatsAppText(from, FOLLOWUP_TEXT);
+            await admin.from("whatsapp_sessions").update({ followup_sent: true, followup_at: new Date().toISOString() }).eq("phone", from);
+            continue;
           }
 
           const { data: row } = await admin.from("whatsapp_sessions").select("*").eq("phone", from).maybeSingle();
