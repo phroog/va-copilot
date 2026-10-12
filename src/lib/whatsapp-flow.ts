@@ -31,13 +31,19 @@ export function parsePeople(t: string): number | null {
   return null;
 }
 
-export function runFlow(current: FlowState, text: string, phone?: string): { out: WaOut[]; state: FlowState } {
+export function runFlow(current: FlowState, text: string, phone?: string): { out: WaOut[]; state: FlowState; fallback: boolean } {
   const stage = current.stage || "new";
+  const def = (out: WaOut[], state: Partial<FlowState>): { out: WaOut[]; state: FlowState; fallback: boolean } => ({
+    out,
+    state: { stage, people: current.people, ...state },
+    fallback: false,
+  });
+  const isFallback = (state: FlowState) => ({ out: [] as WaOut[], state, fallback: true });
 
   // ── First message ever: thank-you + owner/manager question ──
   if (stage === "new") {
-    return {
-      out: [
+    return def(
+      [
         {
           kind: "list",
           text: "Hey! Julian here from Sari 👋 Thanks for reaching out 🙌 Quick one before I tell you more: are you the owner or manager of a BPO/VA agency?",
@@ -47,15 +53,15 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
           ],
         },
       ],
-      state: { stage: "ask_owner", people: null },
-    };
+      { stage: "ask_owner", people: null }
+    );
   }
 
   // ── Owner / manager question ──
   if (stage === "ask_owner") {
     if (isYes(text)) {
-      return {
-        out: [
+      return def(
+        [
           {
             kind: "list",
             text: "Perfect, that's what I hoped to hear 🙌 And roughly how many people does your team manage?",
@@ -67,22 +73,22 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
             ],
           },
         ],
-        state: { stage: "ask_people", people: null },
-      };
+        { stage: "ask_people", people: null }
+      );
     }
     if (isNo(text)) {
-      return {
-        out: [
+      return def(
+        [
           {
             kind: "text",
             text: "Ah, got it! 👌 Right now we focus on established BPO/VA agencies — that's where we can really move the needle. But thanks for reaching out! If you know a larger company that could use this, point them my way — you'd even get a referral commission (depends on deal size, happy to explain on a quick call 🙂).",
           },
         ],
-        state: { stage: "done", people: null },
-      };
+        { stage: "done", people: null }
+      );
     }
-    return {
-      out: [
+    return def(
+      [
         {
           kind: "list",
           text: "Just to make sure I understand — are you the owner or manager of a BPO/VA agency? 🙏",
@@ -92,37 +98,37 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
           ],
         },
       ],
-      state: { stage: "ask_owner", people: null },
-    };
+      { stage: "ask_owner", people: null }
+    );
   }
 
   // ── Team size ──
   if (stage === "ask_people") {
     const people = parsePeople(text);
     if (people === 1) {
-      return {
-        out: [
+      return def(
+        [
           {
             kind: "text",
             text: "Got it 👍 — right now we focus on agencies with a team behind them, since that's where our tools make the most sense. But I'm glad you reached out! If you know a larger operation that could use this, send them my way — there's a referral bonus in it for you 👀",
           },
         ],
-        state: { stage: "done", people: 1 },
-      };
+        { stage: "done", people: 1 }
+      );
     }
     if (people && people >= 2) {
-      return {
-        out: [
+      return def(
+        [
           {
             kind: "text",
             text: `That's exactly the sweet spot we love working with 🙌 Let's get you on a quick 15-minute call — no pressure, we'll just look at your setup and what makes sense:\n\n${calBookingLink(phone)}`,
           },
         ],
-        state: { stage: "awaiting_booking", people },
-      };
+        { stage: "awaiting_booking", people }
+      );
     }
-    return {
-      out: [
+    return def(
+      [
         {
           kind: "list",
           text: "Sorry, I didn't catch that — roughly how many people does your team manage?",
@@ -134,23 +140,12 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
           ],
         },
       ],
-      state: { stage: "ask_people", people: null },
-    };
+      { stage: "ask_people", people: null }
+    );
   }
 
-  // ── After invite / done: any question → helpful fallback → call ──
-  return {
-    out: [
-      {
-        kind: "text",
-        text:
-          stage === "awaiting_booking"
-            ? "Love that question — that's honestly exactly what the call is for, so I can give you a proper answer instead of guessing here 🙂 Grab a 15-min slot and we'll go through it:\n\n" + calBookingLink(phone)
-            : "Happy to help! The best place for real answers is a quick 15-min call — I'll make sure it's worth your time 🙂\n\n" + calBookingLink(phone),
-      },
-    ],
-    state: { stage, people: current.people },
-  };
+  // ── After invite / done: ANY free text → human AI fallback. ──
+  return isFallback({ stage, people: current.people });
 }
 
 // Messages used by the Cal.com webhook (after a booking exists).

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { sendWhatsAppText, sendWhatsAppButtons, sendWhatsAppList, WHATSAPP_VERIFY } from "@/lib/whatsapp";
+import { sendWhatsAppText, sendWhatsAppButtons, sendWhatsAppList, WHATSAPP_VERIFY, calBookingLink } from "@/lib/whatsapp";
 import { runFlow, type WaOut } from "@/lib/whatsapp-flow";
+import { aiFallbackReply } from "@/lib/whatsapp-ai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,12 +77,28 @@ export async function POST(request: Request) {
           const now = new Date().toISOString();
           const firstSeen = row?.first_seen_at ?? now;
 
-          // Run the deterministic qualification flow.
-          const { out, state } = runFlow(
+          // Run the deterministic qualification flow; free text after the invite/done
+// stages gets a human DeepSeek answer instead of a canned reply.
+          const { out: flowOut, state, fallback } = runFlow(
             { stage: row?.stage ?? "new", people: row?.people ?? null },
             text,
             from
           );
+
+          let out: WaOut[] = flowOut;
+          if (fallback) {
+            let ai = "";
+            try {
+              ai = await aiFallbackReply(text, state.stage);
+            } catch {
+              ai = "";
+            }
+            const defaultText =
+              state.stage === "awaiting_booking"
+                ? `Love that question — that's honestly exactly what the call is for 🙂 Grab a 15-min slot and we'll go through it:\n\n${calBookingLink(from)}`
+                : `Happy to help! The best place for real answers is a quick 15-min call — I'll make sure it's worth your time 🙂\n\n${calBookingLink(from)}`;
+            out = [{ kind: "text", text: ai || defaultText }];
+          }
           await sendOuts(from, out);
 
           const history = (row?.messages ?? []) as { role: string; content: string }[];

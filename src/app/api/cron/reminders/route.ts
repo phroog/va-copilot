@@ -36,9 +36,8 @@ interface ReminderRow {
 }
 
 export async function GET(request: Request) {
-  if (!setupWebPush()) {
-    return NextResponse.json({ error: "Push not configured" }, { status: 500 });
-  }
+  // WhatsApp follow-ups must run even if push (VAPID) isn't configured.
+  const pushOk = setupWebPush();
 
   const url = new URL(request.url);
   const dry = url.searchParams.get("dry") === "1";
@@ -153,7 +152,7 @@ export async function GET(request: Request) {
     const n = sentTodayByUser.get(item.userId) ?? 0;
     if (!force && n >= 2) continue;
     sentTodayByUser.set(item.userId, n + 1);
-    if (!dry) {
+    if (!dry && pushOk) {
       await sendToSubs(admin, item.subs as any, item.title, item.body, item.url);
       await admin.from("push_reminders").upsert(
         { user_id: item.userId, kind: item.kind, last_sent_at: now.toISOString(), day: today, day_count: 1 },

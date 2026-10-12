@@ -194,7 +194,20 @@ export async function POST(request: Request) {
   const followupAt = new Date(Math.min(firstSeen.getTime() + 20 * 3_600_000, now.getTime() + 60 * 60_000)).toISOString();
 
   const finalBookingUrl = bookingUrl ?? (bookingUid ? `https://app.cal.com/booking/${bookingUid}` : null);
-  const confirmedText = finalBookingUrl ? `${BOOKING_CONFIRMED_TEXT}\n\n📅 ${finalBookingUrl}` : BOOKING_CONFIRMED_TEXT;
+  const startRaw = b?.startTime ?? payload?.startTime ?? null;
+  const startLabel = (() => {
+    if (!startRaw) return null;
+    const d = new Date(startRaw);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  })();
+  const confirmedText = [
+    BOOKING_CONFIRMED_TEXT,
+    startLabel ? `🗓 Your call: ${startLabel}` : null,
+    finalBookingUrl ? `📅 ${finalBookingUrl}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   await sendWhatsAppText(phone, confirmedText);
 
   await admin.from("whatsapp_sessions").upsert(
