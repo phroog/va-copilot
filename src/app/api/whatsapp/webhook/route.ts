@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { sendWhatsAppText, WHATSAPP_VERIFY } from "@/lib/whatsapp";
-import { runWhatsAppBot, withBookingLink, type BotTurn } from "@/lib/whatsapp-bot";
+import { sendWhatsAppText, sendWhatsAppButtons, sendWhatsAppList, WHATSAPP_VERIFY } from "@/lib/whatsapp";
+import { runFlow, type WaOut } from "@/lib/whatsapp-flow";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,38 +18,70 @@ export async function GET(request: Request) {
   return NextResponse.json({ error: "Verification failed" }, { status: 403 });
 }
 
-async function handleIncoming(from: string, text: string): Promise<void> {
-  const admin = createServiceRoleClient();
-  const { data: row } = await admin.from("whatsapp_sessions").select("messages").eq("phone", from).maybeSingle();
-  const history: BotTurn[] = (row?.messages as BotTurn[]) ?? [];
-  history.push({ role: "user", content: text });
+// Extract the reply text from a message regardless of how it arrived
+// (plain text, quick-reply button, or list reply).
+function replyText(msg: any): string {
+  if (msg.type === "button" && msg.button?.text) return msg.button.text;
+  if (msg.type === "list_reply" && msg.list_reply?.title) return msg.list_reply.title;
+  if (msg.text?.body) return msg.text.body;
+  return "";
+}
 
-  const { reply, bookCall } = await runWhatsAppBot(history);
-  const assistant = withBookingLink(reply, bookCall);
-  history.push({ role: "assistant", content: assistant });
-  const capped = history.slice(-20);
-
-  await admin.from("whatsapp_sessions").upsert(
-    { phone: from, messages: capped, updated_at: new Date().toISOString() },
-    { onConflict: "phone" }
-  );
-  await sendWhatsAppText(from, assistant);
+async function sendOuts(to: string, outs: WaOut[]): Promise<void> {
+  for (const out of outs) {
+    if (out.kind === "buttons") await sendWhatsAppButtons(to, out.text, out.buttons);
+    else if (out.kind === "list") await sendWhatsAppList(to, out.text, out.rows);
+    else await sendWhatsAppText(to, out.text);
+  }
 }
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ status: "ok" });
 
+  const admin = createServiceRoleClient();
+
   for (const entry of body.entry ?? []) {
     for (const change of entry.changes ?? []) {
       const value = change.value;
       for (const msg of value.messages ?? []) {
-        if (msg.type === "text" && msg.text?.body && msg.from) {
-          try {
-            await handleIncoming(msg.from, msg.text.body);
-          } catch (e) {
-            console.error("[whatsapp] handler failed:", (e as Error).message);
-          }
+        const from = msg.from;
+        if (!from) continue;
+        const text = replyText(msg);
+        if (!text) continue;
+
+        try {
+          const { data: row } = await admin.from("whatsapp_sessions").select("*").eq("phone", from).maybeSingle();
+          const now = new Date().toISOString();
+          const firstSeen = row?.first_seen_at ?? now;
+
+          // Run the deterministic qualification flow.
+          const { out, state } = runFlow(
+            { stage: row?.stage ?? "new", people: row?.people ?? null },
+            text,
+            from
+          );
+          await sendOuts(from, out);
+
+          const history = (row?.messages ?? []) as { role: string; content: string }[];
+          history.push(
+            { role: "user", content: text },
+            { role: "assistant", content: out.map((o) => o.text).join(" | ") }
+          );
+
+          await admin.from("whatsapp_sessions").upsert(
+            {
+              phone: from,
+              messages: history.slice(-20),
+              stage: state.stage,
+              people: state.people,
+              first_seen_at: firstSeen,
+              updated_at: now,
+            },
+            { onConflict: "phone" }
+          );
+        } catch (e) {
+          console.error("[whatsapp] flow failed:", (e as Error).message);
         }
       }
     }

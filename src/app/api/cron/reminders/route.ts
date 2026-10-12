@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { setupWebPush, sendToSubs } from "@/lib/push-server";
+import { sendWhatsAppText } from "@/lib/whatsapp";
+import { FOLLOWUP_TEXT } from "@/lib/whatsapp-flow";
 
 // Reminder push notifications (like Duolingo's nags). Runs on a Vercel cron
 // (see vercel.json) and decides, per user with a push subscription:
@@ -162,5 +164,22 @@ export async function GET(request: Request) {
     sent += item.subs.length;
   }
 
-  return NextResponse.json({ checked: userIds.length, sent, byKind, dry });
+  // WhatsApp booking follow-ups: due messages inside the user's 24h window.
+  let waFollowups = 0;
+  if (!dry) {
+    const { data: due } = await admin
+      .from("whatsapp_sessions")
+      .select("phone")
+      .eq("followup_sent", false)
+      .not("followup_at", "is", null)
+      .lt("followup_at", now.toISOString())
+      .limit(50);
+    for (const d of due ?? []) {
+      const ok = await sendWhatsAppText(d.phone, FOLLOWUP_TEXT);
+      await admin.from("whatsapp_sessions").update({ followup_sent: true }).eq("phone", d.phone);
+      if (ok) waFollowups++;
+    }
+  }
+
+  return NextResponse.json({ checked: userIds.length, sent, byKind, dry, waFollowups });
 }

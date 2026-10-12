@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-const CALENDLY_URL = "https://calendly.com/hello-vascora/sari-dream-call";
+const CAL_BOOKING_URL = "https://cal.com/julian.sari-mwpfcf/15min";
 
 // Prominent, no-obligation call CTA. With `requireConfirm` the user must
 // confirm they'll actually show up before the booking link is enabled.
@@ -36,7 +36,7 @@ export function BookCallButton({
         </label>
       )}
       <a
-        href={CALENDLY_URL}
+        href={CAL_BOOKING_URL}
         target="_blank"
         rel="noopener noreferrer"
         aria-disabled={locked}

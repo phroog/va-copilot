@@ -51,6 +51,43 @@ export async function sendWhatsApp(to: string, body: string): Promise<boolean> {
 // Alias used by the inbound webhook bot.
 export const sendWhatsAppText = sendWhatsApp;
 
+export interface WaButton { id: string; title: string }
+export interface WaRow { id: string; title: string; description?: string }
+
+export async function sendWhatsAppButtons(to: string, text: string, buttons: WaButton[]): Promise<boolean> {
+  return sendInteractive(to, {
+    type: "button",
+    body: { text },
+    action: { buttons: buttons.slice(0, 3).map((b) => ({ type: "reply", reply: { id: b.id, title: b.title } })) },
+  });
+}
+
+export async function sendWhatsAppList(to: string, text: string, rows: WaRow[]): Promise<boolean> {
+  return sendInteractive(to, {
+    type: "list",
+    body: { text },
+    action: { button: "Choose", sections: [{ title: "Options", rows: rows.map((r) => ({ id: r.id, title: r.title, ...(r.description ? { description: r.description } : {}) })) }] },
+  });
+}
+
+async function sendInteractive(to: string, interactive: unknown): Promise<boolean> {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneId || !to) return false;
+  try {
+    const res = await fetch(`${GRAPH}/${phoneId}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ messaging_product: "whatsapp", to, type: "interactive", interactive }),
+    });
+    if (!res.ok) console.error("[whatsapp:interactive] failed:", res.status, (await res.text().catch(() => "")).slice(0, 500));
+    return res.ok;
+  } catch (err) {
+    console.error("[whatsapp:interactive] error:", String(err));
+    return false;
+  }
+}
+
 /* Send a WhatsApp template message — the only way to message a user who has
    NOT messaged the business first (no open 24h window). The template must be
    approved in the Meta WhatsApp manager. */
@@ -99,3 +136,11 @@ export function whatsappWelcomeMessage(firstName?: string): string {
 
 export const WHATSAPP_VERIFY = process.env.WHATSAPP_VERIFY_TOKEN || "";
 export const WHATSAPP_CALENDLY = "https://calendly.com/hello-vascora/sari-dream-call";
+// Cal.com booking page for the audit call (with phone prefill param appended).
+export const CAL_BOOKING_URL = "https://cal.com/julian.sari-mwpfcf/15min";
+export function calBookingLink(phone?: string): string {
+  // Prefill the phone field so the Cal.com webhook can map the booking back to
+  // the WhatsApp conversation (requires a "Phone" question on the event).
+  const p = (phone || "").replace(/\D/g, "");
+  return p ? `${CAL_BOOKING_URL}?phone=${p}` : CAL_BOOKING_URL;
+}
