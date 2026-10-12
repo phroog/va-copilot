@@ -105,7 +105,11 @@ export async function POST(request: Request) {
           if (fallback) {
             let ai = "";
             try {
-              ai = await aiFallbackReply(text, state.stage);
+              ai = await aiFallbackReply(text, state.stage, {
+                history: (row?.messages ?? []) as { role: string; content: string }[],
+                bookedUrl: row?.booked_url ?? null,
+                bookedStart: row?.booked_start ?? null,
+              });
             } catch {
               ai = "";
             }

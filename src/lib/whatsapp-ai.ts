@@ -1,19 +1,47 @@
 // Human AI fallback for free-form WhatsApp messages (DeepSeek), so unexpected
-// questions get a warm, Julian-voice answer instead of a canned link.
+// questions get a warm, Julian-voice answer. When the user asks about the call
+// time or the booking link, DeepSeek answers straight from the conversation
+// context (recent messages + stored booking details).
 import { callDeepSeek } from "@/lib/ai-client";
 import { calBookingLink } from "@/lib/whatsapp";
+
+export interface AiContext {
+  history?: { role: string; content: string }[];
+  bookedUrl?: string | null;
+  bookedStart?: string | null;
+  stage?: string;
+}
 
 const SYSTEM = `You are the WhatsApp assistant for Sari, texting as Julian (the founder), for a BPO/VA agency platform. You come across as a real, busy but friendly human — casual, warm, honest, NOT salesy, never pushy. Replies are 1–3 short sentences, no markdown, no emoji spam.
 
 Context:
 - The service trains VAs and the platform's own VA/BPO agencies scout top candidates.
 - We sell tools to BPO/VA agencies and schedule free 15-minute audit calls.
-- If the person hasn't booked yet, it's fine to gently remind them of the call link at the end.
-- If they already booked a call, briefly answer their question and note you'll dig into it properly on the call.
+- If the user asks when the call is or for the booking link, answer DIRECTLY from the provided booking context (call date/time + booking link). Never invent a time or link.
+- If they haven't booked yet, it's fine to gently remind them of the call link at the end.
 Keep it genuinely helpful.`;
 
-export async function aiFallbackReply(text: string, stage: string): Promise<string> {
-  const prompt = `Stage: ${stage === "awaiting_booking" ? "invite sent, not booked yet" : stage === "booked" ? "call already booked" : "conversation winding down"}.\nUser's latest WhatsApp message:\n"${text}"\n\nReply as Julian (WhatsApp, casual):`;
+function fmtStart(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+export async function aiFallbackReply(text: string, stage: string, ctx?: AiContext): Promise<string> {
+  const startLabel = fmtStart(ctx?.bookedStart);
+  const recent = (ctx?.history ?? []).slice(-10).map((m) => `${m.role}: ${m.content}`).join("\n");
+  const prompt = [
+    `Stage: ${stage === "awaiting_booking" ? "invite sent, not booked yet" : stage === "booked" ? "call already booked" : "conversation winding down"}`,
+    `Booking date/time: ${startLabel ?? "unknown"}`,
+    `Booking link: ${ctx?.bookedUrl ?? "unknown"}`,
+    recent ? `Recent conversation:\n${recent}` : "",
+    `User's latest WhatsApp message:\n"${text}"`,
+    "Reply as Julian (WhatsApp, casual):",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   const result = await callDeepSeek("whatsapp-fallback", prompt, {
     systemPrompt: SYSTEM,
     temperature: 0.75,

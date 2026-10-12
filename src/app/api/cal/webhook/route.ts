@@ -215,6 +215,7 @@ export async function POST(request: Request) {
       phone,
       stage: "booked",
       booked_url: finalBookingUrl ?? null,
+      booked_start: startRaw ?? null,
       booked_at: now.toISOString(),
       followup_at: followupAt,
       followup_sent: false,
