@@ -4,11 +4,13 @@
 // context (recent messages + stored booking details).
 import { callDeepSeek } from "@/lib/ai-client";
 import { calBookingLink } from "@/lib/whatsapp";
+import { formatBookingTime } from "@/lib/whatsapp-flow";
 
 export interface AiContext {
   history?: { role: string; content: string }[];
   bookedUrl?: string | null;
   bookedStart?: string | null;
+  bookedTz?: string | null;
   stage?: string;
 }
 
@@ -21,15 +23,8 @@ Context:
 - If they haven't booked yet, it's fine to gently remind them of the call link at the end.
 Keep it genuinely helpful.`;
 
-function fmtStart(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return null;
-  return d.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-}
-
 export async function aiFallbackReply(text: string, stage: string, ctx?: AiContext): Promise<string> {
-  const startLabel = fmtStart(ctx?.bookedStart);
+  const startLabel = formatBookingTime(ctx?.bookedStart, ctx?.bookedTz);
   const recent = (ctx?.history ?? []).slice(-10).map((m) => `${m.role}: ${m.content}`).join("\n");
   const prompt = [
     `Stage: ${stage === "awaiting_booking" ? "invite sent, not booked yet" : stage === "booked" ? "call already booked" : "conversation winding down"}`,

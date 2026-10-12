@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { sendWhatsAppText } from "@/lib/whatsapp";
-import { BOOKING_CONFIRMED_TEXT, FOLLOWUP_TEXT } from "@/lib/whatsapp-flow";
+import { sendWhatsAppText, CAL_BOOKING_URL } from "@/lib/whatsapp";
+import { BOOKING_CONFIRMED_TEXT, FOLLOWUP_TEXT, formatBookingTime } from "@/lib/whatsapp-flow";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -193,17 +193,20 @@ export async function POST(request: Request) {
   const firstSeen = row?.first_seen_at ? new Date(row.first_seen_at) : now;
   const followupAt = new Date(Math.min(firstSeen.getTime() + 20 * 3_600_000, now.getTime() + 60 * 60_000)).toISOString();
 
-  const finalBookingUrl = bookingUrl ?? (bookingUid ? `https://app.cal.com/booking/${bookingUid}` : null);
+  const finalBookingUrl =
+    bookingUrl ?? (bookingUid ? `https://app.cal.com/booking/${bookingUid}` : null) ?? CAL_BOOKING_URL;
   const startRaw = b?.startTime ?? payload?.startTime ?? null;
-  const startLabel = (() => {
-    if (!startRaw) return null;
-    const d = new Date(startRaw);
-    if (isNaN(d.getTime())) return null;
-    return d.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  })();
+  const tz =
+    payload?.attendees?.[0]?.timeZone ??
+    b?.attendees?.[0]?.timeZone ??
+    b?.timeZone ??
+    b?.eventType?.timeZone ??
+    payload?.eventType?.timeZone ??
+    null;
+  const startLabel = formatBookingTime(startRaw, tz);
   const confirmedText = [
     BOOKING_CONFIRMED_TEXT,
-    startLabel ? `🗓 Your call: ${startLabel}` : null,
+    startLabel ? `🗓 Your call: ${startLabel}${tz ? ` (${tz})` : ""}` : null,
     finalBookingUrl ? `📅 ${finalBookingUrl}` : null,
   ]
     .filter(Boolean)
@@ -216,6 +219,7 @@ export async function POST(request: Request) {
       stage: "booked",
       booked_url: finalBookingUrl ?? null,
       booked_start: startRaw ?? null,
+      booked_tz: tz ?? null,
       booked_at: now.toISOString(),
       followup_at: followupAt,
       followup_sent: false,

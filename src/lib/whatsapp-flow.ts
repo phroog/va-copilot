@@ -22,6 +22,27 @@ function isNo(t: string): boolean {
   return /(^|[^a-z])no/.test(t.trim().toLowerCase());
 }
 
+// Shared booking-time formatter: uses the attendee/event timezone when known,
+// else the ISO offset embedded in startTime, else server time (UTC).
+export function formatBookingTime(raw?: string | null, tz?: string | null): string | null {
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return null;
+  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" };
+  if (tz) {
+    try {
+      return d.toLocaleString("en-GB", { ...opts, timeZone: tz });
+    } catch {}
+  }
+  const m = raw.match(/([+-])(\d{2}):(\d{2})$/);
+  if (m) {
+    const sign = m[1] === "+" ? 1 : -1;
+    const offMin = sign * (parseInt(m[2], 10) * 60 + parseInt(m[3], 10));
+    return new Date(d.getTime() + offMin * 60_000).toLocaleString("en-GB", opts);
+  }
+  return d.toLocaleString("en-GB", opts);
+}
+
 export function parsePeople(t: string): number | null {
   const s = t.trim().toLowerCase().replace(/[\s.]+/g, "");
   if (/^1$|^one$|^just\s*me/i.test(s)) return 1;

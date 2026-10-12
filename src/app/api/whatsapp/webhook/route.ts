@@ -109,6 +109,7 @@ export async function POST(request: Request) {
                 history: (row?.messages ?? []) as { role: string; content: string }[],
                 bookedUrl: row?.booked_url ?? null,
                 bookedStart: row?.booked_start ?? null,
+                bookedTz: row?.booked_tz ?? null,
               });
             } catch {
               ai = "";
