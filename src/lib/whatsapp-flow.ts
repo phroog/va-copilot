@@ -85,7 +85,7 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
         [
           {
             kind: "list",
-            text: "Perfect, that's what I hoped to hear 🙌 And roughly how many people does your team manage?",
+            text: "Perfect, that's what I hoped to hear 🙌 And roughly how big is your team?",
             rows: [
               { id: "1", title: "Just me (1)" },
               { id: "2-5", title: "2–5" },
@@ -152,7 +152,7 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
       [
         {
           kind: "list",
-          text: "Sorry, I didn't catch that — roughly how many people does your team manage?",
+          text: "Sorry, I didn't catch that — roughly how big is your team?",
           rows: [
             { id: "1", title: "Just me (1)" },
             { id: "2-5", title: "2–5" },
