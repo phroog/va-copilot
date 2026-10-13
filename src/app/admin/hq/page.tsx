@@ -252,6 +252,7 @@ export default function AdminHq() {
                     </div>
                   ))}
                 </div>
+                <WaReply phone={s.phone} onSent={load} />
               </details>
             ))
           )}
@@ -387,6 +388,50 @@ export default function AdminHq() {
           })}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function WaReply({ phone, onSent }: { phone: string; onSent: () => void }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
+
+  const send = async () => {
+    if (!text.trim()) return;
+    setBusy(true);
+    setStatus("");
+    try {
+      const res = await fetch("/api/admin/whatsapp-send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, message: text }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.ok) throw new Error(d.error || "Failed");
+      setText("");
+      setStatus("✅ sent");
+      onSent();
+    } catch (e: any) {
+      setStatus("❌ " + (e.message || "Failed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+        placeholder="Write a WhatsApp message as Julian…"
+        className="flex-1 min-w-0 h-9 px-3 rounded-xl border border-kawaii-lavender/30 dark:border-dark-surface bg-white dark:bg-dark-card text-xs text-slate-700 dark:text-slate-200"
+      />
+      <button onClick={send} disabled={busy || !text.trim()} className="shrink-0 px-3 py-2 rounded-xl bg-dl-green text-white text-xs font-bold disabled:opacity-50">
+        {busy ? "…" : "Send"}
+      </button>
+      {status && <span className="text-[11px] text-slate-400 shrink-0">{status}</span>}
     </div>
   );
 }
