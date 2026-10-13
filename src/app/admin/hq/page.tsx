@@ -244,6 +244,7 @@ export default function AdminHq() {
                     <p className="mt-1 text-xs text-slate-400 truncate">{s.messages[s.messages.length - 1].content}</p>
                   )}
                 </summary>
+                <WaReply phone={s.phone} onSent={load} />
                 <div className="mt-2 space-y-1.5 border-t border-kawaii-lavender/20 dark:border-dark-surface pt-2 max-h-60 overflow-y-auto">
                   {s.messages.map((m, i) => (
                     <div key={i} className={`px-3 py-1.5 rounded-xl text-xs whitespace-pre-wrap ${m.role === "user" ? "bg-kawaii-lavender/20 dark:bg-dark-surface/50 text-slate-700 dark:text-slate-200" : "bg-dl-green/10 text-slate-600 dark:text-slate-300"}`}>
@@ -252,7 +253,6 @@ export default function AdminHq() {
                     </div>
                   ))}
                 </div>
-                <WaReply phone={s.phone} onSent={load} />
               </details>
             ))
           )}
