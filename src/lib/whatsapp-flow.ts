@@ -102,7 +102,7 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
         [
           {
             kind: "text",
-            text: "No stress! 👌 If you know someone who runs a BPO/VA agency, send them my way on WhatsApp — they'd save real money on tools, and you'd get a referral bonus too 🙂",
+            text: "No stress! 👌 If you know someone who runs a BPO/VA agency, send them my way — they'd save real money on tools, and you'd get a referral bonus too 🙂",
           },
         ],
         { stage: "done", people: null }
@@ -131,7 +131,7 @@ export function runFlow(current: FlowState, text: string, phone?: string): { out
         [
           {
             kind: "text",
-            text: "Got it 👍 Right now we focus on agencies with a team behind them — but honestly, in the future when you've scaled, we'd love to help. And if you know a bigger operation, just send them my way on WhatsApp — there's a referral bonus in it for you 👀",
+            text: "Got it 👍 Right now we focus on agencies with a team behind them — but honestly, in the future when you've scaled, we'd love to help. And if you know a bigger operation, just send them my way — there's a referral bonus in it for you 👀",
           },
         ],
         { stage: "done", people: 1 }
