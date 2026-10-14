@@ -16,6 +16,7 @@ function sha256(value: string): string {
 interface MetaEvent {
   eventName: string;
   email?: string | null;
+  phone?: string | null;
   ip?: string | null;
   userAgent?: string | null;
   eventSourceUrl?: string | null;
@@ -34,6 +35,7 @@ export async function sendMetaEvents(events: MetaEvent[]): Promise<boolean> {
   const data = events.map((e) => {
     const userData: Record<string, any> = {};
     if (e.email) userData.em = [sha256(e.email)];
+    if (e.phone) userData.ph = [sha256(e.phone.replace(/\D/g, ""))];
     if (e.ip) userData.client_ip_address = e.ip;
     if (e.userAgent) userData.client_user_agent = e.userAgent;
     if (e.fbp) userData.fbp = e.fbp;
@@ -98,6 +100,29 @@ export function metaPageView(opts: {
       userAgent: opts.userAgent,
       eventSourceUrl: opts.sourceUrl,
       customData: { content_name: "signup", status: "true" },
+    },
+  ]);
+}
+
+/* Convenience: fire a Lead event (e.g. call booked). */
+export function metaLead(opts: {
+  email?: string | null;
+  phone?: string | null;
+  ip?: string | null;
+  userAgent?: string | null;
+  sourceUrl?: string | null;
+  eventId?: string | null;
+}) {
+  return sendMetaEvents([
+    {
+      eventName: "Lead",
+      email: opts.email,
+      phone: opts.phone,
+      ip: opts.ip,
+      userAgent: opts.userAgent,
+      eventSourceUrl: opts.sourceUrl,
+      eventId: opts.eventId,
+      customData: { content_name: "audit_call_booked" },
     },
   ]);
 }

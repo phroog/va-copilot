@@ -4,6 +4,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { sendWhatsAppText, CAL_BOOKING_URL } from "@/lib/whatsapp";
 import { sendMessengerText } from "@/lib/messenger";
 import { BOOKING_CONFIRMED_TEXT, FOLLOWUP_TEXT, formatBookingTime } from "@/lib/whatsapp-flow";
+import { metaLead } from "@/lib/meta-capi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -112,6 +113,21 @@ async function fetchBookingInfo(uidish: string | null): Promise<{ phone: string 
     }
   } catch {}
   return { phone: null, url: null };
+}
+
+// Walk the payload for the first email-looking value.
+function scrapeEmail(obj: any, seen = new Set<any>()): string | null {
+  if (typeof obj === "string") {
+    const m = obj.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+    return m ? m[0] : null;
+  }
+  if (!obj || typeof obj !== "object" || seen.has(obj)) return null;
+  seen.add(obj);
+  for (const v of Object.values(obj)) {
+    const e = scrapeEmail(v, seen);
+    if (e) return e;
+  }
+  return null;
 }
 
 // Walk the payload for our SARI-<ref> token (prefilled into booking notes).
@@ -267,6 +283,9 @@ export async function POST(request: Request) {
   const channelId = row?.channel_id ?? phone;
   if (channel === "messenger") await sendMessengerText(channelId, confirmedText);
   else await sendWhatsAppText(phone, confirmedText);
+
+  // Meta Pixel conversion: a booking just happened → "Lead".
+  await metaLead({ email: scrapeEmail(payload), phone, sourceUrl: "https://getsari.com", eventId: `lead-${bookingUid ?? phone}` }).catch(() => {});
 
   await admin.from("whatsapp_sessions").upsert(
     {
