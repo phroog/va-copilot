@@ -114,6 +114,21 @@ async function fetchBookingInfo(uidish: string | null): Promise<{ phone: string 
   return { phone: null, url: null };
 }
 
+// Walk the payload for our SARI-<ref> token (prefilled into booking notes).
+function extractRefToken(obj: any, seen = new Set<any>()): string | null {
+  if (typeof obj === "string") {
+    const m = obj.match(/SARI-([A-Za-z0-9_-]{4,})/);
+    return m ? m[1] : null;
+  }
+  if (!obj || typeof obj !== "object" || seen.has(obj)) return null;
+  seen.add(obj);
+  for (const v of Object.values(obj)) {
+    const r = extractRefToken(v, seen);
+    if (r) return r;
+  }
+  return null;
+}
+
 export async function POST(request: Request) {
   const rawBody = await request.text();
   if (!signatureOk(rawBody, request.headers.get("x-cal-signature-256"))) {
@@ -157,7 +172,23 @@ export async function POST(request: Request) {
   console.log("[cal] webhook", JSON.stringify({ trigger: body?.triggerEvent, uid: bookingUid, id: bookingId, url: bookingUrl, apiKey: !!process.env.CALCOM_API_KEY }));
 
   const admin = createServiceRoleClient();
-  let phone = scrapePhone(payload);
+  let phone: string | null = null;
+  // 1. Exact match via the SARI ref token we prefilled into the booking notes.
+  const ref = extractRefToken(payload);
+  if (ref) {
+    const { data: refRow } = await admin
+      .from("whatsapp_sessions")
+      .select("phone")
+      .or(`channel_id.eq.${ref},phone.eq.${ref}`)
+      .limit(1)
+      .maybeSingle();
+    if (refRow?.phone) {
+      phone = refRow.phone;
+      console.log("[cal] matched via ref", ref, "->", phone);
+    }
+  }
+  // 2. Phone from payload / API.
+  if (!phone) phone = scrapePhone(payload);
   if (!phone || !bookingUrl) {
     const info = await fetchBookingInfo(bookingUid ?? (bookingId != null ? String(bookingId) : null));
     if (info) {

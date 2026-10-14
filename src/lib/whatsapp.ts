@@ -138,7 +138,9 @@ export const WHATSAPP_VERIFY = process.env.WHATSAPP_VERIFY_TOKEN || "";
 export const WHATSAPP_CALENDLY = "https://calendly.com/hello-vascora/sari-dream-call";
 // Cal.com booking page for the audit call (with phone/email prefill params).
 export const CAL_BOOKING_URL = "https://cal.com/julian.sari-mwpfcf/15min";
-// Clean booking link — no phone prefill needed (matching happens server-side).
-export function calBookingLink(phone?: string): string {
-  return CAL_BOOKING_URL;
+// Booking link with a hidden-ish SARI ref (prefilled into the Cal.com notes
+// field) so the Cal webhook can match the booking to the exact conversation.
+export function calBookingLink(ref?: string): string {
+  if (!ref) return CAL_BOOKING_URL;
+  return `${CAL_BOOKING_URL}?notes=${encodeURIComponent(`SARI-${ref}`)}`;
 }
