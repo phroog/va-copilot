@@ -28,8 +28,10 @@ export async function GET(request: Request) {
   const token = url.searchParams.get("hub.verify_token");
   const challenge = url.searchParams.get("hub.challenge");
   if (mode === "subscribe" && token === MESSENGER_VERIFY && challenge) {
+    console.log("[messenger] webhook VERIFIED");
     return new NextResponse(challenge, { status: 200 });
   }
+  console.warn("[messenger] verification failed — token mismatch", { mode, got: token, verifySet: !!MESSENGER_VERIFY });
   return NextResponse.json({ error: "Verification failed" }, { status: 403 });
 }
 
@@ -51,6 +53,7 @@ async function sendOuts(psid: string, outs: ReturnType<typeof runFlow>["out"]): 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ status: "ok" });
+  console.log("[messenger] webhook hit", JSON.stringify(body).slice(0, 400));
 
   const admin = createServiceRoleClient();
 

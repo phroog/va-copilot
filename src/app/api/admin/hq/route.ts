@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { verifyAdminSession, ADMIN_SESSION_COOKIE } from "@/lib/admin/session";
+import { whatsappConfigured } from "@/lib/whatsapp";
+import { messengerConfigured } from "@/lib/messenger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -149,6 +151,10 @@ export async function GET() {
 
   return NextResponse.json({
     generated_at: new Date().toISOString(),
+    channels: {
+      whatsapp: whatsappConfigured(),
+      messenger: messengerConfigured(),
+    },
     counts: {
       signups: signups.length,
       purchases: purchases.length,

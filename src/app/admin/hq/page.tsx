@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 
 interface HqData {
   generated_at: string;
+  channels?: { whatsapp: boolean; messenger: boolean };
   counts: { signups: number; purchases: number; letters: number; scams: number; leads: number; messages: number; whatsapp: number };
   signups: { user_id: string; name: string | null; email: string | null; created_at: string; phone: string | null; skills: string[] | null; goal: string | null; job_vector: number[] | null }[];
   purchases: { id: string; email: string | null; plan: string; status: string; current_period_end: string | null; created_at: string }[];
@@ -219,7 +220,14 @@ export default function AdminHq() {
 
       {/* ── WhatsApp sessions ───────────────────────────────────── */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">💬 WhatsApp Bot ({data.counts.whatsapp})</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-lg">💬 WhatsApp / Messenger Bot ({data.counts.whatsapp})</CardTitle>
+          {data.channels && (
+            <p className="text-xs text-slate-500 mt-1">
+              WhatsApp token: {data.channels.whatsapp ? "✅ set" : "❌ missing"} · Messenger token: {data.channels.messenger ? "✅ set" : "❌ missing"}
+            </p>
+          )}
+        </CardHeader>
         <CardContent className="space-y-2 max-h-[30rem] overflow-y-auto">
           {data.whatsapp.length === 0 ? (
             <p className="text-slate-400 text-sm">No conversations yet — messages sent to the WhatsApp number appear here.</p>
