@@ -24,7 +24,7 @@ async function getPageId(token: string): Promise<string | null> {
   } catch {
     cachedPageId = null;
   }
-  return cachedPageId;
+  return cachedPageId ?? null;
 }
 
 async function sendMessage(psid: string, message: unknown): Promise<{ ok: boolean; error?: string }> {
