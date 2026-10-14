@@ -12,22 +12,22 @@ export function messengerConfigured(): boolean {
 // Cached per process.
 let cachedPage: { id: string; token: string } | null | undefined;
 async function getPage(token: string): Promise<{ id: string; token: string } | null> {
-  const envId = process.env.MESSENGER_PAGE_ID;
-  if (envId) return { id: envId, token };
   if (cachedPage !== undefined) return cachedPage;
   try {
     const r = await fetch(`${GRAPH}/me/accounts?fields=id,access_token&access_token=${encodeURIComponent(token)}`);
     if (r.ok) {
       const j = await r.json();
-      const p = j?.data?.[0];
-      cachedPage = p?.id ? { id: p.id, token: p.access_token ?? token } : null;
-    } else {
-      cachedPage = null;
+      const envId = process.env.MESSENGER_PAGE_ID;
+      const p = (j?.data ?? []).find((x: any) => (envId ? x.id === envId : true)) ?? j?.data?.[0];
+      if (p?.id) {
+        cachedPage = { id: p.id, token: p.access_token ?? token };
+        return cachedPage;
+      }
     }
-  } catch {
-    cachedPage = null;
-  }
-  return cachedPage ?? null;
+  } catch {}
+  // Fallback: explicit page id + the raw token (only works if it's a Page token).
+  cachedPage = process.env.MESSENGER_PAGE_ID ? { id: process.env.MESSENGER_PAGE_ID, token } : null;
+  return cachedPage;
 }
 
 async function sendMessage(psid: string, message: unknown): Promise<{ ok: boolean; error?: string }> {
