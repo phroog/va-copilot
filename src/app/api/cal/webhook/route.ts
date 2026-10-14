@@ -4,7 +4,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { sendWhatsAppText, CAL_BOOKING_URL } from "@/lib/whatsapp";
 import { sendMessengerText } from "@/lib/messenger";
 import { BOOKING_CONFIRMED_TEXT, FOLLOWUP_TEXT, formatBookingTime } from "@/lib/whatsapp-flow";
-import { metaLead } from "@/lib/meta-capi";
+import { metaLead, metaDreamContact } from "@/lib/meta-capi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -284,8 +284,12 @@ export async function POST(request: Request) {
   if (channel === "messenger") await sendMessengerText(channelId, confirmedText);
   else await sendWhatsAppText(phone, confirmedText);
 
-  // Meta Pixel conversion: a booking just happened → "Lead".
-  await metaLead({ email: scrapeEmail(payload), phone, sourceUrl: "https://getsari.com", eventId: `lead-${bookingUid ?? phone}` }).catch(() => {});
+  // Meta Pixel conversion: a booking just happened → "Lead" + "DreamContact".
+  const leadEmail = scrapeEmail(payload);
+  await Promise.all([
+    metaLead({ email: leadEmail, phone, sourceUrl: "https://getsari.com", eventId: `lead-${bookingUid ?? phone}` }),
+    metaDreamContact({ email: leadEmail, phone, sourceUrl: "https://getsari.com", eventId: `dream-${bookingUid ?? phone}` }),
+  ]).catch(() => {});
 
   await admin.from("whatsapp_sessions").upsert(
     {

@@ -127,6 +127,29 @@ export function metaLead(opts: {
   ]);
 }
 
+/* Convenience: fire the custom "DreamContact" event (fired on call booking). */
+export function metaDreamContact(opts: {
+  email?: string | null;
+  phone?: string | null;
+  ip?: string | null;
+  userAgent?: string | null;
+  sourceUrl?: string | null;
+  eventId?: string | null;
+}) {
+  return sendMetaEvents([
+    {
+      eventName: "DreamContact",
+      email: opts.email,
+      phone: opts.phone,
+      ip: opts.ip,
+      userAgent: opts.userAgent,
+      eventSourceUrl: opts.sourceUrl,
+      eventId: opts.eventId,
+      customData: { content_name: "audit_call_booked" },
+    },
+  ]);
+}
+
 /* Convenience: fire a Purchase event. */
 export function metaPurchase(opts: {
   email?: string | null;
