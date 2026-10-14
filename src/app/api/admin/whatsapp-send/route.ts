@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { verifyAdminSession, ADMIN_SESSION_COOKIE } from "@/lib/admin/session";
 import { sendWhatsAppText, whatsappConfigured } from "@/lib/whatsapp";
-import { sendMessengerText } from "@/lib/messenger";
+import { sendMessenger } from "@/lib/messenger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,9 +25,15 @@ export async function POST(request: Request) {
   const admin = createServiceRoleClient();
   const { data: session } = await admin.from("whatsapp_sessions").select("channel, channel_id").eq("phone", to).maybeSingle();
   const channel = session?.channel ?? "whatsapp";
-  const ok = channel === "messenger"
-    ? await sendMessengerText(session?.channel_id ?? to, body)
-    : await sendWhatsAppText(to, body);
+  let ok = false;
+  let error: string | undefined;
+  if (channel === "messenger") {
+    const r = await sendMessenger(session?.channel_id ?? to, { text: body });
+    ok = r.ok;
+    error = r.error;
+  } else {
+    ok = await sendWhatsAppText(to, body);
+  }
 
   if (ok) {
     // Append to the conversation history so the bot's context stays coherent.
@@ -36,5 +42,5 @@ export async function POST(request: Request) {
     await admin.from("whatsapp_sessions").upsert({ phone: to, messages, updated_at: new Date().toISOString() }, { onConflict: "phone" });
   }
 
-  return NextResponse.json({ ok, sent: ok ? 1 : 0 });
+  return NextResponse.json({ ok, sent: ok ? 1 : 0, error, channel });
 }
