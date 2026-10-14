@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { setupWebPush, sendToSubs } from "@/lib/push-server";
 import { sendWhatsAppText } from "@/lib/whatsapp";
+import { sendMessengerText } from "@/lib/messenger";
 import { FOLLOWUP_TEXT } from "@/lib/whatsapp-flow";
 
 // Reminder push notifications (like Duolingo's nags). Runs on a Vercel cron
@@ -168,13 +169,15 @@ export async function GET(request: Request) {
   if (!dry) {
     const { data: due } = await admin
       .from("whatsapp_sessions")
-      .select("phone")
+      .select("phone, channel, channel_id")
       .eq("followup_sent", false)
       .not("followup_at", "is", null)
       .lt("followup_at", now.toISOString())
       .limit(50);
     for (const d of due ?? []) {
-      const ok = await sendWhatsAppText(d.phone, FOLLOWUP_TEXT);
+      const ok = d.channel === "messenger"
+        ? await sendMessengerText(d.channel_id ?? d.phone, FOLLOWUP_TEXT)
+        : await sendWhatsAppText(d.phone, FOLLOWUP_TEXT);
       await admin.from("whatsapp_sessions").update({ followup_sent: true }).eq("phone", d.phone);
       if (ok) waFollowups++;
     }

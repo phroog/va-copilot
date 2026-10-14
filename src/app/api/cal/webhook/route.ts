@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { sendWhatsAppText, CAL_BOOKING_URL } from "@/lib/whatsapp";
+import { sendMessengerText } from "@/lib/messenger";
 import { BOOKING_CONFIRMED_TEXT, FOLLOWUP_TEXT, formatBookingTime } from "@/lib/whatsapp-flow";
 
 export const runtime = "nodejs";
@@ -230,11 +231,17 @@ export async function POST(request: Request) {
   ]
     .filter(Boolean)
     .join("\n\n");
-  await sendWhatsAppText(phone, confirmedText);
+  // Reply on whichever channel this conversation uses (WhatsApp or Messenger).
+  const channel = row?.channel ?? "whatsapp";
+  const channelId = row?.channel_id ?? phone;
+  if (channel === "messenger") await sendMessengerText(channelId, confirmedText);
+  else await sendWhatsAppText(phone, confirmedText);
 
   await admin.from("whatsapp_sessions").upsert(
     {
       phone,
+      channel,
+      channel_id: channelId,
       stage: "booked",
       booked_url: finalBookingUrl ?? null,
       booked_start: startRaw ?? null,

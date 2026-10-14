@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { verifyAdminSession, ADMIN_SESSION_COOKIE } from "@/lib/admin/session";
 import { sendWhatsAppText, whatsappConfigured } from "@/lib/whatsapp";
+import { sendMessengerText } from "@/lib/messenger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +23,11 @@ export async function POST(request: Request) {
   if (!whatsappConfigured()) return NextResponse.json({ error: "WhatsApp not configured" }, { status: 500 });
 
   const admin = createServiceRoleClient();
-  const ok = await sendWhatsAppText(to, body);
+  const { data: session } = await admin.from("whatsapp_sessions").select("channel, channel_id").eq("phone", to).maybeSingle();
+  const channel = session?.channel ?? "whatsapp";
+  const ok = channel === "messenger"
+    ? await sendMessengerText(session?.channel_id ?? to, body)
+    : await sendWhatsAppText(to, body);
 
   if (ok) {
     // Append to the conversation history so the bot's context stays coherent.

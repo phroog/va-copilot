@@ -15,7 +15,7 @@ interface HqData {
   scams: { id: string; domain: string; company_name: string; risk: string; status: string; reporter: string | null; created_at: string }[];
   leads: { id: string; email: string; whatsapp: string | null; path: string | null; persona: string | null; plan: string | null; created_at: string }[];
   messages: { id: string; recipient: string; sender_name: string; title: string; body: string; created_at: string }[];
-  whatsapp: { phone: string; stage: string; people: number | null; booked_at: string | null; booked_url: string | null; updated_at: string; messages: { role: string; content: string }[] }[];
+  whatsapp: { phone: string; channel: string; stage: string; people: number | null; booked_at: string | null; booked_url: string | null; updated_at: string; messages: { role: string; content: string }[] }[];
 }
 
 const URGENCY: Record<string, { emoji: string; cls: string }> = {
@@ -228,9 +228,13 @@ export default function AdminHq() {
               <details key={s.phone} className="rounded-xl border border-kawaii-lavender/20 dark:border-dark-surface p-3 group">
                 <summary className="cursor-pointer list-none">
                   <div className="flex items-center justify-between gap-2">
-                    <a href={`https://wa.me/${s.phone}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-green-600 dark:text-green-400 hover:underline">
-                      💬 +{s.phone}
-                    </a>
+                    {s.channel === "messenger" ? (
+                      <span className="text-sm font-bold text-blue-500">Ⓜ️ Messenger · {s.phone}</span>
+                    ) : (
+                      <a href={`https://wa.me/${s.phone}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-green-600 dark:text-green-400 hover:underline">
+                        💬 +{s.phone}
+                      </a>
+                    )}
                     <div className="flex items-center gap-2">
                       <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${s.booked_at ? "bg-dl-green/15 text-dl-green" : "bg-white/10 text-white/50"}`}>
                         {s.booked_at ? "✔ booked" : s.stage}
