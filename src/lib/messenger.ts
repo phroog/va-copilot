@@ -7,36 +7,37 @@ export function messengerConfigured(): boolean {
   return !!process.env.MESSENGER_PAGE_TOKEN;
 }
 
-// Resolve the Page ID: explicit env wins, else ask the Graph API which pages the
-// token can act for (first one). Cached per process.
-let cachedPageId: string | null | undefined;
-async function getPageId(token: string): Promise<string | null> {
-  if (process.env.MESSENGER_PAGE_ID) return process.env.MESSENGER_PAGE_ID;
-  if (cachedPageId !== undefined) return cachedPageId;
+// Resolve the Page (id + its own Page access token). A System-User/User token
+// can't post messages directly — we must use the Page token from /me/accounts.
+// Cached per process.
+let cachedPage: { id: string; token: string } | null | undefined;
+async function getPage(token: string): Promise<{ id: string; token: string } | null> {
+  const envId = process.env.MESSENGER_PAGE_ID;
+  if (envId) return { id: envId, token };
+  if (cachedPage !== undefined) return cachedPage;
   try {
-    const r = await fetch(`${GRAPH}/me/accounts?access_token=${encodeURIComponent(token)}`);
+    const r = await fetch(`${GRAPH}/me/accounts?fields=id,access_token&access_token=${encodeURIComponent(token)}`);
     if (r.ok) {
       const j = await r.json();
-      cachedPageId = j?.data?.[0]?.id ?? null;
+      const p = j?.data?.[0];
+      cachedPage = p?.id ? { id: p.id, token: p.access_token ?? token } : null;
     } else {
-      cachedPageId = null;
+      cachedPage = null;
     }
   } catch {
-    cachedPageId = null;
+    cachedPage = null;
   }
-  return cachedPageId ?? null;
+  return cachedPage ?? null;
 }
 
 async function sendMessage(psid: string, message: unknown): Promise<{ ok: boolean; error?: string }> {
   const token = process.env.MESSENGER_PAGE_TOKEN;
   if (!token) return { ok: false, error: "MESSENGER_PAGE_TOKEN not set" };
   if (!psid) return { ok: false, error: "missing recipient" };
-  // Send as the Page: prefer the explicit/resolved Page ID (works with
-  // System-User tokens); fall back to /me/messages (needs a Page access token).
-  const pageId = await getPageId(token);
-  const endpoint = pageId ? `${GRAPH}/${pageId}/messages` : `${GRAPH}/me/messages`;
+  const page = await getPage(token);
+  if (!page) return { ok: false, error: "Couldn't resolve the Page — set MESSENGER_PAGE_ID or assign the Page to the System User." };
   try {
-    const res = await fetch(`${endpoint}?access_token=${encodeURIComponent(token)}`, {
+    const res = await fetch(`${GRAPH}/${page.id}/messages?access_token=${encodeURIComponent(page.token)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ recipient: { id: psid }, messaging_type: "RESPONSE", message }),
