@@ -43,7 +43,7 @@ export function sendMessengerQuickReplies(psid: string, text: string, replies: M
   return sendMessage(psid, {
     text,
     quick_replies: replies.slice(0, 13).map((r) => ({ content_type: "text", title: r.title.slice(0, 20), payload: r.payload })),
-  });
+  }).then((r) => r.ok);
 }
 
 export const MESSENGER_VERIFY = process.env.MESSENGER_VERIFY_TOKEN || "";
