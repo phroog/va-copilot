@@ -7,12 +7,36 @@ export function messengerConfigured(): boolean {
   return !!process.env.MESSENGER_PAGE_TOKEN;
 }
 
+// Resolve the Page ID: explicit env wins, else ask the Graph API which pages the
+// token can act for (first one). Cached per process.
+let cachedPageId: string | null | undefined;
+async function getPageId(token: string): Promise<string | null> {
+  if (process.env.MESSENGER_PAGE_ID) return process.env.MESSENGER_PAGE_ID;
+  if (cachedPageId !== undefined) return cachedPageId;
+  try {
+    const r = await fetch(`${GRAPH}/me/accounts?access_token=${encodeURIComponent(token)}`);
+    if (r.ok) {
+      const j = await r.json();
+      cachedPageId = j?.data?.[0]?.id ?? null;
+    } else {
+      cachedPageId = null;
+    }
+  } catch {
+    cachedPageId = null;
+  }
+  return cachedPageId;
+}
+
 async function sendMessage(psid: string, message: unknown): Promise<{ ok: boolean; error?: string }> {
   const token = process.env.MESSENGER_PAGE_TOKEN;
   if (!token) return { ok: false, error: "MESSENGER_PAGE_TOKEN not set" };
   if (!psid) return { ok: false, error: "missing recipient" };
+  // Send as the Page: prefer the explicit/resolved Page ID (works with
+  // System-User tokens); fall back to /me/messages (needs a Page access token).
+  const pageId = await getPageId(token);
+  const endpoint = pageId ? `${GRAPH}/${pageId}/messages` : `${GRAPH}/me/messages`;
   try {
-    const res = await fetch(`${GRAPH}/me/messages?access_token=${encodeURIComponent(token)}`, {
+    const res = await fetch(`${endpoint}?access_token=${encodeURIComponent(token)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ recipient: { id: psid }, messaging_type: "RESPONSE", message }),
